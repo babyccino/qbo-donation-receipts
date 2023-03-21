@@ -1,5 +1,4 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
-
 import { OAuthConfig } from "next-auth/providers"
 
 const customProvider: OAuthConfig<any> = {
@@ -15,12 +14,9 @@ const customProvider: OAuthConfig<any> = {
   },
   idToken: true,
   checks: ["pkce", "state"],
-  profile(profile) {
-    console.log("profile: ", profile)
-    return {
-      id: profile.sub,
-    }
-  },
+  profile: profile => ({
+    id: profile.sub,
+  }),
 }
 
 export const authOptions: NextAuthOptions = {
@@ -32,36 +28,37 @@ export const authOptions: NextAuthOptions = {
     secret: process.env.JWT_SECRET,
   },
   callbacks: {
-    async session({ session, token, user }) {
-      const newSession: any = session
-      newSession.accessToken = token.accessToken
-      newSession.user.id = token.id
-      return newSession
+    async session({ session, token }) {
+      return {
+        ...session,
+        accessToken: token.accessToken,
+        user: {
+          id: token.id,
+          name: token.name,
+          image: token.image,
+          email: token.email,
+        },
+      } as any
     },
-    async jwt({ token, user, account, profile, isNewUser }) {
-      console.log("jwt callback")
-      console.log("isNewUser: ", isNewUser)
-      const qboProfile = await fetch(
-        "https://accounts.platform.intuit.com/v1/openid_connect/userinfo",
-        {
-          headers: {
-            Authentication: `Bearer ${account?.access_token || token?.accessToken || ""}`,
-            Accept: "application/json",
-          },
-        }
-      )
-
-      console.log("account.access_token: ", account?.access_token)
-      console.log("account ", account)
-      console.log("token.accessToken: ", token.accessToken)
-      console.log("qboProfile: ", qboProfile)
-
-      if (user) {
-        token.id = user.id
-      }
+    async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token
+        token.id = account.providerAccountId
+
+        const qboProfile = await (
+          await fetch("https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo", {
+            headers: {
+              Authorization: `Bearer ${token.accessToken}`,
+              Accept: "application/json",
+            },
+          })
+        ).json()
+
+        token.name = qboProfile.name || "Name not found"
+        token.image = qboProfile.image || "Image not found"
+        token.email = qboProfile.email || "Email not found"
       }
+
       return token
     },
   },
