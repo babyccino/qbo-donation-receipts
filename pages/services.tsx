@@ -1,19 +1,47 @@
-import Link from "next/link"
+import { FormEventHandler, useRef } from "react"
 import { useSession } from "next-auth/react"
 
 import { Item } from "../lib/util"
 
 export default function IndexPage({ items }: { items: Item[] }) {
   const { data: session } = useSession()
+  const inputRefs = useRef<HTMLInputElement[]>([])
+
+  // TODO change form to update global state and storage on server onChange without having to click submit
+  const onSubmit: FormEventHandler<HTMLFormElement> = e => {
+    e.preventDefault()
+    const formData = new FormData(e.target)
+    const selectedItems = new Set(formData.keys())
+  }
+
+  const checkAll = () => {
+    for (const el of inputRefs.current) {
+      el.checked = true
+    }
+  }
+
+  const unCheckAll = () => {
+    for (const el of inputRefs.current) {
+      el.checked = false
+    }
+  }
 
   return (
-    <ul>
+    <form onSubmit={onSubmit}>
       {items.map(item => (
-        <li>
-          <p>{item.Name}</p>
-        </li>
+        <label key={item.Id}>
+          <input
+            ref={el => (el ? inputRefs.current.push(el) : null)}
+            type="checkbox"
+            name={item.Name}
+          />
+          {item.Name}
+        </label>
       ))}
-    </ul>
+      <input type="submit" value="Submit" />
+      <button onClick={checkAll}>Check All</button>
+      <button onClick={unCheckAll}>Uncheck All</button>
+    </form>
   )
 }
 
