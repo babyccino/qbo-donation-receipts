@@ -12,7 +12,7 @@ export default function IndexPage() {
 import { GetServerSidePropsContext } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Session } from "../lib/util"
+import { Session } from "../lib/types"
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any

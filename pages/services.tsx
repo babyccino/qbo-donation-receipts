@@ -1,7 +1,7 @@
 import { FormEventHandler, useRef } from "react"
 import { useSession } from "next-auth/react"
 
-import { Item } from "../lib/util"
+import { Item } from "../lib/types"
 
 export default function IndexPage({ items }: { items: Item[] }) {
   const { data: session } = useSession()
@@ -50,7 +50,7 @@ export default function IndexPage({ items }: { items: Item[] }) {
 import { GetServerSidePropsContext } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { ItemQueryResponse, Session } from "../lib/util"
+import { ItemQueryResponse, Session } from "../lib/types"
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
