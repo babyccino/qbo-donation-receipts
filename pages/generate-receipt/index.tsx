@@ -1,5 +1,7 @@
 import { useSession } from "next-auth/react"
-import { CustomerData } from "../lib/customer-sales"
+
+import styles from "./generate-receipt.module.scss"
+import { CustomerData } from "../../lib/customer-sales"
 
 export default function IndexPage({ customerData }: { customerData: CustomerData[] }) {
   const { data: session } = useSession()
@@ -9,6 +11,26 @@ export default function IndexPage({ customerData }: { customerData: CustomerData
       {customerData.map(entry => (
         <div key={entry.name}>
           {entry.name} {entry.total}
+          <button className={styles.button}>
+            Show receipt
+            <div className={styles.receipt}>
+              <Receipt
+                currency="USD"
+                currentDate={new Date()}
+                donation={entry}
+                donationDate={new Date()}
+                donee={{
+                  name: "Oxfam",
+                  address: "123 Main Street",
+                  registrationNumber: "ABC123",
+                  country: "USA",
+                  signatory: "Gus Ryan",
+                  smallLogo: "",
+                }}
+                receiptNo={1}
+              />
+            </div>
+          </button>
         </div>
       ))}
     </>
@@ -19,10 +41,11 @@ export default function IndexPage({ customerData }: { customerData: CustomerData
 
 import { GetServerSidePropsContext } from "next"
 import { getServerSession } from "next-auth"
-import { authOptions } from "./api/auth/[...nextauth]"
+import { authOptions } from "../api/auth/[...nextauth]"
 
-import { Session } from "../lib/types"
-import { CustomerSalesReport, processCustomerData } from "../lib/customer-sales"
+import { Session } from "../../lib/types"
+import { CustomerSalesReport, processCustomerData } from "../../lib/customer-sales"
+import Receipt from "../../components/receipt"
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
@@ -50,8 +73,6 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   if (!response.ok) {
     throw { ...report, url }
   }
-
-  console.log("report: ", report)
 
   const customerData = processCustomerData(report)
 
