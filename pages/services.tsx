@@ -10,7 +10,7 @@ export default function IndexPage({ items }: { items: Item[] }) {
   // TODO change form to update global state and storage on server onChange without having to click submit
   const onSubmit: FormEventHandler<HTMLFormElement> = e => {
     e.preventDefault()
-    const formData = new FormData(e.target)
+    const formData = new FormData(e.target as any)
     const selectedItems = new Set(formData.keys())
   }
 
@@ -57,14 +57,17 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   const url = `https://sandbox-quickbooks.api.intuit.com/v3/company/${session.realmId}/query?query=select * from Item`
 
-  const items: ItemQueryResponse = await (
-    await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${session.accessToken}`,
-        Accept: "application/json",
-      },
-    })
-  ).json()
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      Accept: "application/json",
+    },
+  })
+  const items = await response.json()
+
+  if (!response.ok) {
+    throw items
+  }
 
   return {
     props: {
