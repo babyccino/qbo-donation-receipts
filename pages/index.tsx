@@ -4,7 +4,16 @@ import { useSession } from "next-auth/react"
 export default function IndexPage() {
   const { data: session } = useSession()
 
-  return <Link href="/services">Select products/services</Link>
+  return (
+    <>
+      <div>
+        <Link href="/services">Select products/services</Link>
+      </div>
+      <div>
+        <Link href="/generate-receipt">Generate receipts</Link>
+      </div>
+    </>
+  )
 }
 
 // --- server-side props ---
