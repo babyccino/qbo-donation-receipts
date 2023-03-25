@@ -2,7 +2,9 @@
   "scripts": {
     "dev": "next",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "jest --watch",
+    "test:ci": "jest"
   },
   "dependencies": {
     "next": "^13.2.4",
