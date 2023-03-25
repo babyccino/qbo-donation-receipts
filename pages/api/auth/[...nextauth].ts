@@ -4,7 +4,8 @@ import type { Account, NextAuthOptions } from "next-auth"
 import type { JWT } from "next-auth/jwt"
 import type { OAuthConfig } from "next-auth/providers"
 
-import type { QBOProfile } from "../../../lib/util"
+import type { QBOProfile } from "../../../lib/types"
+import { base64Encode } from "../../../lib/util"
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
@@ -24,6 +25,32 @@ const customProvider: OAuthConfig<QBOProfile> = {
   }),
 }
 
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+  const url = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
+
+  const encoded = base64Encode(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET)
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${encoded}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: `grant_type=refresh_token&refresh_token=${token.refreshToken}`,
+  })
+  const refreshedTokens = await response.json()
+  if (!response.ok) {
+    throw refreshedTokens
+  }
+
+  return {
+    ...token,
+    accessToken: refreshedTokens.access_token,
+    accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+    refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+  }
+}
+
 const jwtCallback: any = async ({
   token,
   account,
@@ -35,18 +62,27 @@ const jwtCallback: any = async ({
 }): Promise<JWT> => {
   const qboProfile = profile as QBOProfile
   if (account) {
-    console.log(account)
+    if (!account.access_token || !account.refresh_token || account.expires_at === undefined)
+      throw new Error("Account is missing important data \naccount:" + JSON.stringify(account))
+
     token.accessToken = account.access_token
+    token.refreshToken = account.refresh_token
+    token.accessTokenExpires = account.expires_at * 1000
     token.id = account.providerAccountId
 
-    const qboProfile = await (
-      await fetch("https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo", {
+    const response = await fetch(
+      "https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo",
+      {
         headers: {
           Authorization: `Bearer ${token.accessToken}`,
           Accept: "application/json",
         },
-      })
-    ).json()
+      }
+    )
+    const qboProfile = await response.json()
+    if (!response.ok) {
+      throw qboProfile
+    }
 
     token.email = qboProfile.email || "No email associated with account"
     token.name = qboProfile.givenName || "No name associated with account"
@@ -58,7 +94,8 @@ const jwtCallback: any = async ({
     token.realmId = qboProfile.realmid as string
   }
 
-  return token
+  if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
+  else return token
 }
 
 export const authOptions: NextAuthOptions = {
