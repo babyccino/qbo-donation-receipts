@@ -37,6 +37,12 @@ export default function Layout({ children }: { children: ReactNode }) {
             <li>
               <Link href="/">Home</Link>
             </li>
+            <li>
+              <Link href="/services">Services</Link>
+            </li>
+            <li>
+              <Link href="/generate-receipts">Receipts</Link>
+            </li>
           </ul>
         </nav>
       </header>
