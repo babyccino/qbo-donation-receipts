@@ -79,15 +79,19 @@ export type CustomerData = {
   products: { name: string; id: number; total: number }[]
 }
 
-export function processCustomerData(report: CustomerSalesReport): CustomerData[] {
-  const items: { name: string; id: number }[] = []
+export function processCustomerData(
+  report: CustomerSalesReport,
+  items: Set<number>
+): CustomerData[] {
+  const allItems: { name: string; id: number }[] = []
 
   const columns = report.Columns.Column
   // first column is customer name and last is total
   for (let i = 1; i < columns.length - 1; ++i) {
     const entry = columns[i]
     if (!entry.MetaData) throw new Error(`Column ${i} is missing 'MetaData'`)
-    items.push({ name: entry.ColTitle, id: parseInt(entry.MetaData[0].Value) })
+    const id = parseInt(entry.MetaData[0].Value)
+    allItems.push({ name: entry.ColTitle, id })
   }
 
   const rows = report.Rows.Row
@@ -97,17 +101,27 @@ export function processCustomerData(report: CustomerSalesReport): CustomerData[]
     if (row.group && row.group === "GrandTotal")
       throw new Error("Malformed data, only last column should be total")
 
-    const { data, id, total, name } = getRowData(row)
+    const { data, id, name } = getRowData(row)
 
-    const products = items.reduce<
+    const total = data.reduce<number>(
+      (prev, curr, ii) => (items.has(allItems[ii].id) ? curr + prev : prev),
+      0
+    )
+
+    if (total === 0) continue
+
+    const products = data.reduce<
       {
         name: string
         id: number
         total: number
       }[]
     >((prev, curr, ii) => {
-      if (!data[ii]) return prev
-      else return [...prev, { ...curr, total: data[ii] }]
+      // if total for item is 0 or if the item is not in the list of items we are using...
+      // do not add the data point to the list
+      const correspondingItem = allItems[ii]
+      if (!curr || !items.has(correspondingItem.id)) return prev
+      else return [...prev, { ...correspondingItem, total: data[ii] }]
     }, [])
 
     ret.push({ name, id, total, products })

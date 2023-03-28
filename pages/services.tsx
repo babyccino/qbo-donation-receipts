@@ -1,46 +1,77 @@
-import { FormEventHandler, useRef } from "react"
+import { MouseEventHandler, useRef } from "react"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/router"
 
 import { Item } from "../lib/types"
+
+const DEBOUNCE = 500
 
 export default function IndexPage({ items }: { items: Item[] }) {
   const { data: session } = useSession()
   const inputRefs = useRef<HTMLInputElement[]>([])
+  const formRef = useRef<HTMLFormElement>(null)
+  const router = useRouter()
 
-  // TODO change form to update global state and storage on server onChange without having to click submit
-  const onSubmit: FormEventHandler<HTMLFormElement> = e => {
-    e.preventDefault()
-    const formData = new FormData(e.target as any)
-    const selectedItems = new Set(formData.keys())
-  }
+  // TODO save user's selected items in db
+  // const debounceRef = useRef<number>(-1)
+  // const sendFormData = () => {
+  //   if (!formRef.current) throw new Error()
 
-  const checkAll = () => {
+  //   const formData = new FormData(formRef.current)
+  //   const selectedItems = new Set(formData.keys())
+  //   console.log(selectedItems)
+  // }
+
+  // const debounce = () => {
+  //   clearTimeout(debounceRef.current)
+  //   debounceRef.current = setTimeout(sendFormData, DEBOUNCE) as any
+  // }
+
+  const checkAll: MouseEventHandler<HTMLButtonElement> = event => {
+    event.preventDefault()
     for (const el of inputRefs.current) {
       el.checked = true
     }
   }
 
-  const unCheckAll = () => {
+  const unCheckAll: MouseEventHandler<HTMLButtonElement> = event => {
+    event.preventDefault()
     for (const el of inputRefs.current) {
       el.checked = false
     }
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form
+      ref={formRef}
+      onSubmit={event => {
+        if (!formRef.current) throw new Error()
+        event.preventDefault()
+
+        const formData = new FormData(formRef.current)
+
+        router.push({
+          pathname: "generate-receipts",
+          query: { products: Array.from(formData.keys()) },
+        })
+      }}
+    >
       {items.map(item => (
-        <label key={item.Id}>
-          <input
-            ref={el => (el ? inputRefs.current.push(el) : null)}
-            type="checkbox"
-            name={item.Name}
-          />
-          {item.Name}
-        </label>
+        <>
+          <label key={item.Id}>
+            <input
+              ref={el => (el ? inputRefs.current.push(el) : null)}
+              type="checkbox"
+              name={item.Id}
+            />
+            {item.Name}
+          </label>
+          <br />
+        </>
       ))}
-      <input type="submit" value="Submit" />
       <button onClick={checkAll}>Check All</button>
       <button onClick={unCheckAll}>Uncheck All</button>
+      <input type="submit" value="Submit" />
     </form>
   )
 }
@@ -50,7 +81,7 @@ export default function IndexPage({ items }: { items: Item[] }) {
 import { GetServerSidePropsContext } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { ItemQueryResponse, Session } from "../lib/types"
+import { Session } from "../lib/types"
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
