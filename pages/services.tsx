@@ -1,13 +1,11 @@
 import { MouseEventHandler, useRef } from "react"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/router"
 
 import { Item } from "../lib/types"
 
-const DEBOUNCE = 500
+// const DEBOUNCE = 500
 
 export default function IndexPage({ items }: { items: Item[] }) {
-  const { data: session } = useSession()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
   const router = useRouter()

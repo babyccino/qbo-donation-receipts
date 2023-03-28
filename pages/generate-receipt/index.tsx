@@ -1,11 +1,7 @@
-import { useSession } from "next-auth/react"
-
 import { CustomerData } from "../../lib/customer-sales"
 import styles from "./generate-receipt.module.scss"
 
 export default function IndexPage({ customerData }: { customerData: CustomerData[] }) {
-  const { data: session } = useSession()
-
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
   return (
