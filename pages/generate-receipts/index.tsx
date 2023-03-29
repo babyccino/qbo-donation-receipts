@@ -1,5 +1,5 @@
 import { CustomerData } from "../../lib/customer-sales"
-import styles from "./generate-receipt.module.scss"
+import styles from "./generate-receipts.module.scss"
 
 export default function IndexPage({ customerData }: { customerData: CustomerData[] }) {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
@@ -7,8 +7,8 @@ export default function IndexPage({ customerData }: { customerData: CustomerData
   return (
     <>
       {customerData.map(entry => (
-        <>
-          <div key={entry.name}>
+        <div key={entry.id}>
+          <div>
             {entry.name}
             <br />
             Total: {formatter.format(entry.total)}
@@ -28,6 +28,7 @@ export default function IndexPage({ customerData }: { customerData: CustomerData
                     country: "USA",
                     signatory: "Gus Ryan",
                     smallLogo: "",
+                    signature: "",
                   }}
                   receiptNo={1}
                 />
@@ -35,7 +36,7 @@ export default function IndexPage({ customerData }: { customerData: CustomerData
             </button>
           </div>
           <br />
-        </>
+        </div>
       ))}
     </>
   )

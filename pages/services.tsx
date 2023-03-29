@@ -5,7 +5,7 @@ import { Item } from "../lib/types"
 
 // const DEBOUNCE = 500
 
-export default function IndexPage({ items }: { items: Item[] }) {
+export default function Services({ items }: { items: Item[] }) {
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
   const router = useRouter()
@@ -55,8 +55,8 @@ export default function IndexPage({ items }: { items: Item[] }) {
       }}
     >
       {items.map(item => (
-        <>
-          <label key={item.Id}>
+        <div key={item.Id}>
+          <label>
             <input
               ref={el => (el ? inputRefs.current.push(el) : null)}
               type="checkbox"
@@ -65,7 +65,7 @@ export default function IndexPage({ items }: { items: Item[] }) {
             {item.Name}
           </label>
           <br />
-        </>
+        </div>
       ))}
       <button onClick={checkAll}>Check All</button>
       <button onClick={unCheckAll}>Uncheck All</button>
