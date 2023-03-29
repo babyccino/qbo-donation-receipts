@@ -3,6 +3,7 @@ import styles from "./receipt.module.scss"
 import { CustomerData } from "../lib/customer-sales"
 import { formatDate, multipleClasses } from "../lib/util"
 import { HTMLAttributes } from "react"
+import Image from "next/image"
 
 const Receipt = ({
   donation,
@@ -22,6 +23,7 @@ const Receipt = ({
     registrationNumber: string
     country: string
     signatory: string
+    signature: string
     smallLogo: string
     largeLogo?: string
   }
@@ -40,7 +42,7 @@ const Receipt = ({
       </div>
       <div className={styles.flexSpaceBetween}>
         <div className={styles.flex}>
-          <img className={styles.smallLogo} alt="small organisation logo" src={donee.smallLogo} />
+          <Image className={styles.smallLogo} alt="small organisation logo" src={donee.smallLogo} />
           <div>
             {donee.name}
             <br />
@@ -73,7 +75,7 @@ const Receipt = ({
           <div className={styles.giftAmount}>{formatCurrency(donation.total)}</div>
         </div>
         <div className={styles.signature}>
-          <img alt="signature" />
+          <Image alt="signature" src={donee.signature} />
           <div>{donee.signatory}</div>
         </div>
       </div>
@@ -83,7 +85,7 @@ const Receipt = ({
       </div>
       <hr className={styles.break} />
       <div className={styles.alignCenter}>For your own records</div>
-      <img
+      <Image
         className={styles.largeLogo}
         alt="large organisation logo"
         src={donee.largeLogo || donee.smallLogo}
@@ -116,7 +118,7 @@ const Receipt = ({
           </th>
         </tr>
         {donation.products.map(item => (
-          <tr>
+          <tr key={item.id}>
             <td className={styles.textAlignRight}>{item.name}</td>
             <td className={styles.textAlignLeft}>{formatCurrency(item.total)}</td>
           </tr>
