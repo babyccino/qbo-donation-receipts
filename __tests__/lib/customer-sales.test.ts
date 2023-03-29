@@ -1,18 +1,20 @@
 import { CustomerData, CustomerSalesReport, processCustomerData } from "../../lib/customer-sales"
 
+const Header = Object.freeze({
+  Time: "2023-03-23T14:08:37.242Z",
+  ReportName: "Customer Sales Report",
+  ReportBasis: "Accrual",
+  StartPeriod: "2022-01-01",
+  EndPeriod: "2022-12-31",
+  SummarizeColumnsBy: "Name",
+  Currency: "USD",
+  Option: [],
+})
+
 describe("processCustomerData", () => {
   it("should convert a report with one customer and one product correctly", () => {
     const report: CustomerSalesReport = {
-      Header: {
-        Time: "2023-03-23T14:08:37.242Z",
-        ReportName: "Customer Sales Report",
-        ReportBasis: "Accrual",
-        StartPeriod: "2022-01-01",
-        EndPeriod: "2022-12-31",
-        SummarizeColumnsBy: "Name",
-        Currency: "USD",
-        Option: [],
-      },
+      Header,
       Columns: {
         Column: [
           {
@@ -96,22 +98,13 @@ describe("processCustomerData", () => {
       },
     ]
 
-    const result = processCustomerData(report)
+    const result = processCustomerData(report, new Set([456]))
     expect(result).toEqual(expected)
   })
 
   it("should convert a report with one customer section and one product correctly", () => {
     const report: CustomerSalesReport = {
-      Header: {
-        Time: "2023-03-23T14:08:37.242Z",
-        ReportName: "Customer Sales Report",
-        ReportBasis: "Accrual",
-        StartPeriod: "2022-01-01",
-        EndPeriod: "2022-12-31",
-        SummarizeColumnsBy: "Name",
-        Currency: "USD",
-        Option: [],
-      },
+      Header,
       Columns: {
         Column: [
           {
@@ -222,7 +215,7 @@ describe("processCustomerData", () => {
       },
     ]
 
-    const result = processCustomerData(report)
+    const result = processCustomerData(report, new Set([456]))
     expect(result).toEqual(expected)
   })
 })
