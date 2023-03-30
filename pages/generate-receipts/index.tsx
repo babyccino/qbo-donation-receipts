@@ -53,14 +53,22 @@ import { processCustomerData, CustomerSalesReport } from "../../lib/customer-sal
 import Receipt from "../../components/receipt"
 import { Session } from "../../lib/types"
 
-function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
-  const { products } = query
-  // TODO if no list of products is given retrieve from server the last selection
-  if (!products) return new Set()
+function getDates(session: Session, query: ParsedUrlQuery): [string, string] {
+  const { startDate, endDate } = query
+  // TODO if date is not in query get from db
+  if (!startDate || typeof startDate !== "string" || !endDate || typeof endDate !== "string")
+    throw new Error("date data is malformed")
+  return [startDate, endDate]
+}
 
-  return typeof products == "string"
-    ? new Set([parseInt(products)])
-    : new Set(products.map(id => parseInt(id)))
+function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
+  const { items } = query
+  // TODO if no list of items is given retrieve from server the last selection
+  if (!items) return new Set()
+
+  return typeof items == "string"
+    ? new Set([parseInt(items)])
+    : new Set(items.map(id => parseInt(id)))
 }
 
 function makeUrl(realmId: string, startDate: string, endDate: string): string {
@@ -77,9 +85,7 @@ function makeUrl(realmId: string, startDate: string, endDate: string): string {
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  // TODO add date selection
-  const startDate = "1970-01-01"
-  const endDate = "2023-01-01"
+  const [startDate, endDate] = getDates(session, context.query)
 
   const url = makeUrl(session.realmId, startDate, endDate)
 
