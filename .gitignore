@@ -18,3 +18,5 @@ next-env.d.ts
 .next
 .vercel
 .env*.local
+
+pages/pdf-example.tsx
