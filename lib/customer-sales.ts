@@ -79,7 +79,7 @@ type Item = { name: string; id: number }
 /**
  * Creates a list of donations from a customer sales report.
  * @param {CustomerSalesReport} report - The sales report to process.
- * @param {Set<number>} items - The IDs of the items to include in the donations.
+ * @param {Set<number>} selectedItemIds - The IDs of the items to include in the donations.
  * @returns {DonationWithoutAddress[]} - The list of donations.
  */
 export function createDonationsFromSalesReport(
