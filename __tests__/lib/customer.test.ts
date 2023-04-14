@@ -1,4 +1,4 @@
-import { addAddressesToCustomerData, CustomerQueryResponse } from "../../lib/customer"
+import { addBillingAddressesToDonations, CustomerQueryResult } from "../../lib/customer"
 
 describe("addAddressesToCustomerData", () => {
   const donations = [
@@ -19,7 +19,7 @@ describe("addAddressesToCustomerData", () => {
     },
   ]
 
-  const customers: CustomerQueryResponse = {
+  const customers: CustomerQueryResult = {
     QueryResponse: {
       Customer: [
         {
@@ -87,7 +87,7 @@ describe("addAddressesToCustomerData", () => {
   }
 
   it("should add addresses to each donation object", () => {
-    const result = addAddressesToCustomerData(donations, customers)
+    const result = addBillingAddressesToDonations(donations, customers)
     expect(result).toEqual([
       {
         name: "John",

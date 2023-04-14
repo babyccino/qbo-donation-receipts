@@ -1,4 +1,4 @@
-import { Donation } from "./customer-sales"
+import { Donation, DonationWithoutAddress } from "./customer-sales"
 
 type BillingAddress = {
   Id: string
@@ -45,7 +45,7 @@ type Customer = {
   CompanyName?: string
 }
 
-export type CustomerQueryResponse = {
+export type CustomerQueryResult = {
   QueryResponse: {
     Customer: Customer[]
     startPosition: number
@@ -54,6 +54,12 @@ export type CustomerQueryResponse = {
   time: string
 }
 
+/**
+ * Returns a concatenated string representing the billing address object.
+ *
+ * @param {BillingAddress} address - The billing address object.
+ * @returns {string} - The concatenated string representing the billing address.
+ */
 export const getAddress = (address: BillingAddress): string =>
   address.Line1 +
   (address.Line2 ? " " + address.Line2 : "") +
@@ -63,12 +69,15 @@ export const getAddress = (address: BillingAddress): string =>
   (address.PostalCode ? " " + address.PostalCode : "") +
   (address.CountrySubDivisionCode ? " " + address.CountrySubDivisionCode : "")
 
-export function combineCustomerQueries(...queries: CustomerQueryResponse[]): CustomerQueryResponse {
-  const customers = queries.reduce<Customer[]>(
-    (prev, curr) => prev.concat(curr.QueryResponse.Customer),
-    []
-  )
-  const total = queries.reduce<number>((prev, curr) => prev + curr.QueryResponse.maxResults, 0)
+/**
+ * Combines the customer queries from multiple sources into a single query.
+ *
+ * @param {...CustomerQueryResponse} queries - The customer query responses to be combined.
+ * @returns {CustomerQueryResponse} - A combined customer query response object.
+ */
+export function combineCustomerQueries(...queries: CustomerQueryResult[]): CustomerQueryResult {
+  const customers = queries.flatMap(({ QueryResponse: { Customer } }) => Customer)
+  const total = queries.reduce((prev, { QueryResponse }) => prev + QueryResponse.maxResults, 0)
 
   return {
     ...queries[0],
@@ -76,9 +85,16 @@ export function combineCustomerQueries(...queries: CustomerQueryResponse[]): Cus
   }
 }
 
-export function addAddressesToCustomerData(
-  donations: Omit<Donation, "address">[],
-  customers: CustomerQueryResponse
+/**
+ * Adds billing addresses to an array of donation objects by querying the customer data.
+ *
+ * @param {DonationWithoutAddress[]} donations - An array of donation objects without billing addresses.
+ * @param {CustomerQueryResponse} customers - A customer query response object containing customer data.
+ * @returns {Donation[]} - An array of donation objects with billing addresses.
+ */
+export function addBillingAddressesToDonations(
+  donations: DonationWithoutAddress[],
+  customers: CustomerQueryResult
 ): Donation[] {
   return donations.map<Donation>(donation => {
     const customer = customers.QueryResponse.Customer.find(el => parseInt(el.Id) === donation.id)

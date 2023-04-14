@@ -64,7 +64,7 @@ import { ParsedUrlQuery } from "querystring"
 
 import { createDonationsFromSalesReport, CustomerSalesReport } from "../../lib/customer-sales"
 import { Session } from "../../lib/types"
-import { addAddressesToCustomerData, CustomerQueryResponse } from "../../lib/customer"
+import { addBillingAddressesToDonations, CustomerQueryResult } from "../../lib/customer"
 
 function getDates(query: ParsedUrlQuery): [string, string] {
   const { startDate, endDate } = query
@@ -113,7 +113,7 @@ async function getCustomerSalesReport(
   return report
 }
 
-async function getCustomerData(session: Session): Promise<CustomerQueryResponse> {
+async function getCustomerData(session: Session): Promise<CustomerQueryResult> {
   const url =
     "https://sandbox-quickbooks.api.intuit.com/v3/company/" +
     session.realmId +
@@ -128,7 +128,7 @@ async function getCustomerData(session: Session): Promise<CustomerQueryResponse>
       Accept: "application/json",
     },
   })
-  const rawData: CustomerQueryResponse = await response.json()
+  const rawData: CustomerQueryResult = await response.json()
 
   if (!response.ok) {
     throw { ...rawData, url }
@@ -147,7 +147,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   const products = getProducts(session, context.query)
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
-  const customerData = addAddressesToCustomerData(donationDataWithoutAddresses, customers)
+  const customerData = addBillingAddressesToDonations(donationDataWithoutAddresses, customers)
 
   return {
     props: {

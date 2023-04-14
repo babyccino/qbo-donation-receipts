@@ -72,56 +72,56 @@ export type Donation = {
   products: { name: string; id: number; total: number }[]
   address: string
 }
+export type DonationWithoutAddress = Omit<Donation, "address">
 
+type Item = { name: string; id: number }
+
+/**
+ * Creates a list of donations from a customer sales report.
+ * @param {CustomerSalesReport} report - The sales report to process.
+ * @param {Set<number>} items - The IDs of the items to include in the donations.
+ * @returns {DonationWithoutAddress[]} - The list of donations.
+ */
 export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
-  items: Set<number>
-): Omit<Donation, "address">[] {
-  const allItems: { name: string; id: number }[] = []
+  selectedItemIds: Set<number>
+): DonationWithoutAddress[] {
+  const allItems = parseItemsFromReport(report)
 
-  const columns = report.Columns.Column
-  // first column is customer name and last is total
-  for (let i = 1; i < columns.length - 1; ++i) {
-    const entry = columns[i]
-    if (!entry.MetaData) throw new Error(`Column ${i} is missing 'MetaData'`)
-    const id = parseInt(entry.MetaData[0].Value)
-    allItems.push({ name: entry.ColTitle, id })
-  }
+  const allRows = report.Rows.Row
+  const rowsToUse = allRows.filter(row => !row.group && !(row.group === "GrandTotal")) as (
+    | CustomerSalesRow
+    | CustomerSalesSectionRow
+  )[]
 
-  const rows = report.Rows.Row
-  const ret: Omit<Donation, "address">[] = []
-  for (let i = 0; i < rows.length - 1; ++i) {
-    const row = rows[i]
-    if (row.group && row.group === "GrandTotal")
-      throw new Error("Malformed data, only last column should be total")
+  return rowsToUse
+    .map<DonationWithoutAddress>(row => createDonationFromRow(row, selectedItemIds, allItems))
+    .filter(donation => donation.total !== 0)
+}
 
-    const { data, id, name } = getRowData(row)
+function createDonationFromRow(
+  row: CustomerSalesRow | CustomerSalesSectionRow,
+  selectedItemIds: Set<number>,
+  allItems: Item[]
+): DonationWithoutAddress {
+  const { data, id, name } = getRowData(row)
 
-    const total = data.reduce<number>(
-      (prev, curr, ii) => (items.has(allItems[ii].id) ? curr + prev : prev),
-      0
-    )
+  const products = data
+    .map((total, index) => ({ total, ...allItems[index] }))
+    .filter(product => product.total > 0 && selectedItemIds.has(product.id))
 
-    if (total === 0) continue
+  const total = products.reduce((sum, product) => sum + product.total, 0)
 
-    const products = data.reduce<
-      {
-        name: string
-        id: number
-        total: number
-      }[]
-    >((prev, curr, ii) => {
-      // if total for item is 0 or if the item is not in the list of items we are using...
-      // do not add the data point to the list
-      const correspondingItem = allItems[ii]
-      if (!curr || !items.has(correspondingItem.id)) return prev
-      else return [...prev, { ...correspondingItem, total: data[ii] }]
-    }, [])
+  return { name, id, total, products }
+}
 
-    ret.push({ name, id, total, products })
-  }
-
-  return ret
+function parseItemsFromReport(report: CustomerSalesReport): Item[] {
+  const columns = report.Columns.Column.slice(1, -1)
+  return columns.map((column, i) => {
+    if (!column.MetaData) throw new Error(`Column ${i} is missing 'MetaData'`)
+    const id = parseInt(column.MetaData[0].Value)
+    return { name: column.ColTitle, id }
+  })
 }
 
 type RowData = {
@@ -129,6 +129,11 @@ type RowData = {
   id: number
   total: number
   name: string
+}
+
+function parseColData(col: ColData): number {
+  const parsedNum = parseFloat(col.value)
+  return parsedNum ? parsedNum : 0
 }
 
 function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
@@ -141,14 +146,8 @@ function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
 
   const id = parseInt(customer.id as string)
   const name = customer.value
-
   const total = parseFloat(rawData.at(-1)!.value)
-
-  const data: number[] = []
-  for (let i = 1; i < rawData.length - 1; ++i) {
-    const parsedNum = parseFloat(rawData[i].value)
-    data.push(parsedNum ? parsedNum : 0)
-  }
+  const data: number[] = rawData.slice(1, -1).map<number>(parseColData)
 
   return { data, id, total, name }
 }
@@ -163,12 +162,7 @@ function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
   const id = parseInt(customer.id)
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
-
-  const data: number[] = []
-  for (let i = 1; i < rawData.length - 1; ++i) {
-    const parsedNum = parseFloat(rawData[i].value)
-    data.push(parsedNum ? parsedNum : 0)
-  }
+  const data: number[] = rawData.slice(1, -1).map<number>(parseColData)
 
   return { data, id, total, name }
 }

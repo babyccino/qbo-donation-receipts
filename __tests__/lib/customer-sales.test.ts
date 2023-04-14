@@ -1,4 +1,4 @@
-import { combineCustomerQueries, CustomerQueryResponse, getAddress } from "../../lib/customer"
+import { combineCustomerQueries, CustomerQueryResult, getAddress } from "../../lib/customer"
 import {
   Donation,
   CustomerSalesReport,
@@ -460,7 +460,7 @@ describe("getAddress", () => {
 
 describe("combineCustomerQueries", () => {
   it("should combine multiple customer queries into one", () => {
-    const query1: CustomerQueryResponse = {
+    const query1: CustomerQueryResult = {
       QueryResponse: {
         Customer: [
           {
@@ -512,7 +512,7 @@ describe("combineCustomerQueries", () => {
       time: "2022-04-05T20:03:09.216-07:00",
     }
 
-    const query2: CustomerQueryResponse = {
+    const query2: CustomerQueryResult = {
       QueryResponse: {
         Customer: [
           {
@@ -564,7 +564,7 @@ describe("combineCustomerQueries", () => {
     }
 
     const combinedQuery = combineCustomerQueries(query1, query2)
-    const expected: CustomerQueryResponse = {
+    const expected: CustomerQueryResult = {
       QueryResponse: {
         Customer: [
           {
