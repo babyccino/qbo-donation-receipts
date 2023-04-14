@@ -1,7 +1,11 @@
-import { CustomerData } from "../../lib/customer-sales"
+import download from "downloadjs"
+
+import { PDFViewer } from "../../lib/pdfviewer"
+import { Donation } from "../../lib/customer-sales"
+import { ReceiptPdfDocument } from "../../components/receipt"
 import styles from "./generate-receipts.module.scss"
 
-export default function IndexPage({ customerData }: { customerData: CustomerData[] }) {
+export default function IndexPage({ customerData }: { customerData: Donation[] }) {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
   return (
@@ -16,23 +20,32 @@ export default function IndexPage({ customerData }: { customerData: CustomerData
             <button className={styles.button}>
               Show receipt
               <div className={styles.receipt}>
-                <Receipt
-                  currency="USD"
-                  currentDate={new Date()}
-                  donation={entry}
-                  donationDate={new Date()}
-                  donee={{
-                    name: "Oxfam",
-                    address: "123 Main Street",
-                    registrationNumber: "ABC123",
-                    country: "USA",
-                    signatory: "Gus Ryan",
-                    smallLogo: "",
-                    signature: "",
-                  }}
-                  receiptNo={1}
-                />
+                <PDFViewer style={{ width: "100%", height: "100%" }}>
+                  <ReceiptPdfDocument
+                    currency="USD"
+                    currentDate={new Date()}
+                    donation={entry}
+                    donationDate={new Date()}
+                    donee={{
+                      name: "Oxfam",
+                      address: "123 Main Street",
+                      registrationNumber: "ABC123",
+                      country: "USA",
+                      signatory: "Gus Ryan",
+                      smallLogo: "",
+                      signature: "",
+                    }}
+                    receiptNo={1}
+                  />
+                </PDFViewer>
               </div>
+            </button>
+            <button
+              onClick={async () => {
+                // download(buf, `${entry.name}.pdf`)
+              }}
+            >
+              Download
             </button>
           </div>
           <br />
@@ -50,10 +63,9 @@ import { GetServerSidePropsContext } from "next"
 import { ParsedUrlQuery } from "querystring"
 
 import { processCustomerData, CustomerSalesReport } from "../../lib/customer-sales"
-import Receipt from "../../components/receipt"
 import { Session } from "../../lib/types"
 
-function getDates(session: Session, query: ParsedUrlQuery): [string, string] {
+function getDates(query: ParsedUrlQuery): [string, string] {
   const { startDate, endDate } = query
   // TODO if date is not in query get from db
   if (!startDate || typeof startDate !== "string" || !endDate || typeof endDate !== "string")
@@ -71,23 +83,19 @@ function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
     : new Set(items.map(id => parseInt(id)))
 }
 
-function makeUrl(realmId: string, startDate: string, endDate: string): string {
-  return (
+async function getCustomerSalesReport(
+  session: Session,
+  context: GetServerSidePropsContext
+): Promise<CustomerSalesReport> {
+  const [startDate, endDate] = getDates(context.query)
+
+  const url =
     "https://sandbox-quickbooks.api.intuit.com/v3/company/" +
-    realmId +
+    session.realmId +
     "/reports/CustomerSales?summarize_column_by=ProductsAndServices&start_date=" +
     startDate +
     "&end_date=" +
     endDate
-  )
-}
-
-export async function getServerSideProps(context: GetServerSidePropsContext) {
-  const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
-
-  const [startDate, endDate] = getDates(session, context.query)
-
-  const url = makeUrl(session.realmId, startDate, endDate)
 
   const response = await fetch(url, {
     headers: {
@@ -101,8 +109,18 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
     throw { ...report, url }
   }
 
+  return report
+}
+
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
+
+  console.log(session.accessToken)
+
+  const salesReport = await getCustomerSalesReport(session, context)
+
   const products = getProducts(session, context.query)
-  const customerData = processCustomerData(report, products)
+  const customerData = processCustomerData(salesReport, products)
 
   return {
     props: {

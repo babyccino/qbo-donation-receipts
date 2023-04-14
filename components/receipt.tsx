@@ -1,11 +1,21 @@
 import styles from "./receipt.module.scss"
 
-import { CustomerData } from "../lib/customer-sales"
-import { formatDate, multipleClasses } from "../lib/util"
 import { HTMLAttributes } from "react"
 import Image from "next/image"
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Link,
+  Image as PdfImage,
+} from "@react-pdf/renderer"
 
-const Receipt = ({
+import { formatDate, multipleClasses } from "../lib/util"
+import { Donation } from "../lib/customer-sales"
+
+export function HtmlReceipt({
   donation,
   receiptNo,
   donee,
@@ -15,7 +25,7 @@ const Receipt = ({
   className,
   ...attributes
 }: {
-  donation: CustomerData
+  donation: Donation
   receiptNo: number
   donee: {
     name: string
@@ -30,7 +40,7 @@ const Receipt = ({
   currentDate: Date
   donationDate: Date
   currency: string
-} & HTMLAttributes<HTMLDivElement>): JSX.Element => {
+} & HTMLAttributes<HTMLDivElement>): JSX.Element {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency })
   const formatCurrency = formatter.format.bind(formatter)
 
@@ -128,4 +138,195 @@ const Receipt = ({
   )
 }
 
-export default Receipt
+// Create styles
+const pdfStyles = StyleSheet.create({
+  container: {
+    flexDirection: "column",
+    gap: 16,
+    textAlign: "left",
+    padding: 20,
+    fontSize: 14,
+  },
+  flexRow: {
+    display: "flex",
+    flexDirection: "row",
+  },
+  flexColumn: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  alignCenter: {
+    alignSelf: "center",
+  },
+  titles: {
+    fontSize: 16,
+    justifyContent: "space-between",
+  },
+  bold: {
+    fontWeight: "bold",
+  },
+  doneeDetails: {
+    justifyContent: "space-between",
+    fontSize: 14,
+  },
+  spaceBetween: {
+    justifyContent: "space-between",
+  },
+  smallLogo: {
+    width: 6,
+  },
+  donorDetails: {
+    fontSize: 24,
+    lineHeight: "150%",
+  },
+  gift: {
+    fontSize: 13,
+  },
+  giftAmount: {
+    fontSize: 54,
+    marginTop: 8,
+  },
+  signature: {
+    alignSelf: "flex-end",
+  },
+  img: {
+    width: 10,
+    borderBottom: "1px solid black",
+  },
+  break: {
+    height: 1,
+    backgroundColor: "black",
+    width: "90%",
+    border: "none",
+    alignSelf: "center",
+  },
+  largeLogo: {
+    width: 15,
+  },
+  ownRecordsOrg: {
+    fontSize: 14,
+  },
+  table: {
+    width: "90%",
+    alignSelf: "center",
+  },
+  textAlignRight: {
+    textAlign: "right",
+    width: "50%",
+  },
+  textAlignLeft: {
+    textAlign: "left",
+    width: "50%",
+  },
+  tableHeadings: {
+    gap: 10,
+  },
+  cra: {
+    fontSize: 14,
+    alignSelf: "center",
+  },
+  borderBottom: {
+    borderBottom: "1px solid black",
+  },
+})
+
+// Create Document Component
+export function ReceiptPdfDocument({
+  donation,
+  receiptNo,
+  donee,
+  currentDate,
+  donationDate,
+  currency,
+}: {
+  donation: Donation
+  receiptNo: number
+  donee: {
+    name: string
+    address: string
+    registrationNumber: string
+    country: string
+    signatory: string
+    signature: string
+    smallLogo: string
+    largeLogo?: string
+  }
+  currentDate: Date
+  donationDate: Date
+  currency: string
+}) {
+  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency })
+  const formatCurrency = formatter.format.bind(formatter)
+
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.container}>
+        <View style={[pdfStyles.titles, pdfStyles.flexRow]}>
+          <Text style={pdfStyles.bold}>Official donation receipt for income tax purposes</Text>
+          <Text style={pdfStyles.bold}>Receipt# {receiptNo}</Text>
+        </View>
+        <View style={[pdfStyles.doneeDetails, pdfStyles.flexRow]}>
+          <View style={pdfStyles.flexRow}>
+            {/* <PdfImage style={pdfStyles.smallLogo} src={donee.smallLogo} /> */}
+            <View>
+              <Text>{donee.name}</Text>
+              <Text>{donee.address}</Text>
+              <Text>Charitable registration #: {donee.registrationNumber}</Text>
+            </View>
+          </View>
+          <View>
+            <Text>Receipt issued: {formatDate(currentDate)}</Text>
+            <Text>Year donations received: {donationDate.getFullYear()}</Text>
+            <Text>Location Issued: {donee.country}</Text>
+          </View>
+        </View>
+        <View style={pdfStyles.donorDetails}>
+          <Text>Donated by: {donation.name}</Text>
+          <Text>Address: {donation.address}</Text>
+        </View>
+        <View style={[pdfStyles.spaceBetween, pdfStyles.flexRow]}>
+          <View style={pdfStyles.gift}>
+            <Text>Eligible amount of gift for tax purposes:</Text>
+            <Text style={pdfStyles.giftAmount}>{formatCurrency(donation.total)}</Text>
+          </View>
+          <View style={pdfStyles.signature}>
+            {/* <PdfImage src={donee.signature} /> */}
+            <Text>{donee.signatory}</Text>
+          </View>
+        </View>
+        <View style={[pdfStyles.cra, pdfStyles.flexRow]}>
+          <Text>Canada Revenue Agency:&nbsp;</Text>
+          <Link src="https://www.canada.ca/charities-giving">www.canada.ca/charities-giving</Link>
+        </View>
+        <View style={pdfStyles.break} />
+        <Text style={pdfStyles.alignCenter}>For your own records</Text>
+        {/* <PdfImage style={pdfStyles.largeLogo} src={donee.largeLogo || donee.smallLogo} /> */}
+        <Text style={pdfStyles.ownRecordsOrg}>{donee.name}</Text>
+        <View style={[pdfStyles.spaceBetween, pdfStyles.flexRow]}>
+          <View>
+            <Text>{donation.name}</Text>
+            <Text>{donation.address}</Text>
+          </View>
+          <View>
+            <Text>Receipt No: {receiptNo}</Text>
+            <Text>Receipt issued: {formatDate(currentDate)}</Text>
+            <Text>Year donations received: {donationDate.getFullYear()}</Text>
+            <Text>Total: {formatCurrency(donation.total)}</Text>
+          </View>
+        </View>
+        <View style={pdfStyles.table}>
+          <View style={[pdfStyles.tableHeadings, pdfStyles.flexRow]}>
+            <Text style={[pdfStyles.textAlignRight, pdfStyles.borderBottom]}>Category</Text>
+            <Text style={[pdfStyles.textAlignLeft, pdfStyles.borderBottom]}>Amount</Text>
+          </View>
+          {donation.products.map(item => (
+            <View style={[pdfStyles.tableHeadings, pdfStyles.flexRow]} key={item.id}>
+              <Text style={pdfStyles.textAlignRight}>{item.name}</Text>
+              <Text style={pdfStyles.textAlignLeft}>{formatCurrency(item.total)}</Text>
+            </View>
+          ))}
+        </View>
+      </Page>
+    </Document>
+  )
+}

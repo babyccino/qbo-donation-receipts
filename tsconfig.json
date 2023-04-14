@@ -21,7 +21,8 @@
     "next-auth.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "jest.setup.js"
+    "jest.setup.js",
+    "lib/pdfviewer/index.js"
   ],
   "exclude": ["node_modules"]
 }
