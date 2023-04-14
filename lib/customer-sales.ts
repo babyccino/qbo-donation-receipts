@@ -1,3 +1,22 @@
+type ColData = {
+  value: string
+  id?: string
+}
+
+type Option = {
+  Name: string
+  Value: string
+}
+
+type MetaData = {
+  Name: string
+  Value: string
+}
+
+type Row = {
+  ColData: ColData[]
+}
+
 export type CustomerSalesReport = {
   Header: {
     Time: string
@@ -7,19 +26,13 @@ export type CustomerSalesReport = {
     EndPeriod: string
     SummarizeColumnsBy: string
     Currency: string
-    Option: {
-      Name: string
-      Value: string
-    }[]
+    Option: Option[]
   }
   Columns: {
     Column: {
       ColTitle: string
       ColType: string
-      MetaData?: {
-        Name: string
-        Value: string
-      }[]
+      MetaData?: MetaData[]
     }[]
   }
   Rows: {
@@ -28,61 +41,42 @@ export type CustomerSalesReport = {
 }
 
 export type CustomerSalesRow = {
-  ColData: {
-    value: string
-    id?: string
-  }[]
+  ColData: ColData[]
   type?: undefined
   group?: undefined
 }
 
 export type CustomerSalesSectionRow = {
   Header: {
-    ColData: {
-      value: string
-      id?: string
-    }[]
+    ColData: ColData[]
   }
   Rows: {
-    Row: {
-      ColData: {
-        value: string
-        id?: string
-      }[]
-      type: "Data"
-    }[]
+    Row: (Row & { type: "data" })[]
   }
-  Summary: {
-    ColData: {
-      value: string
-    }[]
-  }
+  Summary: Row
   type: "Section"
   group?: undefined
 }
 
 // last row is of this shape showing the totals of all the respective items
 export type CustomerSalesTotalsRow = {
-  Summary: {
-    ColData: {
-      value: string
-    }[]
-  }
+  Summary: Row
   type: "Section"
   group: "GrandTotal"
 }
 
-export type CustomerData = {
+export type Donation = {
   name: string
   id: number
   total: number
   products: { name: string; id: number; total: number }[]
+  address: string
 }
 
-export function processCustomerData(
+export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
   items: Set<number>
-): CustomerData[] {
+): Omit<Donation, "address">[] {
   const allItems: { name: string; id: number }[] = []
 
   const columns = report.Columns.Column
@@ -95,7 +89,7 @@ export function processCustomerData(
   }
 
   const rows = report.Rows.Row
-  const ret: CustomerData[] = []
+  const ret: Omit<Donation, "address">[] = []
   for (let i = 0; i < rows.length - 1; ++i) {
     const row = rows[i]
     if (row.group && row.group === "GrandTotal")
@@ -130,43 +124,56 @@ export function processCustomerData(
   return ret
 }
 
-function getRowData(row: CustomerSalesRow | CustomerSalesSectionRow): {
+type RowData = {
   data: number[]
   id: number
   total: number
   name: string
-} {
-  if (row.type && row.type === "Section") {
-    if (!row.Header.ColData[0].id || !row.Header.ColData[0].value)
-      throw new Error(`Customer section data is malformed, missing id or name\n`, row as any)
-
-    const id = parseInt(row.Header.ColData[0].id as string)
-    const name = row.Header.ColData[0].value
-
-    const rawData = row.Summary.ColData
-    const total = parseFloat(rawData.at(-1)!.value)
-
-    const data: number[] = []
-    for (let i = 1; i < rawData.length - 1; ++i) {
-      const parsedNum = parseFloat(rawData[i].value)
-      data.push(parsedNum ? parsedNum : 0)
-    }
-
-    return { data, id, total, name }
-  } else {
-    const rawData = row.ColData
-    if (rawData[0].id === undefined)
-      throw new Error(`Customer data is malformed, missing id or name\n`, row as any)
-    const id = parseInt(rawData[0].id)
-    const name = rawData[0].value
-    const total = parseFloat(rawData.at(-1)!.value)
-
-    const data: number[] = []
-    for (let i = 1; i < rawData.length - 1; ++i) {
-      const parsedNum = parseFloat(rawData[i].value)
-      data.push(parsedNum ? parsedNum : 0)
-    }
-
-    return { data, id, total, name }
-  }
 }
+
+function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
+  const { Header, Summary } = row
+  const customer = Header.ColData[0]
+  const rawData = Summary.ColData
+
+  if (!customer.id || !customer.value)
+    throw new Error(`Customer section data is malformed, missing id or name\n`, row as any)
+
+  const id = parseInt(customer.id as string)
+  const name = customer.value
+
+  const total = parseFloat(rawData.at(-1)!.value)
+
+  const data: number[] = []
+  for (let i = 1; i < rawData.length - 1; ++i) {
+    const parsedNum = parseFloat(rawData[i].value)
+    data.push(parsedNum ? parsedNum : 0)
+  }
+
+  return { data, id, total, name }
+}
+
+function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
+  const rawData = row.ColData
+  const customer = rawData[0]
+
+  if (!customer || customer.id === undefined)
+    throw new Error(`Customer data is malformed, missing id or name\n`, row as any)
+
+  const id = parseInt(customer.id)
+  const name = customer.value
+  const total = parseFloat(rawData.at(-1)!.value)
+
+  const data: number[] = []
+  for (let i = 1; i < rawData.length - 1; ++i) {
+    const parsedNum = parseFloat(rawData[i].value)
+    data.push(parsedNum ? parsedNum : 0)
+  }
+
+  return { data, id, total, name }
+}
+
+const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
+  row.type && row.type === "Section"
+    ? getCustomerSalesSectionRowData(row)
+    : getCustomerSalesRowData(row)

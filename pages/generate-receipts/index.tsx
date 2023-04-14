@@ -62,8 +62,9 @@ import { authOptions } from "../api/auth/[...nextauth]"
 import { GetServerSidePropsContext } from "next"
 import { ParsedUrlQuery } from "querystring"
 
-import { processCustomerData, CustomerSalesReport } from "../../lib/customer-sales"
+import { createDonationsFromSalesReport, CustomerSalesReport } from "../../lib/customer-sales"
 import { Session } from "../../lib/types"
+import { addAddressesToCustomerData, CustomerQueryResponse } from "../../lib/customer"
 
 function getDates(query: ParsedUrlQuery): [string, string] {
   const { startDate, endDate } = query
@@ -112,15 +113,41 @@ async function getCustomerSalesReport(
   return report
 }
 
+async function getCustomerData(session: Session): Promise<CustomerQueryResponse> {
+  const url =
+    "https://sandbox-quickbooks.api.intuit.com/v3/company/" +
+    session.realmId +
+    "/query?query=select * from Customer MAXRESULTS 1000"
+
+  // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
+  // TODO this should be stored on the server so we don't have to fetch constantly
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      Accept: "application/json",
+    },
+  })
+  const rawData: CustomerQueryResponse = await response.json()
+
+  if (!response.ok) {
+    throw { ...rawData, url }
+  }
+
+  return rawData
+}
+
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  console.log(session.accessToken)
-
-  const salesReport = await getCustomerSalesReport(session, context)
+  const [salesReport, customers] = await Promise.all([
+    getCustomerSalesReport(session, context),
+    getCustomerData(session),
+  ])
 
   const products = getProducts(session, context.query)
-  const customerData = processCustomerData(salesReport, products)
+  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
+  const customerData = addAddressesToCustomerData(donationDataWithoutAddresses, customers)
 
   return {
     props: {

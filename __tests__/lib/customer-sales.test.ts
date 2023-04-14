@@ -1,4 +1,9 @@
-import { CustomerData, CustomerSalesReport, processCustomerData } from "../../lib/customer-sales"
+import { combineCustomerQueries, CustomerQueryResponse, getAddress } from "../../lib/customer"
+import {
+  Donation,
+  CustomerSalesReport,
+  createDonationsFromSalesReport,
+} from "../../lib/customer-sales"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -83,7 +88,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: CustomerData[] = [
+    const expected: Omit<Donation, "address">[] = [
       {
         name: "John",
         id: 123,
@@ -98,7 +103,7 @@ describe("processCustomerData", () => {
       },
     ]
 
-    const result = processCustomerData(report, new Set([456]))
+    const result = createDonationsFromSalesReport(report, new Set([456]))
     expect(result).toEqual(expected)
   })
 
@@ -200,7 +205,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: CustomerData[] = [
+    const expected: Omit<Donation, "address">[] = [
       {
         name: "Jeff",
         id: 22,
@@ -215,7 +220,7 @@ describe("processCustomerData", () => {
       },
     ]
 
-    const result = processCustomerData(report, new Set([456]))
+    const result = createDonationsFromSalesReport(report, new Set([456]))
     expect(result).toEqual(expected)
   })
 
@@ -290,7 +295,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const result = processCustomerData(report, new Set([1]))
+    const result = createDonationsFromSalesReport(report, new Set([1]))
     expect(result).toEqual([])
   })
 
@@ -362,7 +367,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: CustomerData[] = [
+    const expected: Omit<Donation, "address">[] = [
       {
         name: "Customer A",
         id: 1,
@@ -392,10 +397,10 @@ describe("processCustomerData", () => {
       },
     ]
 
-    const result = processCustomerData(report, new Set([1001, 1002, 1003]))
+    const result = createDonationsFromSalesReport(report, new Set([1001, 1002, 1003]))
     expect(result).toEqual(expected)
 
-    const expected2: CustomerData[] = [
+    const expected2: Omit<Donation, "address">[] = [
       {
         name: "Customer A",
         id: 1,
@@ -419,7 +424,239 @@ describe("processCustomerData", () => {
       },
     ]
 
-    const result2 = processCustomerData(report, new Set([1001, 1002]))
+    const result2 = createDonationsFromSalesReport(report, new Set([1001, 1002]))
     expect(result2).toEqual(expected2)
+  })
+})
+
+describe("getAddress", () => {
+  it("should return the correct address string when all fields are present", () => {
+    const address = {
+      Id: "1",
+      Line1: "123 Main St",
+      Line2: "Suite 456",
+      City: "San Francisco",
+      PostalCode: "94105",
+      CountrySubDivisionCode: "CA",
+      Lat: "37.78688",
+      Long: "-122.399",
+    }
+    const result = getAddress(address)
+    expect(result).toEqual("123 Main St Suite 456, San Francisco 94105 CA")
+  })
+
+  it("should return the correct address string when some fields are missing", () => {
+    const address = {
+      Id: "1",
+      Line1: "123 Main St",
+      City: "San Francisco",
+      PostalCode: "94105",
+      CountrySubDivisionCode: "CA",
+    }
+    const result = getAddress(address)
+    expect(result).toEqual("123 Main St, San Francisco 94105 CA")
+  })
+})
+
+describe("combineCustomerQueries", () => {
+  it("should combine multiple customer queries into one", () => {
+    const query1: CustomerQueryResponse = {
+      QueryResponse: {
+        Customer: [
+          {
+            Taxable: true,
+            Job: false,
+            BillWithParent: false,
+            Balance: 0,
+            BalanceWithJobs: 0,
+            CurrencyRef: {
+              value: "USD",
+              name: "United States Dollar",
+            },
+            PreferredDeliveryMethod: "Print",
+            domain: "QBO",
+            sparse: false,
+            Id: "1",
+            SyncToken: "0",
+            MetaData: {
+              CreateTime: "2022-04-05T20:03:08-07:00",
+              LastUpdatedTime: "2022-04-05T20:03:08-07:00",
+            },
+            GivenName: "John",
+            MiddleName: "Q.",
+            FamilyName: "Public",
+            DisplayName: "John Public",
+            FullyQualifiedName: "John Public",
+            PrintOnCheckName: "John Public",
+            Active: true,
+            PrimaryEmailAddr: {
+              Address: "john.public@example.com",
+            },
+            BillAddr: {
+              Id: "2",
+              Line1: "123 Main St",
+              City: "Anytown",
+              PostalCode: "12345",
+              Lat: "37.4275",
+              Long: "-122.1697",
+              CountrySubDivisionCode: "CA",
+              Line2: "Suite 100",
+              Line3: "Floor 2",
+            },
+            CompanyName: "Public Inc.",
+          },
+        ],
+        startPosition: 0,
+        maxResults: 1,
+      },
+      time: "2022-04-05T20:03:09.216-07:00",
+    }
+
+    const query2: CustomerQueryResponse = {
+      QueryResponse: {
+        Customer: [
+          {
+            Taxable: true,
+            Job: false,
+            BillWithParent: false,
+            Balance: 0,
+            BalanceWithJobs: 0,
+            CurrencyRef: {
+              value: "USD",
+              name: "United States Dollar",
+            },
+            PreferredDeliveryMethod: "Print",
+            domain: "QBO",
+            sparse: false,
+            Id: "2",
+            SyncToken: "0",
+            MetaData: {
+              CreateTime: "2022-04-05T20:03:08-07:00",
+              LastUpdatedTime: "2022-04-05T20:03:08-07:00",
+            },
+            GivenName: "Jane",
+            MiddleName: "",
+            FamilyName: "Doe",
+            DisplayName: "Jane Doe",
+            FullyQualifiedName: "Jane Doe",
+            PrintOnCheckName: "Jane Doe",
+            Active: true,
+            PrimaryEmailAddr: {
+              Address: "jane.doe@example.com",
+            },
+            BillAddr: {
+              Id: "3",
+              Line1: "456 Oak St",
+              City: "Smallville",
+              PostalCode: "54321",
+              Lat: "40.7128",
+              Long: "-74.006",
+              CountrySubDivisionCode: "NY",
+              Line2: "Apt 2B",
+            },
+            CompanyName: "",
+          },
+        ],
+        startPosition: 0,
+        maxResults: 1,
+      },
+      time: "2022-04-05T20:03:09.216-07:00",
+    }
+
+    const combinedQuery = combineCustomerQueries(query1, query2)
+    const expected: CustomerQueryResponse = {
+      QueryResponse: {
+        Customer: [
+          {
+            Taxable: true,
+            Job: false,
+            BillWithParent: false,
+            Balance: 0,
+            BalanceWithJobs: 0,
+            CurrencyRef: {
+              value: "USD",
+              name: "United States Dollar",
+            },
+            PreferredDeliveryMethod: "Print",
+            domain: "QBO",
+            sparse: false,
+            Id: "1",
+            SyncToken: "0",
+            MetaData: {
+              CreateTime: "2022-04-05T20:03:08-07:00",
+              LastUpdatedTime: "2022-04-05T20:03:08-07:00",
+            },
+            GivenName: "John",
+            MiddleName: "Q.",
+            FamilyName: "Public",
+            DisplayName: "John Public",
+            FullyQualifiedName: "John Public",
+            PrintOnCheckName: "John Public",
+            Active: true,
+            PrimaryEmailAddr: {
+              Address: "john.public@example.com",
+            },
+            BillAddr: {
+              Id: "2",
+              Line1: "123 Main St",
+              City: "Anytown",
+              PostalCode: "12345",
+              Lat: "37.4275",
+              Long: "-122.1697",
+              CountrySubDivisionCode: "CA",
+              Line2: "Suite 100",
+              Line3: "Floor 2",
+            },
+            CompanyName: "Public Inc.",
+          },
+          {
+            Taxable: true,
+            Job: false,
+            BillWithParent: false,
+            Balance: 0,
+            BalanceWithJobs: 0,
+            CurrencyRef: {
+              value: "USD",
+              name: "United States Dollar",
+            },
+            PreferredDeliveryMethod: "Print",
+            domain: "QBO",
+            sparse: false,
+            Id: "2",
+            SyncToken: "0",
+            MetaData: {
+              CreateTime: "2022-04-05T20:03:08-07:00",
+              LastUpdatedTime: "2022-04-05T20:03:08-07:00",
+            },
+            GivenName: "Jane",
+            MiddleName: "",
+            FamilyName: "Doe",
+            DisplayName: "Jane Doe",
+            FullyQualifiedName: "Jane Doe",
+            PrintOnCheckName: "Jane Doe",
+            Active: true,
+            PrimaryEmailAddr: {
+              Address: "jane.doe@example.com",
+            },
+            BillAddr: {
+              Id: "3",
+              Line1: "456 Oak St",
+              City: "Smallville",
+              PostalCode: "54321",
+              Lat: "40.7128",
+              Long: "-74.006",
+              CountrySubDivisionCode: "NY",
+              Line2: "Apt 2B",
+            },
+            CompanyName: "",
+          },
+        ],
+        startPosition: 0,
+        maxResults: 2,
+      },
+      time: "2022-04-05T20:03:09.216-07:00",
+    }
+
+    expect(combinedQuery).toEqual(expected)
   })
 })
