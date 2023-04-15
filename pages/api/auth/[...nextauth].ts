@@ -5,7 +5,7 @@ import type { JWT } from "next-auth/jwt"
 import type { OAuthConfig } from "next-auth/providers"
 
 import type { QBOProfile } from "../../../lib/types"
-import { base64Encode } from "../../../lib/util"
+import { base64Encode, fetchJsonData } from "../../../lib/util"
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
@@ -60,7 +60,6 @@ const jwtCallback: any = async ({
   account?: Account | null
   profile?: QBOProfile | null
 }): Promise<JWT> => {
-  const qboProfile = profile as QBOProfile
   if (account) {
     if (!account.access_token || !account.refresh_token || account.expires_at === undefined)
       throw new Error("Account is missing important data \naccount:" + JSON.stringify(account))
@@ -70,28 +69,19 @@ const jwtCallback: any = async ({
     token.accessTokenExpires = account.expires_at * 1000
     token.id = account.providerAccountId
 
-    const response = await fetch(
+    const userInfo = await fetchJsonData<{ email: string; givenName: string }>(
       "https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo",
-      {
-        headers: {
-          Authorization: `Bearer ${token.accessToken}`,
-          Accept: "application/json",
-        },
-      }
+      token.accessToken as string
     )
-    const qboProfile = await response.json()
-    if (!response.ok) {
-      throw qboProfile
-    }
 
-    token.email = qboProfile.email || "No email associated with account"
-    token.name = qboProfile.givenName || "No name associated with account"
+    token.email = userInfo.email || "No email associated with account"
+    token.name = userInfo.givenName || "No name associated with account"
     // TODO fetch profile image URL
     token.image = ""
   }
 
   if (profile) {
-    token.realmId = qboProfile.realmid as string
+    token.realmId = profile.realmid as string
   }
 
   if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)

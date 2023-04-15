@@ -24,3 +24,19 @@ export function multipleClasses(...args: (string | undefined)[]): string {
     return curr === undefined || curr === "" ? prev : `${prev} ${curr}`
   }) as string
 }
+
+export async function fetchJsonData<T>(url: string, accessToken: string): Promise<T> {
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  })
+  const report: T = await response.json()
+
+  if (!response.ok) {
+    throw { ...report, url }
+  }
+
+  return report
+}

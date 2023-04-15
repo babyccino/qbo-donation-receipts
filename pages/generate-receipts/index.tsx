@@ -69,6 +69,7 @@ import { ParsedUrlQuery } from "querystring"
 import { createDonationsFromSalesReport, CustomerSalesReport } from "../../lib/customer-sales"
 import { Session } from "../../lib/types"
 import { addBillingAddressesToDonations, CustomerQueryResult } from "../../lib/customer"
+import { fetchJsonData } from "../../lib/util"
 
 function getDates(query: ParsedUrlQuery): [string, string] {
   const { startDate, endDate } = query
@@ -102,19 +103,7 @@ async function getCustomerSalesReport(
     "&end_date=" +
     endDate
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`,
-      Accept: "application/json",
-    },
-  })
-  const report: CustomerSalesReport = await response.json()
-
-  if (!response.ok) {
-    throw { ...report, url }
-  }
-
-  return report
+  return fetchJsonData<CustomerSalesReport>(url, session.accessToken)
 }
 
 async function getCustomerData(session: Session): Promise<CustomerQueryResult> {
@@ -126,19 +115,7 @@ async function getCustomerData(session: Session): Promise<CustomerQueryResult> {
   // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
   // TODO this should be stored on the server so we don't have to fetch constantly
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`,
-      Accept: "application/json",
-    },
-  })
-  const rawData: CustomerQueryResult = await response.json()
-
-  if (!response.ok) {
-    throw { ...rawData, url }
-  }
-
-  return rawData
+  return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
 }
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
