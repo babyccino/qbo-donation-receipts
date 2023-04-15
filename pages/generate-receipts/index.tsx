@@ -1,5 +1,4 @@
-import { PDFDownloadLink } from "@react-pdf/renderer"
-import { PDFViewer } from "../../lib/pdfviewer"
+import { PDFViewer, PDFDownloadLink } from "../../lib/pdfviewer"
 
 import { Donation } from "../../lib/customer-sales"
 import { ReceiptPdfDocument } from "../../components/receipt"

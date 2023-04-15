@@ -1,1 +1,1 @@
-export { PDFViewer } from "@react-pdf/renderer"
+export { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer"
