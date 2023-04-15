@@ -165,7 +165,7 @@ describe("processCustomerData", () => {
                       value: "",
                     },
                   ],
-                  type: "Data",
+                  type: "data",
                 },
               ],
             },
