@@ -93,7 +93,7 @@ export default function Services({ items }: { items: Item[] }) {
 
         router.push({
           pathname: "generate-receipts",
-          query: { items, startDate, endDate },
+          query: { items: items.join("+"), startDate, endDate },
         })
       }}
     >

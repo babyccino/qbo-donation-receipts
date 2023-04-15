@@ -85,7 +85,7 @@ function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
   if (!items) return new Set()
 
   return typeof items == "string"
-    ? new Set([parseInt(items)])
+    ? new Set(items.split("+").map(str => parseInt(str)))
     : new Set(items.map(id => parseInt(id)))
 }
 
