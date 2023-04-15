@@ -1,6 +1,6 @@
-import download from "downloadjs"
-
+import { PDFDownloadLink } from "@react-pdf/renderer"
 import { PDFViewer } from "../../lib/pdfviewer"
+
 import { Donation } from "../../lib/customer-sales"
 import { ReceiptPdfDocument } from "../../components/receipt"
 import styles from "./generate-receipts.module.scss"
@@ -10,47 +10,52 @@ export default function IndexPage({ customerData }: { customerData: Donation[] }
 
   return (
     <>
-      {customerData.map(entry => (
-        <div key={entry.id}>
-          <div>
-            {entry.name}
+      {customerData.map(entry => {
+        const fileName = `${entry.name}.pdf`
+        const Receipt = () => (
+          <ReceiptPdfDocument
+            currency="USD"
+            currentDate={new Date()}
+            donation={entry}
+            donationDate={new Date()}
+            donee={{
+              name: "Oxfam",
+              address: "123 Main Street",
+              registrationNumber: "ABC123",
+              country: "USA",
+              signatory: "Gus Ryan",
+              smallLogo: "",
+              signature: "",
+            }}
+            receiptNo={1}
+          />
+        )
+
+        return (
+          <div key={entry.id}>
+            <div>
+              {entry.name}
+              <br />
+              Total: {formatter.format(entry.total)}
+              <br />
+              <button className={styles.button}>
+                Show receipt
+                <div className={styles.receipt}>
+                  <PDFViewer style={{ width: "100%", height: "100%" }}>
+                    <Receipt />
+                  </PDFViewer>
+                </div>
+              </button>
+              <PDFDownloadLink document={<Receipt />} fileName={fileName}>
+                {({ blob, url, loading, error }) =>
+                  loading ? "Loading document..." : "Download now!"
+                }
+              </PDFDownloadLink>
+            </div>
             <br />
-            Total: {formatter.format(entry.total)}
-            <br />
-            <button className={styles.button}>
-              Show receipt
-              <div className={styles.receipt}>
-                <PDFViewer style={{ width: "100%", height: "100%" }}>
-                  <ReceiptPdfDocument
-                    currency="USD"
-                    currentDate={new Date()}
-                    donation={entry}
-                    donationDate={new Date()}
-                    donee={{
-                      name: "Oxfam",
-                      address: "123 Main Street",
-                      registrationNumber: "ABC123",
-                      country: "USA",
-                      signatory: "Gus Ryan",
-                      smallLogo: "",
-                      signature: "",
-                    }}
-                    receiptNo={1}
-                  />
-                </PDFViewer>
-              </div>
-            </button>
-            <button
-              onClick={async () => {
-                // download(buf, `${entry.name}.pdf`)
-              }}
-            >
-              Download
-            </button>
           </div>
-          <br />
-        </div>
-      ))}
+        )
+      })}
     </>
   )
 }
