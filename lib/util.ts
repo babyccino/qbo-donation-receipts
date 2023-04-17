@@ -40,3 +40,15 @@ export async function fetchJsonData<T>(url: string, accessToken: string): Promis
 
   return report
 }
+
+export type Session = {
+  user: {
+    id: string
+    name: string
+    image: string
+    email: string
+  }
+  expires: string
+  accessToken: string
+  realmId: string
+}

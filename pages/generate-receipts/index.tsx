@@ -1,10 +1,16 @@
 import { PDFViewer, PDFDownloadLink } from "../../lib/pdfviewer"
 
-import { Donation } from "../../lib/customer-sales"
+import { CompanyInfo, Donation } from "../../lib/qbo-api"
 import { ReceiptPdfDocument } from "../../components/receipt"
 import styles from "./generate-receipts.module.scss"
 
-export default function IndexPage({ customerData }: { customerData: Donation[] }) {
+export default function IndexPage({
+  customerData,
+  companyInfo,
+}: {
+  customerData: Donation[]
+  companyInfo: CompanyInfo
+}) {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
   return (
@@ -18,10 +24,10 @@ export default function IndexPage({ customerData }: { customerData: Donation[] }
             donation={entry}
             donationDate={new Date()}
             donee={{
-              name: "Oxfam",
-              address: "123 Main Street",
+              name: companyInfo.name,
+              address: companyInfo.address,
               registrationNumber: "ABC123",
-              country: "USA",
+              country: companyInfo.country,
               signatory: "Gus Ryan",
               smallLogo: "",
               signature: "",
@@ -66,9 +72,15 @@ import { authOptions } from "../api/auth/[...nextauth]"
 import { GetServerSidePropsContext } from "next"
 import { ParsedUrlQuery } from "querystring"
 
-import { createDonationsFromSalesReport, CustomerSalesReport } from "../../lib/customer-sales"
-import { Session } from "../../lib/types"
-import { addBillingAddressesToDonations, CustomerQueryResult } from "../../lib/customer"
+import {
+  createDonationsFromSalesReport,
+  CustomerSalesReport,
+  addBillingAddressesToDonations,
+  CustomerQueryResult,
+  CompanyInfoQueryResult,
+  parseCompanyInfo,
+} from "../../lib/qbo-api"
+import { Session } from "../../lib/util"
 import { fetchJsonData } from "../../lib/util"
 
 function getDates(query: ParsedUrlQuery): [string, string] {
@@ -89,28 +101,25 @@ function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
     : new Set(items.map(id => parseInt(id)))
 }
 
+const sandboxBaseApiRoute = "https://sandbox-quickbooks.api.intuit.com/v3/company"
+
 async function getCustomerSalesReport(
   session: Session,
   context: GetServerSidePropsContext
 ): Promise<CustomerSalesReport> {
   const [startDate, endDate] = getDates(context.query)
 
-  const url =
-    "https://sandbox-quickbooks.api.intuit.com/v3/company/" +
-    session.realmId +
-    "/reports/CustomerSales?summarize_column_by=ProductsAndServices&start_date=" +
-    startDate +
-    "&end_date=" +
-    endDate
+  const url = `${sandboxBaseApiRoute}/${session.realmId}/reports/CustomerSales?\
+summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
 
   return fetchJsonData<CustomerSalesReport>(url, session.accessToken)
 }
 
+const makeQueryUrl = (realmId: string, query: string) =>
+  `${sandboxBaseApiRoute}/${realmId}/query?query=${query}`
+
 async function getCustomerData(session: Session): Promise<CustomerQueryResult> {
-  const url =
-    "https://sandbox-quickbooks.api.intuit.com/v3/company/" +
-    session.realmId +
-    "/query?query=select * from Customer MAXRESULTS 1000"
+  const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
 
   // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
   // TODO this should be stored on the server so we don't have to fetch constantly
@@ -118,22 +127,38 @@ async function getCustomerData(session: Session): Promise<CustomerQueryResult> {
   return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
 }
 
+async function getCompanyData(session: Session): Promise<CompanyInfoQueryResult> {
+  const url = makeQueryUrl(session.realmId, "select * from CompanyInfo")
+
+  return fetchJsonData<CompanyInfoQueryResult>(url, session.accessToken)
+}
+
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  const [salesReport, customers] = await Promise.all([
+  const [salesReport, customerQueryResult, companyInfoQueryResult] = await Promise.all([
     getCustomerSalesReport(session, context),
     getCustomerData(session),
+    getCompanyData(session),
   ])
+
+  // console.log("access token: ", session.accessToken)
 
   const products = getProducts(session, context.query)
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
-  const customerData = addBillingAddressesToDonations(donationDataWithoutAddresses, customers)
+  const customerData = addBillingAddressesToDonations(
+    donationDataWithoutAddresses,
+    customerQueryResult
+  )
+  const companyInfo = parseCompanyInfo(companyInfoQueryResult)
+
+  console.log(companyInfo)
 
   return {
     props: {
       session,
       customerData,
+      companyInfo,
     },
   }
 }

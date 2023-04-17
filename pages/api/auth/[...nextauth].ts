@@ -4,7 +4,7 @@ import type { Account, NextAuthOptions } from "next-auth"
 import type { JWT } from "next-auth/jwt"
 import type { OAuthConfig } from "next-auth/providers"
 
-import type { QBOProfile } from "../../../lib/types"
+import type { QBOProfile } from "../../../lib/qbo-api"
 import { base64Encode, fetchJsonData } from "../../../lib/util"
 
 const customProvider: OAuthConfig<QBOProfile> = {
@@ -26,6 +26,8 @@ const customProvider: OAuthConfig<QBOProfile> = {
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
+  console.log("refreshing access token")
+
   const url = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 
   const encoded = base64Encode(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET)

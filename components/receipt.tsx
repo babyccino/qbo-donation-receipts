@@ -13,7 +13,7 @@ import {
 } from "@react-pdf/renderer"
 
 import { formatDate, multipleClasses } from "../lib/util"
-import { Donation } from "../lib/customer-sales"
+import { Donation } from "../lib/qbo-api"
 
 export function HtmlReceipt({
   donation,
