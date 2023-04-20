@@ -175,7 +175,7 @@ export type Donation = {
 }
 export type DonationWithoutAddress = Omit<Donation, "address">
 
-type Item = { name: string; id: number }
+export type Item = { name: string; id: number }
 
 type RowData = {
   data: number[]
@@ -370,6 +370,83 @@ const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
     ? getCustomerSalesSectionRowData(row)
     : getCustomerSalesRowData(row)
 
+export const SANDBOX_BASE_API_ROUTE = "https://sandbox-quickbooks.api.intuit.com/v3/company"
+
+/**
+ * Constructs a query URL for a given realm ID and query string.
+ * @param {string} realmId - The ID of the realm to query.
+ * @param {string} query - The query string to use.
+ * @returns {string} The complete query URL.
+ */
+export const makeQueryUrl = (realmId: string, query: string) =>
+  `${SANDBOX_BASE_API_ROUTE}/${realmId}/query?query=${query}`
+
+/**
+ * Extracts start and end date values from a query object.
+ * @param {ParsedUrlQuery} query - The query object to extract dates from.
+ * @returns {[string, string]} An array containing the start and end dates as strings.
+ * @throws {Error} If the date data is malformed.
+ */
+function getDates(query: ParsedUrlQuery): [string, string] {
+  const { startDate, endDate } = query
+  // TODO if date is not in query get from db
+  if (!startDate || typeof startDate !== "string" || !endDate || typeof endDate !== "string")
+    throw new Error("date data is malformed")
+  return [startDate, endDate]
+}
+
+/**
+ * Fetches a customer sales report for a given session and server-side context.
+ * @param {Session} session - The session object representing the user's authorization.
+ * @param {GetServerSidePropsContext} context - The server-side context object.
+ * @returns {Promise<CustomerSalesReport>} A promise resolving to the customer sales report.
+ */
+export function getCustomerSalesReport(session: Session, context: GetServerSidePropsContext) {
+  const [startDate, endDate] = getDates(context.query)
+
+  const url = `${SANDBOX_BASE_API_ROUTE}/${session.realmId}/reports/CustomerSales?\
+summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
+
+  return fetchJsonData<CustomerSalesReport>(url, session.accessToken)
+}
+
+/**
+ * Fetches customer data for a given session.
+ * @param {Session} session - The session object representing the user's authorization.
+ * @returns {Promise<CustomerQueryResult>} A promise resolving to the customer data.
+ */
+export function getCustomerData(session: Session) {
+  const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
+
+  // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
+  // TODO this should be stored on the server so we don't have to fetch constantly
+
+  return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
+}
+
+/**
+ * Fetches item data for a given session.
+ * @param {Session} session - The session object representing the user's authorization.
+ * @returns {Promise<Item[]>} A promise resolving to an array of item objects.
+ */
+export async function getItems(session: Session) {
+  const url = makeQueryUrl(session.realmId, "select * from Item")
+  const itemQueryResponse = await fetchJsonData<ItemQueryResponse>(url, session.accessToken)
+  const items = itemQueryResponse.QueryResponse.Item
+  return items.map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
+}
+
+/**
+ * Fetches company information for a given session.
+ * @param {Session} session - The session object representing the user's authorization.
+ * @returns {Promise<CompanyInfo>} A promise resolving to the company information.
+ */
+export async function getCompanyInfo(session: Session) {
+  const url = makeQueryUrl(session.realmId, "select * from CompanyInfo")
+  const companyQueryResult = await fetchJsonData<CompanyInfoQueryResult>(url, session.accessToken)
+  return parseCompanyInfo(companyQueryResult)
+}
+
 export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): CompanyInfo {
   const companyInfo = QueryResponse.CompanyInfo.at(0)
   if (!companyInfo) throw new Error("No company info found")
@@ -379,48 +456,4 @@ export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): Com
     address: LegalAddr ? getAddress(LegalAddr) : getAddress(CompanyAddr),
     country: Country,
   }
-}
-
-export const SANDBOX_BASE_API_ROUTE = "https://sandbox-quickbooks.api.intuit.com/v3/company"
-
-export const makeQueryUrl = (realmId: string, query: string) =>
-  `${SANDBOX_BASE_API_ROUTE}/${realmId}/query?query=${query}`
-
-function getDates(query: ParsedUrlQuery): [string, string] {
-  const { startDate, endDate } = query
-  // TODO if date is not in query get from db
-  if (!startDate || typeof startDate !== "string" || !endDate || typeof endDate !== "string")
-    throw new Error("date data is malformed")
-  return [startDate, endDate]
-}
-
-export async function getCustomerSalesReport(
-  session: Session,
-  context: GetServerSidePropsContext
-): Promise<CustomerSalesReport> {
-  const [startDate, endDate] = getDates(context.query)
-
-  const url = `${SANDBOX_BASE_API_ROUTE}/${session.realmId}/reports/CustomerSales?\
-summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
-
-  return fetchJsonData<CustomerSalesReport>(url, session.accessToken)
-}
-
-export async function getCustomerData(session: Session): Promise<CustomerQueryResult> {
-  const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
-
-  // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
-  // TODO this should be stored on the server so we don't have to fetch constantly
-
-  return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
-}
-
-export async function getItemData(session: Session): Promise<ItemQueryResponse> {
-  const url = makeQueryUrl(session.realmId, "select * from Item")
-  return fetchJsonData<ItemQueryResponse>(url, session.accessToken)
-}
-
-export async function getCompanyData(session: Session): Promise<CompanyInfoQueryResult> {
-  const url = makeQueryUrl(session.realmId, "select * from CompanyInfo")
-  return fetchJsonData<CompanyInfoQueryResult>(url, session.accessToken)
 }

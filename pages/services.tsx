@@ -3,7 +3,7 @@ import { GetServerSidePropsContext } from "next"
 import { useRouter } from "next/router"
 import { getServerSession } from "next-auth"
 
-import { ItemQueryResponseItem, getCompanyData, getItemData } from "../lib/qbo-api"
+import { Item, getCompanyInfo, getItems } from "../lib/qbo-api"
 import {
   DateRangeType,
   Session,
@@ -37,7 +37,7 @@ function getStartEndDates(
   }
 }
 
-export default function Services({ items }: { items: ItemQueryResponseItem[] }) {
+export default function Services({ items }: { items: Item[] }) {
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
   const [selectedValue, setSelectedValue] = useState<DateRangeType>(DateRangeType.LastYear)
@@ -103,16 +103,16 @@ export default function Services({ items }: { items: ItemQueryResponseItem[] }) 
     >
       <fieldset>
         <legend>Selected items</legend>
-        {items.map(item => (
-          <div key={item.Id}>
+        {items.map(({ id, name }) => (
+          <div key={id}>
             <input
               ref={el => (el ? inputRefs.current.push(el) : null)}
               type="checkbox"
               name="items"
-              value={item.Id}
-              id={item.Id}
+              value={id}
+              id={id.toString()}
             />
-            <label htmlFor={item.Id}>{item.Name}</label>
+            <label htmlFor={id.toString()}>{name}</label>
             <br />
           </div>
         ))}
@@ -173,17 +173,13 @@ export default function Services({ items }: { items: ItemQueryResponseItem[] }) 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  const [companyInfoData, itemQueryResponse] = await Promise.all([
-    getCompanyData(session),
-    getItemData(session),
-  ])
-
-  const items = itemQueryResponse.QueryResponse.Item
+  const [companyInfo, items] = await Promise.all([getCompanyInfo(session), getItems(session)])
 
   return {
     props: {
       session,
       items,
+      companyInfo,
     },
   }
 }

@@ -10,7 +10,7 @@ import {
   Donation,
   addBillingAddressesToDonations,
   createDonationsFromSalesReport,
-  getCompanyData,
+  getCompanyInfo,
   getCustomerData,
   getCustomerSalesReport,
   parseCompanyInfo,
@@ -95,10 +95,10 @@ function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  const [salesReport, customerQueryResult, companyInfoQueryResult] = await Promise.all([
+  const [salesReport, customerQueryResult, companyInfo] = await Promise.all([
     getCustomerSalesReport(session, context),
     getCustomerData(session),
-    getCompanyData(session),
+    getCompanyInfo(session),
   ])
 
   // console.log("access token: ", session.accessToken)
@@ -109,7 +109,6 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
     donationDataWithoutAddresses,
     customerQueryResult
   )
-  const companyInfo = parseCompanyInfo(companyInfoQueryResult)
 
   return {
     props: {
