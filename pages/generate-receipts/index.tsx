@@ -1,14 +1,23 @@
+import styles from "./generate-receipts.module.scss"
+
+import { GetServerSidePropsContext } from "next"
+import { getServerSession } from "next-auth"
 import { PDFViewer, PDFDownloadLink } from "../../lib/pdfviewer"
+import { ParsedUrlQuery } from "querystring"
 
 import {
   CompanyInfo,
   Donation,
+  addBillingAddressesToDonations,
+  createDonationsFromSalesReport,
   getCompanyData,
   getCustomerData,
   getCustomerSalesReport,
+  parseCompanyInfo,
 } from "../../lib/qbo-api"
 import { ReceiptPdfDocument } from "../../components/receipt"
-import styles from "./generate-receipts.module.scss"
+import { Session } from "../../lib/util"
+import { authOptions } from "../api/auth/[...nextauth]"
 
 export default function IndexPage({
   customerData,
@@ -72,18 +81,6 @@ export default function IndexPage({
 }
 
 // --- server-side props ---
-
-import { getServerSession } from "next-auth"
-import { authOptions } from "../api/auth/[...nextauth]"
-import { GetServerSidePropsContext } from "next"
-import { ParsedUrlQuery } from "querystring"
-
-import {
-  createDonationsFromSalesReport,
-  addBillingAddressesToDonations,
-  parseCompanyInfo,
-} from "../../lib/qbo-api"
-import { Session } from "../../lib/util"
 
 function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
   const { items } = query

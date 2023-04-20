@@ -1,14 +1,18 @@
 import { ChangeEventHandler, MouseEventHandler, useRef, useState } from "react"
+import { GetServerSidePropsContext } from "next"
 import { useRouter } from "next/router"
+import { getServerSession } from "next-auth"
 
-import { ItemQueryResponseItem } from "../lib/qbo-api"
+import { ItemQueryResponseItem, getCompanyData, getItemData } from "../lib/qbo-api"
 import {
   DateRangeType,
+  Session,
   endOfPreviousYearHtml,
   endOfThisYearHtml,
   startOfPreviousYearHtml,
   startOfThisYearHtml,
 } from "../lib/util"
+import { authOptions } from "./api/auth/[...nextauth]"
 
 // const DEBOUNCE = 500
 
@@ -166,16 +170,14 @@ export default function Services({ items }: { items: ItemQueryResponseItem[] }) 
 
 // --- server-side props ---
 
-import { GetServerSidePropsContext } from "next"
-import { getServerSession } from "next-auth"
-import { authOptions } from "./api/auth/[...nextauth]"
-import { Session } from "../lib/util"
-import { getItemData } from "../lib/qbo-api"
-
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  const itemQueryResponse = await getItemData(session)
+  const [companyInfoData, itemQueryResponse] = await Promise.all([
+    getCompanyData(session),
+    getItemData(session),
+  ])
+
   const items = itemQueryResponse.QueryResponse.Item
 
   return {
