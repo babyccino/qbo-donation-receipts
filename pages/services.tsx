@@ -1,7 +1,7 @@
 import { ChangeEventHandler, MouseEventHandler, useRef, useState } from "react"
 import { useRouter } from "next/router"
 
-import { Item } from "../lib/types"
+import { ItemQueryResponseItem } from "../lib/qbo-api"
 import {
   DateRangeType,
   endOfPreviousYearHtml,
@@ -33,7 +33,7 @@ function getStartEndDates(
   }
 }
 
-export default function Services({ items }: { items: Item[] }) {
+export default function Services({ items }: { items: ItemQueryResponseItem[] }) {
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
   const [selectedValue, setSelectedValue] = useState<DateRangeType>(DateRangeType.LastYear)
@@ -152,6 +152,13 @@ export default function Services({ items }: { items: Item[] }) {
           </>
         ) : null}
       </fieldset>
+      <fieldset>
+        <legend>Organisation</legend>
+        <p>
+          <label htmlFor="end">End date </label>
+          <input type="text" id="dateSnd" name="dateRange" defaultValue={`${previousYear}-12-31`} />
+        </p>
+      </fieldset>
       <input type="submit" value="Submit" />
     </form>
   )
@@ -162,29 +169,19 @@ export default function Services({ items }: { items: Item[] }) {
 import { GetServerSidePropsContext } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Session } from "../lib/types"
+import { Session } from "../lib/util"
+import { getItemData } from "../lib/qbo-api"
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  const url = `https://sandbox-quickbooks.api.intuit.com/v3/company/${session.realmId}/query?query=select * from Item`
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`,
-      Accept: "application/json",
-    },
-  })
-  const items = await response.json()
-
-  if (!response.ok) {
-    throw items
-  }
+  const itemQueryResponse = await getItemData(session)
+  const items = itemQueryResponse.QueryResponse.Item
 
   return {
     props: {
       session,
-      items: items.QueryResponse.Item,
+      items,
     },
   }
 }

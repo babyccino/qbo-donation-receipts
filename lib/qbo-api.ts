@@ -1,3 +1,7 @@
+import { GetServerSidePropsContext } from "next"
+import { Session, fetchJsonData } from "./util"
+import { ParsedUrlQuery } from "querystring"
+
 export type QBOProfile = {
   sub: string
   aud: string[]
@@ -95,59 +99,6 @@ export type CustomerQueryResult = {
   time: string
 }
 
-/**
- * Returns a concatenated string representing the billing address object.
- *
- * @param {Address} address - The billing address object.
- * @returns {string} - The concatenated string representing the billing address.
- */
-export const getAddress = (address: Address): string =>
-  address.Line1 +
-  (address.Line2 ? " " + address.Line2 : "") +
-  (address.Line3 ? " " + address.Line3 : "") +
-  (address.City || address.PostalCode || address.CountrySubDivisionCode ? "," : "") +
-  (address.City ? " " + address.City : "") +
-  (address.PostalCode ? " " + address.PostalCode : "") +
-  (address.CountrySubDivisionCode ? " " + address.CountrySubDivisionCode : "")
-
-/**
- * Combines the customer queries from multiple sources into a single query.
- *
- * @param {...CustomerQueryResponse} queries - The customer query responses to be combined.
- * @returns {CustomerQueryResponse} - A combined customer query response object.
- */
-export function combineCustomerQueries(...queries: CustomerQueryResult[]): CustomerQueryResult {
-  const customers = queries.flatMap(({ QueryResponse: { Customer } }) => Customer)
-  const total = queries.reduce((prev, { QueryResponse }) => prev + QueryResponse.maxResults, 0)
-
-  return {
-    ...queries[0],
-    QueryResponse: { ...queries[0].QueryResponse, maxResults: total, Customer: customers },
-  }
-}
-
-/**
- * Adds billing addresses to an array of donation objects by querying the customer data.
- *
- * @param {DonationWithoutAddress[]} donations - An array of donation objects without billing addresses.
- * @param {CustomerQueryResponse} customers - A customer query response object containing customer data.
- * @returns {Donation[]} - An array of donation objects with billing addresses.
- */
-export function addBillingAddressesToDonations(
-  donations: DonationWithoutAddress[],
-  customers: CustomerQueryResult
-): Donation[] {
-  return donations.map<Donation>(donation => {
-    const customer = customers.QueryResponse.Customer.find(el => parseInt(el.Id) === donation.id)
-
-    const address = customer?.BillAddr
-      ? getAddress(customer.BillAddr)
-      : "No billing address on file"
-
-    return { ...donation, address }
-  })
-}
-
 type ColData = {
   value: string
   id?: string
@@ -226,6 +177,110 @@ export type DonationWithoutAddress = Omit<Donation, "address">
 
 type Item = { name: string; id: number }
 
+type RowData = {
+  data: number[]
+  id: number
+  total: number
+  name: string
+}
+
+export type CompanyInfoQueryResult = {
+  QueryResponse: {
+    CompanyInfo: {
+      CompanyName: string
+      LegalName: string
+      CompanyAddr: Address
+      CustomerCommunicationAddr: Address
+      LegalAddr: Address
+      CustomerCommunicationEmailAddr: {
+        Address: string
+      }
+      PrimaryPhone: {}
+      CompanyStartDate: string
+      FiscalYearStartMonth: string
+      Country: string
+      Email: {
+        Address: string
+      }
+      WebAddr: {}
+      SupportedLanguages: string
+      NameValue: {
+        Name: string
+        Value: string
+      }[]
+      domain: "QBO"
+      sparse: boolean
+      Id: string
+      SyncToken: string
+      MetaData: {
+        CreateTime: string
+        LastUpdatedTime: string
+      }
+    }[]
+    maxResults: number
+  }
+  time: string
+}
+
+export type CompanyInfo = {
+  name: string
+  address: string
+  country: string
+}
+
+/**
+ * Returns a concatenated string representing the billing address object.
+ *
+ * @param {Address} address - The billing address object.
+ * @returns {string} - The concatenated string representing the billing address.
+ */
+export const getAddress = (address: Address): string =>
+  address.Line1 +
+  (address.Line2 ? " " + address.Line2 : "") +
+  (address.Line3 ? " " + address.Line3 : "") +
+  (address.City || address.PostalCode || address.CountrySubDivisionCode ? "," : "") +
+  (address.City ? " " + address.City : "") +
+  (address.PostalCode ? " " + address.PostalCode : "") +
+  (address.CountrySubDivisionCode ? " " + address.CountrySubDivisionCode : "")
+
+/**
+ * Combines the customer queries from multiple sources into a single query.
+ *
+ * @param {...CustomerQueryResponse} queries - The customer query responses to be combined.
+ * @returns {CustomerQueryResponse} - A combined customer query response object.
+ */
+export function combineCustomerQueries(...queries: CustomerQueryResult[]): CustomerQueryResult {
+  const customers = queries.flatMap(({ QueryResponse: { Customer } }) => Customer)
+  const total = queries.reduce((prev, { QueryResponse }) => prev + QueryResponse.maxResults, 0)
+
+  return {
+    ...queries[0],
+    QueryResponse: { ...queries[0].QueryResponse, maxResults: total, Customer: customers },
+  }
+}
+
+/**
+ * Adds billing addresses to an array of donation objects by querying the customer data.
+ *
+ * @param {DonationWithoutAddress[]} donations - An array of donation objects without billing addresses.
+ * @param {CustomerQueryResponse} customers - A customer query response object containing customer data.
+ * @returns {Donation[]} - An array of donation objects with billing addresses.
+ */
+export function addBillingAddressesToDonations(
+  donations: DonationWithoutAddress[],
+  customers: CustomerQueryResult
+): Donation[] {
+  return donations.map<Donation>(donation => {
+    const customer = customers.QueryResponse.Customer.find(el => parseInt(el.Id) === donation.id)
+
+    const address = customer?.BillAddr
+      ? getAddress(customer.BillAddr)
+      : "No billing address on file"
+
+    return { ...donation, address }
+  })
+}
+
 /**
  * Creates a list of donations from a customer sales report.
  * @param {CustomerSalesReport} report - The sales report to process.
@@ -274,13 +329,6 @@ function parseItemsFromReport(report: CustomerSalesReport): Item[] {
   })
 }
 
-type RowData = {
-  data: number[]
-  id: number
-  total: number
-  name: string
-}
-
 function parseColData(col: ColData): number {
   const parsedNum = parseFloat(col.value)
   return parsedNum ? parsedNum : 0
@@ -322,50 +370,6 @@ const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
     ? getCustomerSalesSectionRowData(row)
     : getCustomerSalesRowData(row)
 
-export type CompanyInfoQueryResult = {
-  QueryResponse: {
-    CompanyInfo: {
-      CompanyName: string
-      LegalName: string
-      CompanyAddr: Address
-      CustomerCommunicationAddr: Address
-      LegalAddr: Address
-      CustomerCommunicationEmailAddr: {
-        Address: string
-      }
-      PrimaryPhone: {}
-      CompanyStartDate: string
-      FiscalYearStartMonth: string
-      Country: string
-      Email: {
-        Address: string
-      }
-      WebAddr: {}
-      SupportedLanguages: string
-      NameValue: {
-        Name: string
-        Value: string
-      }[]
-      domain: "QBO"
-      sparse: boolean
-      Id: string
-      SyncToken: string
-      MetaData: {
-        CreateTime: string
-        LastUpdatedTime: string
-      }
-    }[]
-    maxResults: number
-  }
-  time: string
-}
-
-export type CompanyInfo = {
-  name: string
-  address: string
-  country: string
-}
-
 export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): CompanyInfo {
   const companyInfo = QueryResponse.CompanyInfo.at(0)
   if (!companyInfo) throw new Error("No company info found")
@@ -375,4 +379,48 @@ export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): Com
     address: LegalAddr ? getAddress(LegalAddr) : getAddress(CompanyAddr),
     country: Country,
   }
+}
+
+export const SANDBOX_BASE_API_ROUTE = "https://sandbox-quickbooks.api.intuit.com/v3/company"
+
+export const makeQueryUrl = (realmId: string, query: string) =>
+  `${SANDBOX_BASE_API_ROUTE}/${realmId}/query?query=${query}`
+
+function getDates(query: ParsedUrlQuery): [string, string] {
+  const { startDate, endDate } = query
+  // TODO if date is not in query get from db
+  if (!startDate || typeof startDate !== "string" || !endDate || typeof endDate !== "string")
+    throw new Error("date data is malformed")
+  return [startDate, endDate]
+}
+
+export async function getCustomerSalesReport(
+  session: Session,
+  context: GetServerSidePropsContext
+): Promise<CustomerSalesReport> {
+  const [startDate, endDate] = getDates(context.query)
+
+  const url = `${SANDBOX_BASE_API_ROUTE}/${session.realmId}/reports/CustomerSales?\
+summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
+
+  return fetchJsonData<CustomerSalesReport>(url, session.accessToken)
+}
+
+export async function getCustomerData(session: Session): Promise<CustomerQueryResult> {
+  const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
+
+  // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
+  // TODO this should be stored on the server so we don't have to fetch constantly
+
+  return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
+}
+
+export async function getItemData(session: Session): Promise<ItemQueryResponse> {
+  const url = makeQueryUrl(session.realmId, "select * from Item")
+  return fetchJsonData<ItemQueryResponse>(url, session.accessToken)
+}
+
+export async function getCompanyData(session: Session): Promise<CompanyInfoQueryResult> {
+  const url = makeQueryUrl(session.realmId, "select * from CompanyInfo")
+  return fetchJsonData<CompanyInfoQueryResult>(url, session.accessToken)
 }
