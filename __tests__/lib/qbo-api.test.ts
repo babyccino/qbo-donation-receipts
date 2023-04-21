@@ -5,15 +5,13 @@ import {
   CustomerSalesReport,
   createDonationsFromSalesReport,
   addBillingAddressesToDonations,
-  CompanyInfo,
   CompanyInfoQueryResult,
   CustomerQueryResult,
   DonationWithoutAddress,
   getItems,
   parseCompanyInfo,
-  SANDBOX_BASE_API_ROUTE,
-} from "../../lib/qbo-api"
-import { DeepPartial, fetchJsonData, Session } from "../../lib/util"
+} from "../../src/lib/qbo-api"
+import { DeepPartial, fetchJsonData, Session } from "../../src/lib/util"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -750,7 +748,7 @@ const createMockSession = (): Session => ({
 })
 
 // Mock the fetchJsonData function
-jest.mock("./../../lib/util", () => ({
+jest.mock("./../../src/lib/util", () => ({
   fetchJsonData: jest.fn(),
 }))
 
