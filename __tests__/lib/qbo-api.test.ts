@@ -1,9 +1,19 @@
-import { combineCustomerQueries, CustomerQueryResult, getAddress } from "../../lib/customer"
 import {
+  combineCustomerQueries,
+  getAddress,
   Donation,
   CustomerSalesReport,
   createDonationsFromSalesReport,
-} from "../../lib/customer-sales"
+  addBillingAddressesToDonations,
+  CompanyInfo,
+  CompanyInfoQueryResult,
+  CustomerQueryResult,
+  DonationWithoutAddress,
+  getItems,
+  parseCompanyInfo,
+  SANDBOX_BASE_API_ROUTE,
+} from "../../lib/qbo-api"
+import { DeepPartial, fetchJsonData, Session } from "../../lib/util"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -658,5 +668,267 @@ describe("combineCustomerQueries", () => {
     }
 
     expect(combinedQuery).toEqual(expected)
+  })
+})
+
+describe("addAddressesToCustomerData", () => {
+  const donations: DonationWithoutAddress[] = [
+    {
+      name: "John",
+      id: 123,
+      total: 100,
+      products: [
+        { name: "Product 1", id: 1, total: 50 },
+        { name: "Product 2", id: 2, total: 50 },
+      ],
+    },
+    {
+      name: "Jane",
+      id: 456,
+      total: 200,
+      products: [{ name: "Product 3", id: 3, total: 200 }],
+    },
+  ]
+
+  const customers: DeepPartial<CustomerQueryResult> = {
+    QueryResponse: {
+      Customer: [
+        {
+          Id: "123",
+          BillAddr: {
+            Id: "123",
+            Line1: "123 Main St",
+            City: "San Francisco",
+            PostalCode: "94105",
+            CountrySubDivisionCode: "CA",
+          },
+        },
+        {
+          Id: "789",
+        },
+      ],
+      startPosition: 1,
+      maxResults: 2,
+    },
+    time: "2022-03-23T00:02:43.682-07:00",
+  }
+
+  it("should add addresses to each donation object", () => {
+    const result = addBillingAddressesToDonations(donations, customers as CustomerQueryResult)
+    expect(result).toEqual([
+      {
+        name: "John",
+        id: 123,
+        total: 100,
+        products: [
+          { name: "Product 1", id: 1, total: 50 },
+          { name: "Product 2", id: 2, total: 50 },
+        ],
+        address: "123 Main St, San Francisco 94105 CA",
+      },
+      {
+        name: "Jane",
+        id: 456,
+        total: 200,
+        products: [{ name: "Product 3", id: 3, total: 200 }],
+        address: "No billing address on file",
+      },
+    ])
+  })
+})
+
+const createMockSession = (): Session => ({
+  accessToken: "mock-access-token",
+  realmId: "mock-realm-id",
+  expires: "",
+  user: {
+    email: "",
+    id: "",
+    image: "",
+    name: "",
+  },
+})
+
+// Mock the fetchJsonData function
+jest.mock("./../../lib/util", () => ({
+  fetchJsonData: jest.fn(),
+}))
+
+describe("getItems", () => {
+  const fetchJsonDataMock: jest.MockedFunction<typeof fetchJsonData> = fetchJsonData as any
+
+  afterEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it("should fetch item data and return an array of item objects", async () => {
+    const mockItemQueryResponse = {
+      QueryResponse: {
+        Item: [
+          { Id: "1", Name: "Item 1" },
+          { Id: "2", Name: "Item 2" },
+        ],
+      },
+    }
+    const mockSession = createMockSession()
+    fetchJsonDataMock.mockResolvedValueOnce(mockItemQueryResponse)
+    const result = await getItems(mockSession)
+
+    // Verify that the function returned the expected result
+    expect(result).toEqual([
+      { id: 1, name: "Item 1" },
+      { id: 2, name: "Item 2" },
+    ])
+  })
+})
+
+describe("parseCompanyInfo", () => {
+  it("should parse company info with legal name and legal address", () => {
+    const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
+      QueryResponse: {
+        CompanyInfo: [
+          {
+            LegalName: "Acme Corp",
+            CompanyName: "Acme Corp",
+            LegalAddr: {
+              Line1: "123 Main St",
+              City: "San Francisco",
+              CountrySubDivisionCode: "CA",
+              PostalCode: "94105",
+              Id: "1",
+            },
+            CompanyAddr: {
+              Line1: "456 Market St",
+              City: "San Francisco",
+              CountrySubDivisionCode: "CA",
+              PostalCode: "94105",
+              Id: "1",
+            },
+            Country: "USA",
+          },
+        ],
+      },
+    }
+
+    const companyInfo = parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)
+
+    expect(companyInfo).toEqual({
+      name: "Acme Corp",
+      address: "123 Main St, San Francisco 94105 CA",
+      country: "USA",
+    })
+  })
+
+  it("should parse company info with company name and company address", () => {
+    const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
+      QueryResponse: {
+        CompanyInfo: [
+          {
+            LegalName: "",
+            CompanyName: "Acme Corp",
+            CompanyAddr: {
+              Line1: "456 Market St",
+              City: "San Francisco",
+              CountrySubDivisionCode: "CA",
+              PostalCode: "94105",
+            },
+            Country: "USA",
+          },
+        ],
+      },
+    }
+
+    const companyInfo = parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)
+
+    expect(companyInfo).toEqual({
+      name: "Acme Corp",
+      address: "456 Market St, San Francisco 94105 CA",
+      country: "USA",
+    })
+  })
+
+  it("should throw an error if no company info is found", () => {
+    const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
+      QueryResponse: {
+        CompanyInfo: [],
+      },
+    }
+
+    expect(() => parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toThrowError(
+      "No company info found"
+    )
+  })
+})
+
+describe("parseCompanyInfo", () => {
+  it("should parse the company info object correctly when LegalAddr is defined", () => {
+    const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
+      QueryResponse: {
+        CompanyInfo: [
+          {
+            CompanyName: "Test Company",
+            LegalName: "Test Legal Name",
+            LegalAddr: {
+              Line1: "123 Test Street",
+              City: "Test City",
+              CountrySubDivisionCode: "Test State",
+              PostalCode: "12345",
+            },
+            Country: "Test Country",
+            Id: "1234",
+          },
+        ],
+        maxResults: 1,
+      },
+    }
+
+    const expectedCompanyInfo = {
+      name: "Test Legal Name",
+      address: "123 Test Street, Test City 12345 Test State",
+      country: "Test Country",
+    }
+
+    expect(parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toEqual(
+      expectedCompanyInfo
+    )
+  })
+
+  it("should parse the company info object correctly when LegalAddr is undefined", () => {
+    const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
+      QueryResponse: {
+        CompanyInfo: [
+          {
+            CompanyName: "Test Company",
+            Country: "Test Country",
+            Id: "1234",
+          },
+        ],
+        maxResults: 1,
+      },
+    }
+
+    const expectedCompanyInfo = {
+      name: "Test Company",
+      address: "No address on file",
+      country: "Test Country",
+    }
+
+    expect(parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toEqual(
+      expectedCompanyInfo
+    )
+  })
+
+  it("should throw an error if no company info is found", () => {
+    const companyInfoQueryResult = {
+      QueryResponse: {
+        CompanyInfo: [],
+        maxResults: 0,
+      },
+      time: "2022-01-01T00:00:00Z",
+    }
+
+    expect(() => {
+      parseCompanyInfo(companyInfoQueryResult)
+    }).toThrowError("No company info found")
   })
 })

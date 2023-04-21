@@ -189,9 +189,9 @@ export type CompanyInfoQueryResult = {
     CompanyInfo: {
       CompanyName: string
       LegalName: string
-      CompanyAddr: Address
+      CompanyAddr?: Address
       CustomerCommunicationAddr: Address
-      LegalAddr: Address
+      LegalAddr?: Address
       CustomerCommunicationEmailAddr: {
         Address: string
       }
@@ -447,13 +447,22 @@ export async function getCompanyInfo(session: Session) {
   return parseCompanyInfo(companyQueryResult)
 }
 
+function getValidAddress(
+  legalAddress: Address | undefined,
+  companyAddress: Address | undefined
+): string {
+  if (legalAddress) return getAddress(legalAddress)
+  if (companyAddress) return getAddress(companyAddress)
+  return "No address on file"
+}
+
 export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): CompanyInfo {
   const companyInfo = QueryResponse.CompanyInfo.at(0)
   if (!companyInfo) throw new Error("No company info found")
   const { LegalName, CompanyName, LegalAddr, CompanyAddr, Country } = companyInfo
   return {
     name: LegalName || CompanyName,
-    address: LegalAddr ? getAddress(LegalAddr) : getAddress(CompanyAddr),
+    address: getValidAddress(LegalAddr, CompanyAddr),
     country: Country,
   }
 }

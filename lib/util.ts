@@ -10,7 +10,7 @@ export const startOfPreviousYearHtml = () => `${getThisYear() - 1}-01-01`
 export const endOfPreviousYearHtml = () => `${getThisYear() - 1}-12-31`
 export const startOfThisYearHtml = () => `${getThisYear()}-01-01`
 export const endOfThisYearHtml = () => `${getThisYear()}-12-31`
-export const getCurrentDateHtml = (date: Date) => formatDateHtml(new Date())
+export const getCurrentDateHtml = () => formatDateHtml(new Date())
 
 export enum DateRangeType {
   LastYear = "LastYear",
@@ -19,11 +19,12 @@ export enum DateRangeType {
   Custom = "Custom",
 }
 
-export function multipleClasses(...args: (string | undefined)[]): string {
-  return args.reduce((prev, curr): string | undefined => {
-    return curr === undefined || curr === "" ? prev : `${prev} ${curr}`
-  }) as string
-}
+export const multipleClasses = (...args: (string | undefined)[]) =>
+  args.reduce<string>((prev, curr): string => {
+    if (curr === undefined || curr === "") return prev
+    if (prev === "") return curr
+    return `${prev} ${curr}`
+  }, "")
 
 export async function fetchJsonData<T = any>(url: string, accessToken: string): Promise<T> {
   const response = await fetch(url, {
@@ -52,3 +53,9 @@ export type Session = {
   accessToken: string
   realmId: string
 }
+
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>
+    }
+  : T
