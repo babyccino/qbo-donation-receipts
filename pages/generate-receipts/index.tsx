@@ -13,18 +13,17 @@ import {
   getCompanyInfo,
   getCustomerData,
   getCustomerSalesReport,
-  parseCompanyInfo,
 } from "../../lib/qbo-api"
-import { ReceiptPdfDocument } from "../../components/receipt"
+import { DoneeInfo, ReceiptPdfDocument } from "../../components/receipt"
 import { Session } from "../../lib/util"
 import { authOptions } from "../api/auth/[...nextauth]"
 
 export default function IndexPage({
   customerData,
-  companyInfo,
+  doneeInfo,
 }: {
   customerData: Donation[]
-  companyInfo: CompanyInfo
+  doneeInfo: DoneeInfo
 }) {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
@@ -38,15 +37,7 @@ export default function IndexPage({
             currentDate={new Date()}
             donation={entry}
             donationDate={new Date()}
-            donee={{
-              name: companyInfo.name,
-              address: companyInfo.address,
-              registrationNumber: "ABC123",
-              country: companyInfo.country,
-              signatory: "Gus Ryan",
-              smallLogo: "",
-              signature: "",
-            }}
+            donee={doneeInfo}
             receiptNo={1}
           />
         )
@@ -92,6 +83,57 @@ function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
     : new Set(items.map(id => parseInt(id)))
 }
 
+function getDoneeInfo(companyInfo: CompanyInfo, query: ParsedUrlQuery): DoneeInfo {
+  const {
+    companyName,
+    address: queryAddress,
+    country: queryCountry,
+    registrationNumber,
+    signatoryName: signatory,
+    signature,
+    smallLogo,
+  } = query
+
+  const registrationNumberInvalid = !registrationNumber || typeof registrationNumber !== "string"
+  const signatoryNameInvalid = !signatory || typeof signatory !== "string"
+  const signatureInvalid = !signature || typeof signature !== "string"
+  const smallLogoInvalid = !smallLogo || typeof smallLogo !== "string"
+
+  if (registrationNumberInvalid || signatoryNameInvalid || signatureInvalid || smallLogoInvalid) {
+    let malformed = ""
+    if (registrationNumberInvalid) malformed += "registration number,"
+    if (signatoryNameInvalid) malformed += "signatory name,"
+    if (signatureInvalid) malformed += "signature,"
+    if (smallLogoInvalid) malformed += "smallLogo,"
+
+    throw new Error(malformed + " data is malformed")
+  }
+
+  // if any of the company info values are not provided use the fetched values
+  const name =
+    !companyName || companyName === "" || typeof companyName !== "string"
+      ? companyInfo.name
+      : companyName
+  const address =
+    !queryAddress || queryAddress === "" || typeof queryAddress !== "string"
+      ? companyInfo.address
+      : queryAddress
+  const country =
+    !queryCountry || queryCountry === "" || typeof queryCountry !== "string"
+      ? companyInfo.country
+      : queryCountry
+
+  return {
+    name,
+    address,
+    country,
+    registrationNumber,
+    signatory,
+    signature,
+    smallLogo,
+  }
+}
+
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
@@ -101,20 +143,19 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
     getCompanyInfo(session),
   ])
 
-  // console.log("access token: ", session.accessToken)
-
   const products = getProducts(session, context.query)
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(
     donationDataWithoutAddresses,
     customerQueryResult
   )
+  const doneeInfo = getDoneeInfo(companyInfo, context.query)
 
   return {
     props: {
       session,
       customerData,
-      companyInfo,
+      doneeInfo,
     },
   }
 }

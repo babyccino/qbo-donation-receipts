@@ -13,7 +13,7 @@ import {
 } from "@react-pdf/renderer"
 
 import { formatDate, multipleClasses } from "../lib/util"
-import { Donation } from "../lib/qbo-api"
+import { CompanyInfo, Donation } from "../lib/qbo-api"
 
 export function HtmlReceipt({
   donation,
@@ -230,6 +230,14 @@ const pdfStyles = StyleSheet.create({
   },
 })
 
+export type DoneeInfo = CompanyInfo & {
+  registrationNumber: string
+  signatory: string
+  signature: string
+  smallLogo: string
+  largeLogo?: string
+}
+
 // Create Document Component
 export function ReceiptPdfDocument({
   donation,
@@ -241,16 +249,7 @@ export function ReceiptPdfDocument({
 }: {
   donation: Donation
   receiptNo: number
-  donee: {
-    name: string
-    address: string
-    registrationNumber: string
-    country: string
-    signatory: string
-    signature: string
-    smallLogo: string
-    largeLogo?: string
-  }
+  donee: DoneeInfo
   currentDate: Date
   donationDate: Date
   currency: string
