@@ -44,10 +44,11 @@ type Props = {
 }
 
 export default function Services({ items, companyInfo }: Props) {
+  const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
   const [selectedValue, setSelectedValue] = useState<DateRangeType>(DateRangeType.LastYear)
-  const router = useRouter()
+  const dateRangeIsCustom = selectedValue === DateRangeType.Custom
 
   const handleSelectChange: ChangeEventHandler<HTMLSelectElement> = event =>
     setSelectedValue(event.target.value as DateRangeType)
@@ -216,31 +217,34 @@ export default function Services({ items, companyInfo }: Props) {
           <option value={DateRangeType.Custom}>Custom range</option>
         </select>
         {/* //TODO make states for start and end date and make sure start is always less than end */}
-        {/* //TODO change this so fields are just disabled when date range isn't custom */}
-        {selectedValue === DateRangeType.Custom ? (
-          <>
-            <p>
-              <label htmlFor="dateStart">Start date </label>
-              <input
-                type="date"
-                id="dateStart"
-                name="dateRange"
-                defaultValue={`1970-01-01`}
-                // TODO change to below for prod. Just have this as 1970 to fit the sandbox data
-                // defaultValue={`${previousYear}-01-01`}
-              />
-            </p>
-            <p>
-              <label htmlFor="dateEnd">End date </label>
-              <input
-                type="date"
-                id="dateEnd"
-                name="dateRange"
-                defaultValue={`${previousYear}-12-31`}
-              />
-            </p>
-          </>
-        ) : null}
+        <p>
+          <label htmlFor="dateStart" style={{ color: dateRangeIsCustom ? undefined : "grey" }}>
+            Start date{" "}
+          </label>
+          <input
+            type="date"
+            id="dateStart"
+            name="dateRange"
+            defaultValue={`1970-01-01`}
+            disabled={!dateRangeIsCustom}
+            style={{ color: dateRangeIsCustom ? undefined : "grey" }}
+            // TODO change to below for prod. Just have this as 1970 to fit the sandbox data
+            // defaultValue={`${previousYear}-01-01`}
+          />
+        </p>
+        <p>
+          <label htmlFor="dateEnd" style={{ color: dateRangeIsCustom ? undefined : "grey" }}>
+            End date&nbsp;
+          </label>
+          <input
+            type="date"
+            id="dateEnd"
+            disabled={!dateRangeIsCustom}
+            style={{ color: dateRangeIsCustom ? undefined : "grey" }}
+            name="dateRange"
+            defaultValue={`${previousYear}-12-31`}
+          />
+        </p>
       </fieldset>
       <input type="submit" value="Submit" />
     </form>
