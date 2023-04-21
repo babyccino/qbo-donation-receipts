@@ -1,6 +1,6 @@
 import styles from "./generate-receipts.module.scss"
 
-import { GetServerSidePropsContext } from "next"
+import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { PDFViewer, PDFDownloadLink } from "../../lib/pdfviewer"
 import { ParsedUrlQuery } from "querystring"
@@ -18,13 +18,13 @@ import { DoneeInfo, ReceiptPdfDocument } from "../../components/receipt"
 import { Session } from "../../lib/util"
 import { authOptions } from "../api/auth/[...nextauth]"
 
-export default function IndexPage({
-  customerData,
-  doneeInfo,
-}: {
+type Props = {
   customerData: Donation[]
   doneeInfo: DoneeInfo
-}) {
+  session: Session
+}
+
+export default function IndexPage({ customerData, doneeInfo }: Props) {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
   const mapCustomerToTableRow = (entry: Donation): JSX.Element => {
@@ -115,6 +115,7 @@ function getDoneeInfo(companyInfo: CompanyInfo, query: ParsedUrlQuery): DoneeInf
   }
 
   // if any of the company info values are not provided use the fetched values
+  // TODO if any are missing they should be retrieved from the DB
   const name =
     !companyName || companyName === "" || typeof companyName !== "string"
       ? companyInfo.name
@@ -139,7 +140,7 @@ function getDoneeInfo(companyInfo: CompanyInfo, query: ParsedUrlQuery): DoneeInf
   }
 }
 
-export async function getServerSideProps(context: GetServerSidePropsContext) {
+export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
   const [salesReport, customerQueryResult, companyInfo] = await Promise.all([

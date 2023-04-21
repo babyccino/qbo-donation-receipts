@@ -1,5 +1,5 @@
 import { ChangeEventHandler, FormEventHandler, MouseEventHandler, useRef, useState } from "react"
-import { GetServerSidePropsContext } from "next"
+import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { getServerSession } from "next-auth"
 
@@ -37,13 +37,13 @@ function getStartEndDates(
   }
 }
 
-export default function Services({
-  items,
-  companyInfo,
-}: {
+type Props = {
   items: Item[]
   companyInfo: CompanyInfo
-}) {
+  session: Session
+}
+
+export default function Services({ items, companyInfo }: Props) {
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
   const [selectedValue, setSelectedValue] = useState<DateRangeType>(DateRangeType.LastYear)
@@ -247,9 +247,9 @@ export default function Services({
   )
 }
 
-// --- server-side props ---
+// --- server-side props ---\
 
-export async function getServerSideProps(context: GetServerSidePropsContext) {
+export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
   const [companyInfo, items] = await Promise.all([getCompanyInfo(session), getItems(session)])
