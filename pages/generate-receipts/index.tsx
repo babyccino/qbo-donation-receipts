@@ -27,47 +27,52 @@ export default function IndexPage({
 }) {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
 
-  return (
-    <>
-      {customerData.map(entry => {
-        const fileName = `${entry.name}.pdf`
-        const Receipt = () => (
-          <ReceiptPdfDocument
-            currency="USD"
-            currentDate={new Date()}
-            donation={entry}
-            donationDate={new Date()}
-            donee={doneeInfo}
-            receiptNo={1}
-          />
-        )
+  const mapCustomerToTableRow = (entry: Donation): JSX.Element => {
+    const fileName = `${entry.name}.pdf`
+    const Receipt = () => (
+      <ReceiptPdfDocument
+        currency="USD"
+        currentDate={new Date()}
+        donation={entry}
+        donationDate={new Date()}
+        donee={doneeInfo}
+        receiptNo={1}
+      />
+    )
 
-        return (
-          <div key={entry.id}>
-            <div>
-              {entry.name}
-              <br />
-              Total: {formatter.format(entry.total)}
-              <br />
-              <button className={styles.button}>
-                Show receipt
-                <div className={styles.receipt}>
-                  <PDFViewer style={{ width: "100%", height: "100%" }}>
-                    <Receipt />
-                  </PDFViewer>
-                </div>
-              </button>
-              <PDFDownloadLink document={<Receipt />} fileName={fileName}>
-                {({ blob, url, loading, error }) =>
-                  loading ? "Loading document..." : "Download now!"
-                }
-              </PDFDownloadLink>
+    return (
+      <tr key={entry.id}>
+        <td>{entry.name}</td>
+        <td>{formatter.format(entry.total)}</td>
+        <td>
+          <button className={styles.showButton}>
+            Show receipt
+            <div className={styles.receipt}>
+              <PDFViewer style={{ width: "100%", height: "100%" }}>
+                <Receipt />
+              </PDFViewer>
             </div>
-            <br />
-          </div>
-        )
-      })}
-    </>
+          </button>
+        </td>
+        <td>
+          <PDFDownloadLink document={<Receipt />} fileName={fileName} className={styles.button}>
+            {({ loading }) => (loading ? "Loading document..." : "Download")}
+          </PDFDownloadLink>
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <table>
+      <tr>
+        <th>Donor Name</th>
+        <th>Total</th>
+        <th>Show Receipt</th>
+        <th>Download Receipt</th>
+      </tr>
+      {customerData.map(mapCustomerToTableRow)}
+    </table>
   )
 }
 
