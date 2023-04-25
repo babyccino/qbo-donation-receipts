@@ -1,8 +1,6 @@
-import styles from "./generate-receipts.module.scss"
-
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
-import { PDFViewer, PDFDownloadLink } from "../../lib/pdfviewer"
+import { PDFViewer, PDFDownloadLink } from "../lib/pdfviewer"
 import { ParsedUrlQuery } from "querystring"
 
 import {
@@ -13,10 +11,11 @@ import {
   getCompanyInfo,
   getCustomerData,
   getCustomerSalesReport,
-} from "../../lib/qbo-api"
-import { DoneeInfo, ReceiptPdfDocument } from "../../components/receipt"
-import { Session } from "../../lib/util"
-import { authOptions } from "../api/auth/[...nextauth]"
+} from "../lib/qbo-api"
+import { DoneeInfo, ReceiptPdfDocument } from "../components/receipt"
+import { Session } from "../lib/util"
+import { authOptions } from "./api/auth/[...nextauth]"
+import { Button, buttonStyling } from "../components/ui"
 
 type Props = {
   customerData: Donation[]
@@ -41,21 +40,26 @@ export default function IndexPage({ customerData, doneeInfo }: Props) {
     )
 
     return (
-      <tr key={entry.id}>
-        <td>{entry.name}</td>
-        <td>{formatter.format(entry.total)}</td>
-        <td>
-          <button className={styles.showButton}>
+      <tr key={entry.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+        <th
+          scope="row"
+          className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+        >
+          {entry.name}
+        </th>
+        <td className="px-6 py-4">{formatter.format(entry.total)}</td>
+        <td className="px-6 py-4">
+          <Button className="group">
             Show receipt
-            <div className={styles.receipt}>
-              <PDFViewer style={{ width: "100%", height: "100%" }}>
+            <div className="hidden fixed inset-0 p-4 group-focus-within:flex justify-center bg-black bg-opacity-50">
+              <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
                 <Receipt />
               </PDFViewer>
             </div>
-          </button>
+          </Button>
         </td>
-        <td>
-          <PDFDownloadLink document={<Receipt />} fileName={fileName} className={styles.button}>
+        <td className="px-6 py-4">
+          <PDFDownloadLink document={<Receipt />} fileName={fileName} className={buttonStyling}>
             {({ loading }) => (loading ? "Loading document..." : "Download")}
           </PDFDownloadLink>
         </td>
@@ -64,14 +68,24 @@ export default function IndexPage({ customerData, doneeInfo }: Props) {
   }
 
   return (
-    <table>
-      <tr>
-        <th>Donor Name</th>
-        <th>Total</th>
-        <th>Show Receipt</th>
-        <th>Download Receipt</th>
-      </tr>
-      {customerData.map(mapCustomerToTableRow)}
+    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+      <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+          <th scope="col" className="px-6 py-3">
+            Donor Name
+          </th>
+          <th scope="col" className="px-6 py-3">
+            Total
+          </th>
+          <th scope="col" className="px-6 py-3">
+            Show Receipt
+          </th>
+          <th scope="col" className="px-6 py-3">
+            Download Receipt
+          </th>
+        </tr>
+      </thead>
+      <tbody>{customerData.map(mapCustomerToTableRow)}</tbody>
     </table>
   )
 }
