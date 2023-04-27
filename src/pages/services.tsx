@@ -5,6 +5,7 @@ import {
   HTMLAttributes,
   LabelHTMLAttributes,
   MouseEventHandler,
+  ReactNode,
   useRef,
   useState,
 } from "react"
@@ -162,15 +163,15 @@ export default function Services({ items, companyInfo }: Props) {
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
       <Fieldset>
         <Legend>Selected items</Legend>
+        {items.map(mapItem)}
         <div className="pb-2 pt-1 space-x-2">
           <Button onClick={checkAll}>Check All</Button>
           <Button onClick={unCheckAll}>Uncheck All</Button>
         </div>
-        {items.map(mapItem)}
       </Fieldset>
       <Fieldset>
         <Legend>Date range</Legend>
-        <Label htmlFor="dateRangeType">Range </Label>
+        <Label htmlFor="dateRangeType">Range</Label>
         <select
           onChange={handleSelectChange}
           name="dateRangeType"
@@ -260,7 +261,7 @@ const DateInput = ({
   disabled?: boolean
 }) => (
   <p>
-    <Label htmlFor={id} className={disabled ? " text-gray-400" : ""}>
+    <Label htmlFor={id} disabled={disabled}>
       {label}
     </Label>
     <input
@@ -274,12 +275,21 @@ const DateInput = ({
   </p>
 )
 
-const Label = ({ htmlFor, children, className }: LabelHTMLAttributes<HTMLLabelElement>) => (
+const Label = ({
+  htmlFor,
+  children,
+  disabled,
+}: {
+  htmlFor: string
+  children: ReactNode
+  disabled?: boolean
+}) => (
   <label
-    className={multipleClasses(
-      className,
-      "block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-    )}
+    htmlFor={htmlFor}
+    className={
+      "block mb-2 text-sm font-medium " +
+      (disabled ? "text-gray-400" : "text-gray-900 dark:text-white")
+    }
   >
     {children}
   </label>
