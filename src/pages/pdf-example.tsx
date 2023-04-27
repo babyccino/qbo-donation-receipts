@@ -1,6 +1,6 @@
 import { PDFViewer } from "@react-pdf/renderer"
+
 import { ReceiptPdfDocument } from "../components/receipt"
-import { renderToString } from "react-dom/server"
 
 const props = {
   donation: {
@@ -30,11 +30,9 @@ const props = {
 }
 
 export default function Pdf() {
-  const html = renderToString(
+  return (
     <PDFViewer style={{ width: "100%", height: "100vh" }}>
       <ReceiptPdfDocument {...props} />
     </PDFViewer>
   )
-
-  return <div>{html}</div>
 }
