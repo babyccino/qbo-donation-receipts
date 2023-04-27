@@ -214,7 +214,11 @@ export default function Services({ items, companyInfo }: Props) {
         <TextInput id="signature" label="Image of signatory's signature" />
         <TextInput id="smallLogo" label="Small image of organisation's logo" />
       </Fieldset>
-      <input className={buttonStyling + " cursor-pointer"} type="submit" value="Submit" />
+      <input
+        className={buttonStyling + " cursor-pointer block mx-auto text-xl"}
+        type="submit"
+        value="Submit"
+      />
     </form>
   )
 }
@@ -296,7 +300,7 @@ const Fieldset = ({ children, className }: FieldsetHTMLAttributes<HTMLFieldSetEl
   <fieldset
     className={multipleClasses(
       className,
-      "w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700"
+      "w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 m-auto"
     )}
   >
     {children}
