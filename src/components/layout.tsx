@@ -4,6 +4,51 @@ import { signOut, useSession } from "next-auth/react"
 
 import { Svg } from "../components/ui"
 
+export default function Layout({ children }: { children: ReactNode }) {
+  const { data: session } = useSession()
+
+  // users who are not signed in will be redirected to the sign-in page
+  if (!session?.user) return null
+
+  return (
+    <div className="flex flex-row">
+      <header>
+        <OpenSidebar />
+        <Nav />
+      </header>
+      <div className="z-40 w-64" />
+
+      <main className="flex-1 p-4">{children}</main>
+    </div>
+  )
+}
+
+const Nav = () => (
+  <nav
+    id="separator-sidebar"
+    className="fixed top-0 left-0 z-40 w-64 h-screen transition-transform"
+    aria-label="Sidebar"
+  >
+    <ul className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800 space-y-2 font-medium">
+      <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
+      <NavLink link="services" logo={<Svg.Products />} label="Services" />
+      <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
+      <NavAnchor
+        href="api/auth/signout"
+        logo={<Svg.SignIn />}
+        onClick={e => {
+          e.preventDefault()
+          signOut()
+        }}
+        label="Sign Out"
+      />
+      <hr style={{ margin: "1rem 0" }} className="border-t border-gray-200 dark:border-gray-700" />
+      <NavLink link="documentaion" logo={<Svg.Documentation />} label="Documentation" />
+      <NavLink link="help" logo={<Svg.Help />} label="Help" />
+    </ul>
+  </nav>
+)
+
 const OpenSidebar = () => (
   <button
     data-drawer-target="separator-sidebar"
@@ -18,51 +63,6 @@ const OpenSidebar = () => (
     </div>
   </button>
 )
-
-export default function Layout({ children }: { children: ReactNode }) {
-  const { data: session } = useSession()
-
-  if (!session?.user) return null
-
-  return (
-    <>
-      <div className="flex flex-row">
-        <header>
-          <OpenSidebar />
-          <nav
-            id="separator-sidebar"
-            className="fixed top-0 left-0 z-40 w-64 h-screen transition-transform"
-            aria-label="Sidebar"
-          >
-            <div className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
-              <ul className="space-y-2 font-medium">
-                <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
-                <NavLink link="services" logo={<Svg.Products />} label="Services" />
-                <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
-                <NavAnchor
-                  href="api/auth/signout"
-                  logo={<Svg.SignIn />}
-                  onClick={e => {
-                    e.preventDefault()
-                    signOut()
-                  }}
-                  label="Sign Out"
-                />
-              </ul>
-              <ul className="pt-4 mt-4 space-y-2 font-medium border-t border-gray-200 dark:border-gray-700">
-                <NavLink link="documentaion" logo={<Svg.Documentation />} label="Documentation" />
-                <NavLink link="help" logo={<Svg.Help />} label="Help" />
-              </ul>
-            </div>
-          </nav>
-        </header>
-        <div className="z-40 w-64" />
-
-        <main className="flex-1 p-4">{children}</main>
-      </div>
-    </>
-  )
-}
 
 type NavInnerProps = {
   logo: JSX.Element
