@@ -16,7 +16,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <OpenSidebar />
         <Nav />
       </header>
-      <div className="z-40 w-64" />
+      <div className="w-64" />
 
       <main className="flex-1 p-4">{children}</main>
     </div>
