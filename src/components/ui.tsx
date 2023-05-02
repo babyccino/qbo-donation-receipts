@@ -1,4 +1,4 @@
-import { MouseEventHandler, ReactNode } from "react"
+import { FieldsetHTMLAttributes, HTMLAttributes, MouseEventHandler, ReactNode } from "react"
 import { multipleClasses } from "@/lib/util"
 
 export const buttonStyling =
@@ -175,5 +175,103 @@ export namespace Svg {
         clipRule="evenodd"
       ></path>
     </svg>
+  )
+}
+
+export namespace Form {
+  export const TextInput = ({
+    id,
+    defaultValue,
+    minLength,
+    label,
+  }: {
+    id: string
+    label: string
+    defaultValue?: string
+    minLength?: number
+  }) => (
+    <p>
+      <Label htmlFor={id}>{label}</Label>
+      <input
+        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+        required
+        minLength={minLength}
+        type="text"
+        id={id}
+        name={id}
+        defaultValue={defaultValue}
+      />
+    </p>
+  )
+
+  export const DateInput = ({
+    label,
+    id,
+    defaultValue,
+    disabled,
+  }: {
+    label: string
+    id: string
+    defaultValue?: string
+    disabled?: boolean
+  }) => (
+    <p>
+      <Label htmlFor={id} disabled={disabled}>
+        {label}
+      </Label>
+      <input
+        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 disabled:text-gray-400"
+        type="date"
+        id={id}
+        name="dateRange"
+        defaultValue={defaultValue}
+        disabled={disabled}
+      />
+    </p>
+  )
+
+  export const Label = ({
+    htmlFor,
+    children,
+    disabled,
+  }: {
+    htmlFor: string
+    children: ReactNode
+    disabled?: boolean
+  }) => (
+    <label
+      htmlFor={htmlFor}
+      className={
+        "block mb-2 text-sm font-medium " +
+        (disabled ? "text-gray-400" : "text-gray-900 dark:text-white")
+      }
+    >
+      {children}
+    </label>
+  )
+
+  export const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement>) => (
+    <legend
+      className={multipleClasses(
+        className,
+        "font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white mb-3"
+      )}
+    >
+      {children}
+    </legend>
+  )
+
+  export const Fieldset = ({
+    children,
+    className,
+  }: FieldsetHTMLAttributes<HTMLFieldSetElement>) => (
+    <fieldset
+      className={multipleClasses(
+        className,
+        "w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 m-auto"
+      )}
+    >
+      {children}
+    </fieldset>
   )
 }

@@ -24,7 +24,7 @@ import {
   startOfThisYearHtml,
 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Button, buttonStyling } from "@/components/ui"
+import { Button, Form, buttonStyling } from "@/components/ui"
 
 // const DEBOUNCE = 500
 
@@ -161,17 +161,17 @@ export default function Services({ items, companyInfo }: Props) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
-      <Fieldset>
-        <Legend>Selected items</Legend>
+      <Form.Fieldset>
+        <Form.Legend>Selected items</Form.Legend>
         {items.map(mapItem)}
         <div className="pb-2 pt-1 space-x-2">
           <Button onClick={checkAll}>Check All</Button>
           <Button onClick={unCheckAll}>Uncheck All</Button>
         </div>
-      </Fieldset>
-      <Fieldset>
-        <Legend>Date range</Legend>
-        <Label htmlFor="dateRangeType">Range</Label>
+      </Form.Fieldset>
+      <Form.Fieldset>
+        <Form.Legend>Date range</Form.Legend>
+        <Form.Label htmlFor="dateRangeType">Range</Form.Label>
         <select
           onChange={handleSelectChange}
           name="dateRangeType"
@@ -185,7 +185,7 @@ export default function Services({ items, companyInfo }: Props) {
           <option value={DateRangeType.Custom}>Custom range</option>
         </select>
         {/* //TODO make states for start and end date and make sure start is always less than end */}
-        <DateInput
+        <Form.DateInput
           id="dateStart"
           defaultValue={`1970-01-01`}
           disabled={!dateRangeIsCustom}
@@ -193,28 +193,38 @@ export default function Services({ items, companyInfo }: Props) {
           // defaultValue={`${previousYear}-01-01`}
           label="Start date"
         />
-        <DateInput
+        <Form.DateInput
           id="dateEnd"
           disabled={!dateRangeIsCustom}
           defaultValue={`${previousYear}-12-31`}
           label="End date"
         />
-      </Fieldset>
-      <Fieldset>
-        <Legend>Organisation</Legend>
-        <TextInput id="companyName" defaultValue={companyInfo.name} label="Legal name" />
-        <TextInput id="address" minLength={10} defaultValue={companyInfo.address} label="Address" />
-        <TextInput id="country" minLength={2} defaultValue={companyInfo.country} label="Country" />
-        <TextInput
+      </Form.Fieldset>
+      <Form.Fieldset>
+        <Form.Legend>Organisation</Form.Legend>
+        <Form.TextInput id="companyName" defaultValue={companyInfo.name} label="Legal name" />
+        <Form.TextInput
+          id="address"
+          minLength={10}
+          defaultValue={companyInfo.address}
+          label="Address"
+        />
+        <Form.TextInput
+          id="country"
+          minLength={2}
+          defaultValue={companyInfo.country}
+          label="Country"
+        />
+        <Form.TextInput
           id="registrationNumber"
           minLength={15}
           defaultValue="123456789RR0001"
           label="Charity registration number"
         />
-        <TextInput id="signatoryName" minLength={5} label="Signatory's name" />
-        <TextInput id="signature" label="Image of signatory's signature" />
-        <TextInput id="smallLogo" label="Small image of organisation's logo" />
-      </Fieldset>
+        <Form.TextInput id="signatoryName" minLength={5} label="Signatory's name" />
+        <Form.TextInput id="signature" label="Image of signatory's signature" />
+        <Form.TextInput id="smallLogo" label="Small image of organisation's logo" />
+      </Form.Fieldset>
       <input
         className={buttonStyling + " cursor-pointer block mx-auto text-xl"}
         type="submit"
@@ -223,99 +233,6 @@ export default function Services({ items, companyInfo }: Props) {
     </form>
   )
 }
-
-const TextInput = ({
-  id,
-  defaultValue,
-  minLength,
-  label,
-}: {
-  id: string
-  label: string
-  defaultValue?: string
-  minLength?: number
-}) => (
-  <p>
-    <Label htmlFor={id}>{label}</Label>
-    <input
-      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-      required
-      minLength={minLength}
-      type="text"
-      id={id}
-      name={id}
-      defaultValue={defaultValue}
-    />
-  </p>
-)
-
-const DateInput = ({
-  label,
-  id,
-  defaultValue,
-  disabled,
-}: {
-  label: string
-  id: string
-  defaultValue?: string
-  disabled?: boolean
-}) => (
-  <p>
-    <Label htmlFor={id} disabled={disabled}>
-      {label}
-    </Label>
-    <input
-      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 disabled:text-gray-400"
-      type="date"
-      id={id}
-      name="dateRange"
-      defaultValue={defaultValue}
-      disabled={disabled}
-    />
-  </p>
-)
-
-const Label = ({
-  htmlFor,
-  children,
-  disabled,
-}: {
-  htmlFor: string
-  children: ReactNode
-  disabled?: boolean
-}) => (
-  <label
-    htmlFor={htmlFor}
-    className={
-      "block mb-2 text-sm font-medium " +
-      (disabled ? "text-gray-400" : "text-gray-900 dark:text-white")
-    }
-  >
-    {children}
-  </label>
-)
-
-const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement>) => (
-  <legend
-    className={multipleClasses(
-      className,
-      "font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white mb-3"
-    )}
-  >
-    {children}
-  </legend>
-)
-
-const Fieldset = ({ children, className }: FieldsetHTMLAttributes<HTMLFieldSetElement>) => (
-  <fieldset
-    className={multipleClasses(
-      className,
-      "w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 m-auto"
-    )}
-  >
-    {children}
-  </fieldset>
-)
 
 // --- server-side props ---\
 
