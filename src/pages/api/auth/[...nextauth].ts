@@ -1,10 +1,8 @@
-import NextAuth from "next-auth"
+import NextAuth, { Account, NextAuthOptions } from "next-auth"
+import { JWT } from "next-auth/jwt"
+import { OAuthConfig } from "next-auth/providers"
 
-import type { Account, NextAuthOptions } from "next-auth"
-import type { JWT } from "next-auth/jwt"
-import type { OAuthConfig } from "next-auth/providers"
-
-import type { QBOProfile } from "../../../lib/qbo-api"
+import { QBOProfile } from "../../../lib/qbo-api"
 import { base64Encode, fetchJsonData } from "../../../lib/util"
 
 const customProvider: OAuthConfig<QBOProfile> = {
