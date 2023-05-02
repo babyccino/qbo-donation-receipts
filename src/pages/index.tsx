@@ -3,7 +3,7 @@ import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Session } from "../lib/util"
+import { Session } from "@/lib/util"
 
 type Props = { session: Session }
 

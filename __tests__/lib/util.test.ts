@@ -4,7 +4,7 @@ import {
   formatDateHtml,
   multipleClasses,
   fetchJsonData,
-} from "../../src/lib/util"
+} from "@/lib/util"
 
 describe("base64Encode", () => {
   it("encodes a string to base64", () => {

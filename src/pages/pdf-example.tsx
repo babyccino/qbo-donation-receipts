@@ -1,6 +1,6 @@
 import { PDFViewer } from "@react-pdf/renderer"
 
-import { ReceiptPdfDocument } from "../components/receipt"
+import { ReceiptPdfDocument } from "@/components/receipt"
 
 const props = {
   donation: {

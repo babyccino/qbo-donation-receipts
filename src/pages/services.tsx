@@ -13,7 +13,7 @@ import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { getServerSession } from "next-auth"
 
-import { CompanyInfo, Item, getCompanyInfo, getItems } from "../lib/qbo-api"
+import { CompanyInfo, Item, getCompanyInfo, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
   Session,
@@ -22,9 +22,9 @@ import {
   multipleClasses,
   startOfPreviousYearHtml,
   startOfThisYearHtml,
-} from "../lib/util"
+} from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Button, buttonStyling } from "../components/ui"
+import { Button, buttonStyling } from "@/components/ui"
 
 // const DEBOUNCE = 500
 

@@ -2,7 +2,7 @@ import type { MouseEventHandler, ReactNode } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
 
-import { Svg } from "../components/ui"
+import { Svg } from "@/components/ui"
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { data: session } = useSession()

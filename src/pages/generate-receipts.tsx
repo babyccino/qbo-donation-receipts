@@ -1,8 +1,8 @@
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
-import { PDFViewer, PDFDownloadLink } from "../lib/pdfviewer"
 import { ParsedUrlQuery } from "querystring"
 
+import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
 import {
   CompanyInfo,
   Donation,
@@ -11,11 +11,11 @@ import {
   getCompanyInfo,
   getCustomerData,
   getCustomerSalesReport,
-} from "../lib/qbo-api"
-import { DoneeInfo, ReceiptPdfDocument } from "../components/receipt"
-import { Session } from "../lib/util"
+} from "@/lib/qbo-api"
+import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
+import { Button, buttonStyling } from "@/components/ui"
+import { Session } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Button, buttonStyling } from "../components/ui"
 
 type Props = {
   customerData: Donation[]

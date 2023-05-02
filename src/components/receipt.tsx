@@ -12,8 +12,8 @@ import {
   Image as PdfImage,
 } from "@react-pdf/renderer"
 
-import { formatDate, multipleClasses } from "../lib/util"
-import { CompanyInfo, Donation } from "../lib/qbo-api"
+import { formatDate, multipleClasses } from "@/lib/util"
+import { CompanyInfo, Donation } from "@/lib/qbo-api"
 
 export function HtmlReceipt({
   donation,

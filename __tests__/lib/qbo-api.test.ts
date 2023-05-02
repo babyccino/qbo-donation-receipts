@@ -10,8 +10,8 @@ import {
   DonationWithoutAddress,
   getItems,
   parseCompanyInfo,
-} from "../../src/lib/qbo-api"
-import { DeepPartial, fetchJsonData, Session } from "../../src/lib/util"
+} from "@/lib/qbo-api"
+import { DeepPartial, fetchJsonData, Session } from "@/lib/util"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
