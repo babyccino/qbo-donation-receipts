@@ -2,6 +2,7 @@ import NextAuth, { Account, NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
 
+import { user } from "@/lib/db"
 import { QBOProfile } from "@/lib/qbo-api"
 import { base64Encode, fetchJsonData } from "@/lib/util"
 
@@ -60,14 +61,15 @@ const jwtCallback: any = async ({
   account?: Account | null
   profile?: QBOProfile | null
 }): Promise<JWT> => {
-  if (account) {
+  if (account && profile) {
     if (!account.access_token || !account.refresh_token || account.expires_at === undefined)
-      throw new Error("Account is missing important data \naccount:" + JSON.stringify(account))
+      throw new Error("Account is missing important data\naccount:" + JSON.stringify(account))
 
     token.accessToken = account.access_token
     token.refreshToken = account.refresh_token
     token.accessTokenExpires = account.expires_at * 1000
     token.id = account.providerAccountId
+    token.realmId = profile.realmid as string
 
     const userInfo = await fetchJsonData<{ email: string; givenName: string }>(
       "https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo",
@@ -78,15 +80,16 @@ const jwtCallback: any = async ({
     token.name = userInfo.givenName || "No name associated with account"
     // TODO fetch profile image URL
     token.image = ""
-  }
 
-  if (profile) {
-    token.realmId = profile.realmid as string
+    addUser(account.providerAccountId, token.name, token.email, profile.realmid)
   }
 
   if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
   else return token
 }
+
+const addUser = (id: string, name: string, email: string, realmId: string) =>
+  user.doc(id).set({ id, name, email, realmId }, { merge: true })
 
 export const authOptions: NextAuthOptions = {
   providers: [customProvider],
