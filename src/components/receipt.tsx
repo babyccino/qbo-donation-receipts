@@ -232,7 +232,7 @@ const pdfStyles = StyleSheet.create({
 
 export type DoneeInfo = CompanyInfo & {
   registrationNumber: string
-  signatory: string
+  signatoryName: string
   signature: string
   smallLogo: string
   largeLogo?: string
@@ -268,8 +268,8 @@ export function ReceiptPdfDocument({
           <View style={pdfStyles.flexRow}>
             {/* <PdfImage style={pdfStyles.smallLogo} src={donee.smallLogo} /> */}
             <View>
-              <Text>{donee.name}</Text>
-              <Text>{donee.address}</Text>
+              <Text>{donee.companyName}</Text>
+              <Text>{donee.companyAddress}</Text>
               <Text>Charitable registration #: {donee.registrationNumber}</Text>
             </View>
           </View>
@@ -300,7 +300,7 @@ export function ReceiptPdfDocument({
         <View style={pdfStyles.break} />
         <Text style={pdfStyles.alignCenter}>For your own records</Text>
         {/* <PdfImage style={pdfStyles.largeLogo} src={donee.largeLogo || donee.smallLogo} /> */}
-        <Text style={pdfStyles.ownRecordsOrg}>{donee.name}</Text>
+        <Text style={pdfStyles.ownRecordsOrg}>{donee.companyName}</Text>
         <View style={[pdfStyles.spaceBetween, pdfStyles.flexRow]}>
           <View>
             <Text>{donation.name}</Text>

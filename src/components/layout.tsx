@@ -31,7 +31,8 @@ const Nav = () => (
   >
     <ul className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800 space-y-2 font-medium">
       <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
-      <NavLink link="services" logo={<Svg.Products />} label="Services" />
+      <NavLink link="services" logo={<Svg.Products />} label="Items" />
+      <NavLink link="details" logo={<Svg.Components />} label="Details" />
       <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
       <NavAnchor
         href="api/auth/signout"

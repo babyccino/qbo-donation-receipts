@@ -1,25 +1,14 @@
-import {
-  ChangeEventHandler,
-  FieldsetHTMLAttributes,
-  FormEventHandler,
-  HTMLAttributes,
-  LabelHTMLAttributes,
-  MouseEventHandler,
-  ReactNode,
-  useRef,
-  useState,
-} from "react"
+import { ChangeEventHandler, FormEventHandler, MouseEventHandler, useRef, useState } from "react"
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { getServerSession } from "next-auth"
 
-import { CompanyInfo, Item, getCompanyInfo, getItems } from "@/lib/qbo-api"
+import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
   Session,
   endOfPreviousYearHtml,
   endOfThisYearHtml,
-  multipleClasses,
   startOfPreviousYearHtml,
   startOfThisYearHtml,
 } from "@/lib/util"
@@ -51,11 +40,10 @@ function getStartEndDates(
 
 type Props = {
   items: Item[]
-  companyInfo: CompanyInfo
   session: Session
 }
 
-export default function Services({ items, companyInfo }: Props) {
+export default function Services({ items }: Props) {
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
@@ -96,13 +84,13 @@ export default function Services({ items, companyInfo }: Props) {
     }
   }
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = event => {
+  const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     if (!formRef.current) throw new Error()
     event.preventDefault()
 
     const formData = new FormData(formRef.current)
 
-    const items = formData.getAll("items") as string[]
+    const items = (formData.getAll("items") as string[]).map(item => parseInt(item))
 
     const dateRangeType = formData.get("dateRangeType")
     if (!dateRangeType) throw new Error("dateRangeType is undefined")
@@ -111,30 +99,21 @@ export default function Services({ items, companyInfo }: Props) {
       formData.getAll("dateRange") as string[]
     )
 
-    const companyName = formData.get("companyName") as string
-    const address = formData.get("address") as string
-    const country = formData.get("country") as string
-    const registrationNumber = formData.get("registrationNumber") as string
-    const signatoryName = formData.get("signatoryName") as string
-    const signature = formData.get("signature") as string
-    const smallLogo = formData.get("smallLogo") as string
-
     const query = {
-      items: items.join("+"),
-      startDate,
-      endDate,
-      companyName: companyName !== companyInfo.name ? companyName : undefined,
-      address: address !== companyInfo.address ? address : undefined,
-      country: country !== companyInfo.country ? country : undefined,
-      registrationNumber,
-      signatoryName,
-      signature,
-      smallLogo,
+      items,
+      date: {
+        startDate,
+        endDate,
+      },
     }
 
+    const response = fetch("/api/services", {
+      method: "POST",
+      body: JSON.stringify(query),
+    })
+
     router.push({
-      pathname: "generate-receipts",
-      query,
+      pathname: "details",
     })
   }
 
@@ -200,35 +179,10 @@ export default function Services({ items, companyInfo }: Props) {
           label="End date"
         />
       </Form.Fieldset>
-      <Form.Fieldset>
-        <Form.Legend>Organisation</Form.Legend>
-        <Form.TextInput id="companyName" defaultValue={companyInfo.name} label="Legal name" />
-        <Form.TextInput
-          id="address"
-          minLength={10}
-          defaultValue={companyInfo.address}
-          label="Address"
-        />
-        <Form.TextInput
-          id="country"
-          minLength={2}
-          defaultValue={companyInfo.country}
-          label="Country"
-        />
-        <Form.TextInput
-          id="registrationNumber"
-          minLength={15}
-          defaultValue="123456789RR0001"
-          label="Charity registration number"
-        />
-        <Form.TextInput id="signatoryName" minLength={5} label="Signatory's name" />
-        <Form.TextInput id="signature" label="Image of signatory's signature" />
-        <Form.TextInput id="smallLogo" label="Small image of organisation's logo" />
-      </Form.Fieldset>
       <input
-        className={buttonStyling + " cursor-pointer block mx-auto text-xl"}
+        className={buttonStyling + " cursor-pointer block mx-auto text-l"}
         type="submit"
-        value="Submit"
+        value="Enter Donee Details"
       />
     </form>
   )
@@ -239,13 +193,10 @@ export default function Services({ items, companyInfo }: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
-  const [companyInfo, items] = await Promise.all([getCompanyInfo(session), getItems(session)])
-
   return {
     props: {
       session,
-      items,
-      companyInfo,
+      items: await getItems(session),
     },
   }
 }

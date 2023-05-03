@@ -16,6 +16,7 @@ import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
 import { Button, buttonStyling } from "@/components/ui"
 import { Session } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
+import { DbUser, user } from "@/lib/db"
 
 type Props = {
   customerData: Donation[]
@@ -92,84 +93,93 @@ export default function IndexPage({ customerData, doneeInfo }: Props) {
 
 // --- server-side props ---
 
-function getProducts(session: Session, query: ParsedUrlQuery): Set<number> {
-  const { items } = query
-  // TODO if no list of items is given retrieve from server the last selection
-  if (!items) return new Set()
+async function getProducts(
+  { items }: ParsedUrlQuery,
+  dbUser: Promise<FirebaseFirestore.DocumentSnapshot<DbUser>>
+): Promise<Set<number>> {
+  if (items)
+    return typeof items == "string"
+      ? new Set(items.split("+").map(str => parseInt(str)))
+      : new Set(items.map(id => parseInt(id)))
 
-  return typeof items == "string"
-    ? new Set(items.split("+").map(str => parseInt(str)))
-    : new Set(items.map(id => parseInt(id)))
+  const doc = await dbUser
+  const dbData = doc.data()
+
+  if (!dbData || !dbData.items) throw new Error("items data not found in query nor database")
+
+  return new Set(dbData.items)
 }
 
-function getDoneeInfo(companyInfo: CompanyInfo, query: ParsedUrlQuery): DoneeInfo {
-  const {
-    companyName,
-    address: queryAddress,
-    country: queryCountry,
-    registrationNumber,
-    signatoryName: signatory,
-    signature,
-    smallLogo,
-  } = query
+const doneeInfoKeys: (keyof DoneeInfo)[] = [
+  "companyAddress",
+  "companyName",
+  "country",
+  "largeLogo",
+  "registrationNumber",
+  "signatoryName",
+  "signature",
+  "smallLogo",
+]
 
-  const registrationNumberInvalid = !registrationNumber || typeof registrationNumber !== "string"
-  const signatoryNameInvalid = !signatory || typeof signatory !== "string"
-  const signatureInvalid = !signature || typeof signature !== "string"
-  const smallLogoInvalid = !smallLogo || typeof smallLogo !== "string"
-
-  if (registrationNumberInvalid || signatoryNameInvalid || signatureInvalid || smallLogoInvalid) {
-    let malformed = ""
-    if (registrationNumberInvalid) malformed += "registration number,"
-    if (signatoryNameInvalid) malformed += "signatory name,"
-    if (signatureInvalid) malformed += "signature,"
-    if (smallLogoInvalid) malformed += "smallLogo,"
-
-    throw new Error(malformed + " data is malformed")
+function doesQueryHaveAllFields(query: ParsedUrlQuery): boolean {
+  for (const key of doneeInfoKeys) {
+    if (!query[key] || query[key] == "") return false
   }
-
-  // if any of the company info values are not provided use the fetched values
-  // TODO if any are missing they should be retrieved from the DB
-  const name =
-    !companyName || companyName === "" || typeof companyName !== "string"
-      ? companyInfo.name
-      : companyName
-  const address =
-    !queryAddress || queryAddress === "" || typeof queryAddress !== "string"
-      ? companyInfo.address
-      : queryAddress
-  const country =
-    !queryCountry || queryCountry === "" || typeof queryCountry !== "string"
-      ? companyInfo.country
-      : queryCountry
-
-  return {
-    name,
-    address,
-    country,
-    registrationNumber,
-    signatory,
-    signature,
-    smallLogo,
-  }
+  return true
 }
 
-export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
+function combineQueryWithDb(query: ParsedUrlQuery, donee: DoneeInfo): DoneeInfo {
+  for (const key of doneeInfoKeys) {
+    if (!query.companyName && !donee.companyName)
+      throw new Error(`${key} wasn't found in query nor in the db`)
 
-  const [salesReport, customerQueryResult, companyInfo] = await Promise.all([
-    getCustomerSalesReport(session, context),
+    donee[key] = (query.companyName as string) || donee.companyName
+  }
+
+  return donee
+}
+
+async function getDoneeInfo(
+  query: ParsedUrlQuery,
+  dbUser: Promise<FirebaseFirestore.DocumentSnapshot<DbUser>>
+): Promise<DoneeInfo> {
+  if (doesQueryHaveAllFields(query)) {
+    return {
+      companyName: query.companyName as string,
+      companyAddress: query.companyAddress as string,
+      country: query.country as string,
+      registrationNumber: query.registrationNumber as string,
+      signatoryName: query.signatoryName as string,
+      signature: query.signature as string,
+      smallLogo: query.smallLogo as string,
+    }
+  }
+
+  const doc = await dbUser
+  const dbData = doc.data()
+
+  if (!dbData || !dbData.donee) throw new Error("donee data not found in query nor database")
+  return combineQueryWithDb(query, dbData.donee)
+}
+
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+  const session: Session = (await getServerSession(req, res, authOptions)) as any
+
+  const dbUser = user.doc(session.user.id).get()
+  const [salesReport, customerQueryResult, doneeInfo, products] = await Promise.all([
+    getCustomerSalesReport(session, query),
     getCustomerData(session),
-    getCompanyInfo(session),
+    getDoneeInfo(query, dbUser),
+    getProducts(query, dbUser),
   ])
 
-  const products = getProducts(session, context.query)
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(
     donationDataWithoutAddresses,
     customerQueryResult
   )
-  const doneeInfo = getDoneeInfo(companyInfo, context.query)
+
+  // TODO if any information is missing render a page showing what information the user has not yet entered
 
   return {
     props: {
