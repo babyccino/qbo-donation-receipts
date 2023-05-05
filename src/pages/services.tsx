@@ -14,6 +14,8 @@ import {
 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Button, Form, buttonStyling } from "@/components/ui"
+import { user } from "@/lib/db"
+import { isNull } from "util"
 
 // const DEBOUNCE = 500
 
@@ -41,9 +43,10 @@ function getStartEndDates(
 type Props = {
   items: Item[]
   session: Session
+  selectedItems: number[] | null
 }
 
-export default function Services({ items }: Props) {
+export default function Services({ items, selectedItems }: Props) {
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
@@ -85,8 +88,9 @@ export default function Services({ items }: Props) {
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
-    if (!formRef.current) throw new Error()
     event.preventDefault()
+
+    if (!formRef.current) throw new Error()
 
     const formData = new FormData(formRef.current)
 
@@ -130,7 +134,7 @@ export default function Services({ items }: Props) {
           name="items"
           value={id}
           id={id.toString()}
-          defaultChecked
+          defaultChecked={selectedItems ? selectedItems.includes(id) : true}
         />
         <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600" />
         <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{name}</span>
@@ -188,15 +192,23 @@ export default function Services({ items }: Props) {
   )
 }
 
-// --- server-side props ---\
+// --- server-side props --- //
 
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
+  const [doc, items] = await Promise.all([user.doc(session.user.id).get(), getItems(session)])
+  const data = doc.data()
+  if (!data) throw new Error("User has no corresponding db entry")
+
+  // TODO not showing correctly
+  const selectedItems = data.items || null
+
   return {
     props: {
       session,
-      items: await getItems(session),
+      items,
+      selectedItems,
     },
   }
 }
