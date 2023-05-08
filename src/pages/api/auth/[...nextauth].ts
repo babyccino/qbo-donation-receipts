@@ -1,4 +1,4 @@
-import NextAuth, { Account, NextAuthOptions } from "next-auth"
+import NextAuth, { NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
 
@@ -52,42 +52,6 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   }
 }
 
-const jwtCallback: any = async ({
-  token,
-  account,
-  profile,
-}: {
-  token: JWT
-  account?: Account | null
-  profile?: QBOProfile | null
-}): Promise<JWT> => {
-  if (account && profile) {
-    if (!account.access_token || !account.refresh_token || account.expires_at === undefined)
-      throw new Error("Account is missing important data\naccount:" + JSON.stringify(account))
-
-    token.accessToken = account.access_token
-    token.refreshToken = account.refresh_token
-    token.accessTokenExpires = account.expires_at * 1000
-    token.id = account.providerAccountId
-    token.realmId = profile.realmid as string
-
-    const userInfo = await fetchJsonData<{ email: string; givenName: string }>(
-      "https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo",
-      token.accessToken as string
-    )
-
-    token.email = userInfo.email || "No email associated with account"
-    token.name = userInfo.givenName || "No name associated with account"
-    // TODO fetch profile image URL
-    token.image = ""
-
-    addUser(account.providerAccountId, token.name, token.email, profile.realmid)
-  }
-
-  if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
-  else return token
-}
-
 const addUser = (id: string, name: string, email: string, realmId: string) =>
   user.doc(id).set({ id, name, email, realmId }, { merge: true })
 
@@ -113,7 +77,33 @@ export const authOptions: NextAuthOptions = {
         },
       } as any
     },
-    jwt: jwtCallback,
+    async jwt({ token, account, profile }) {
+      if (account && profile) {
+        if (!account.access_token || !account.refresh_token || account.expires_at === undefined)
+          throw new Error("Account is missing important data\naccount:" + JSON.stringify(account))
+
+        token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+        token.accessTokenExpires = account.expires_at * 1000
+        token.id = account.providerAccountId
+        token.realmId = profile.realmid
+
+        const userInfo = await fetchJsonData<{ email: string; givenName: string }>(
+          "https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo",
+          token.accessToken as string
+        )
+
+        token.email = userInfo.email || "No email associated with account"
+        token.name = userInfo.givenName || "No name associated with account"
+        // TODO fetch profile image URL
+        token.image = ""
+
+        addUser(account.providerAccountId, token.name, token.email, profile.realmid)
+      }
+
+      if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
+      else return token
+    },
   },
 }
 

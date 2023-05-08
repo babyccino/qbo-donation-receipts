@@ -1,5 +1,5 @@
 import { GetServerSidePropsContext } from "next"
-import { getServerSession } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
 
 import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
@@ -12,7 +12,7 @@ import {
 } from "@/lib/qbo-api"
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
 import { Button, buttonStyling } from "@/components/ui"
-import { Session, alreadyFilledIn } from "@/lib/util"
+import { alreadyFilledIn } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { DbUser, user } from "@/lib/db"
 import Link from "next/link"
@@ -177,7 +177,9 @@ function getDoneeInfo(query: ParsedUrlQuery, dbUser: DbUser): DoneeInfo {
 }
 
 export const getServerSideProps = async ({ req, res, query }: GetServerSidePropsContext) => {
-  const session: Session = (await getServerSession(req, res, authOptions)) as any
+  const session = await getServerSession(req, res, authOptions)
+
+  if (!session) throw new Error("Couldn't find session")
 
   const doc = await user.doc(session.user.id).get()
   // if items/date and donee details have to be in the query or in the db

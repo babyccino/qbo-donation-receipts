@@ -1,5 +1,4 @@
-import { DoneeInfo } from "@/components/receipt"
-import { DbUser, user } from "./db"
+import { DbUser } from "./db"
 
 export const base64Encode = (str: string) => Buffer.from(str).toString("base64")
 
@@ -43,18 +42,6 @@ export async function fetchJsonData<T = any>(url: string, accessToken: string): 
   }
 
   return report
-}
-
-export type Session = {
-  user: {
-    id: string
-    name: string
-    image: string
-    email: string
-  }
-  expires: string
-  accessToken: string
-  realmId: string
 }
 
 export type DeepPartial<T> = T extends object

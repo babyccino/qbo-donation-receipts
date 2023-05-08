@@ -290,7 +290,7 @@ export function ReceiptPdfDocument({
           </View>
           <View style={pdfStyles.signature}>
             {/* <PdfImage src={donee.signature} /> */}
-            <Text>{donee.signatory}</Text>
+            <Text>{donee.signatoryName}</Text>
           </View>
         </View>
         <View style={[pdfStyles.cra, pdfStyles.flexRow]}>

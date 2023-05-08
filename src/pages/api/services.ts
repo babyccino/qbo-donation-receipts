@@ -3,12 +3,12 @@ import { getServerSession } from "next-auth"
 
 import { user } from "@/lib/db"
 import { authOptions } from "./auth/[...nextauth]"
-import { Session } from "@/lib/util"
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(404).end()
 
-  const session: Session = (await getServerSession(req, res, authOptions)) as any
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return res.status(401).end()
   const id = session.user.id
 
   try {

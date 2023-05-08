@@ -1,11 +1,10 @@
 import Link from "next/link"
 import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
+import { getServerSession, Session } from "next-auth"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Session } from "@/lib/util"
 
-type Props = { session: Session }
+type Props = { session: Session | null }
 
 export default function IndexPage() {
   return (
@@ -23,7 +22,7 @@ export default function IndexPage() {
 // --- server-side props ---
 
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
+  const session = await getServerSession(context.req, context.res, authOptions)
 
   return {
     props: {

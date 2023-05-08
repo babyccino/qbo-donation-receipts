@@ -1,10 +1,10 @@
 import { FormEventHandler, useRef } from "react"
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
-import { getServerSession } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { Session, alreadyFilledIn } from "@/lib/util"
+import { alreadyFilledIn } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
@@ -139,7 +139,8 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
 // --- server-side props --- //
 
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
+  const session = await getServerSession(context.req, context.res, authOptions)
+  if (!session) throw new Error("Couldn't find session")
 
   const qboCompanyInfo = getCompanyInfo(session)
   const doc = await user.doc(session.user.id).get()

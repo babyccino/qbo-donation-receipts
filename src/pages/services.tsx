@@ -1,12 +1,11 @@
 import { ChangeEventHandler, FormEventHandler, MouseEventHandler, useRef, useState } from "react"
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
-import { getServerSession } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 
 import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
-  Session,
   alreadyFilledIn,
   endOfPreviousYearHtml,
   endOfThisYearHtml,
@@ -211,7 +210,9 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 // --- server-side props --- //
 
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
+  const session = await getServerSession(context.req, context.res, authOptions)
+
+  if (!session) throw new Error("Couldn't find session")
 
   const [doc, items] = await Promise.all([user.doc(session.user.id).get(), getItems(session)])
   const data = doc.data()
