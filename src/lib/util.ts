@@ -1,3 +1,6 @@
+import { DoneeInfo } from "@/components/receipt"
+import { DbUser, user } from "./db"
+
 export const base64Encode = (str: string) => Buffer.from(str).toString("base64")
 
 export const formatDate = (date: Date) =>
@@ -59,3 +62,27 @@ export type DeepPartial<T> = T extends object
       [P in keyof T]?: DeepPartial<T[P]>
     }
   : T
+
+export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<DbUser>): {
+  items: boolean
+  doneeDetails: boolean
+} {
+  const dbData = doc.data()
+
+  if (!dbData) return { items: false, doneeDetails: false }
+
+  return {
+    items: Boolean(dbData.items) && Boolean(dbData.date),
+    doneeDetails: Boolean(
+      dbData.donee &&
+        dbData.donee.companyAddress &&
+        dbData.donee.companyName &&
+        dbData.donee.country &&
+        dbData.donee.largeLogo &&
+        dbData.donee.registrationNumber &&
+        dbData.donee.signatoryName &&
+        dbData.donee.signature &&
+        dbData.donee.smallLogo
+    ),
+  }
+}

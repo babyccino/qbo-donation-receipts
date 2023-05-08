@@ -1,31 +1,57 @@
-import { GetServerSideProps } from "next"
+import { GetServerSidePropsContext } from "next"
 import { getServerSession } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
 
 import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
 import {
-  CompanyInfo,
   Donation,
   addBillingAddressesToDonations,
   createDonationsFromSalesReport,
-  getCompanyInfo,
   getCustomerData,
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
 import { Button, buttonStyling } from "@/components/ui"
-import { Session } from "@/lib/util"
+import { Session, alreadyFilledIn } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { DbUser, user } from "@/lib/db"
+import Link from "next/link"
 
-type Props = {
-  customerData: Donation[]
-  doneeInfo: DoneeInfo
-  session: Session
-}
+type Props =
+  | {
+      customerData: Donation[]
+      doneeInfo: DoneeInfo
+      session: Session
+      filledIn: null
+    }
+  | {
+      filledIn: { items: boolean; details: boolean }
+    }
 
-export default function IndexPage({ customerData, doneeInfo }: Props) {
+export default function IndexPage(props: Props) {
+  if (props.filledIn)
+    return (
+      <div className="flex flex-col gap-4 text-center bg-white rounded-lg shadow dark:border md:mt-8 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 mx-auto">
+        <span className="col-span-full font-medium text-gray-900 dark:text-white">
+          Some information necessary to generate your receipts is missing
+        </span>
+        <div className="flex justify-evenly gap-3">
+          {!props.filledIn.items && (
+            <Link className={buttonStyling} href="services">
+              Fill in Qualifying Items
+            </Link>
+          )}
+          {!props.filledIn.details && (
+            <Link className={buttonStyling} href="details">
+              Fill in Donee Details
+            </Link>
+          )}
+        </div>
+      </div>
+    )
+
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
+  const { customerData, doneeInfo } = props
 
   const mapCustomerToTableRow = (entry: Donation): JSX.Element => {
     const fileName = `${entry.name}.pdf`
@@ -93,21 +119,15 @@ export default function IndexPage({ customerData, doneeInfo }: Props) {
 
 // --- server-side props ---
 
-async function getProducts(
-  { items }: ParsedUrlQuery,
-  dbUser: Promise<FirebaseFirestore.DocumentSnapshot<DbUser>>
-): Promise<Set<number>> {
+function getProducts({ items }: ParsedUrlQuery, dbUser: DbUser): Set<number> {
   if (items)
     return typeof items == "string"
       ? new Set(items.split("+").map(str => parseInt(str)))
       : new Set(items.map(id => parseInt(id)))
 
-  const doc = await dbUser
-  const dbData = doc.data()
+  if (!dbUser || !dbUser.items) throw new Error("items data not found in query nor database")
 
-  if (!dbData || !dbData.items) throw new Error("items data not found in query nor database")
-
-  return new Set(dbData.items)
+  return new Set(dbUser.items)
 }
 
 const doneeInfoKeys: (keyof DoneeInfo)[] = [
@@ -139,10 +159,7 @@ function combineQueryWithDb(query: ParsedUrlQuery, donee: DoneeInfo): DoneeInfo 
   return donee
 }
 
-async function getDoneeInfo(
-  query: ParsedUrlQuery,
-  dbUser: Promise<FirebaseFirestore.DocumentSnapshot<DbUser>>
-): Promise<DoneeInfo> {
+function getDoneeInfo(query: ParsedUrlQuery, dbUser: DbUser): DoneeInfo {
   if (doesQueryHaveAllFields(query)) {
     return {
       companyName: query.companyName as string,
@@ -155,31 +172,40 @@ async function getDoneeInfo(
     }
   }
 
-  const doc = await dbUser
-  const dbData = doc.data()
-
-  if (!dbData || !dbData.donee) throw new Error("donee data not found in query nor database")
-  return combineQueryWithDb(query, dbData.donee)
+  if (!dbUser || !dbUser.donee) throw new Error("donee data not found in query nor database")
+  return combineQueryWithDb(query, dbUser.donee)
 }
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+export const getServerSideProps = async ({ req, res, query }: GetServerSidePropsContext) => {
   const session: Session = (await getServerSession(req, res, authOptions)) as any
 
-  const dbUser = user.doc(session.user.id).get()
-  const [salesReport, customerQueryResult, doneeInfo, products] = await Promise.all([
-    getCustomerSalesReport(session, query),
+  const doc = await user.doc(session.user.id).get()
+  // if items/date and donee details have to be in the query or in the db
+  // if they aren't, a page should be rendered directing the user to fill in those forms
+  const filledIn = alreadyFilledIn(doc)
+  const itemsInQueryOrDb = query.items || filledIn.items
+  const doneeDetailsInQueryOrDb = query.companyName || filledIn.doneeDetails
+  if (!(itemsInQueryOrDb && doneeDetailsInQueryOrDb))
+    return {
+      props: {
+        filledIn,
+      },
+    }
+
+  const dbUser = doc.data() as DbUser
+
+  const [salesReport, customerQueryResult] = await Promise.all([
+    getCustomerSalesReport(session, query, dbUser),
     getCustomerData(session),
-    getDoneeInfo(query, dbUser),
-    getProducts(query, dbUser),
   ])
 
+  const doneeInfo = getDoneeInfo(query, dbUser)
+  const products = getProducts(query, dbUser)
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(
     donationDataWithoutAddresses,
     customerQueryResult
   )
-
-  // TODO if any information is missing render a page showing what information the user has not yet entered
 
   return {
     props: {

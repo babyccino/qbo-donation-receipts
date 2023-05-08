@@ -7,6 +7,7 @@ import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
   Session,
+  alreadyFilledIn,
   endOfPreviousYearHtml,
   endOfThisYearHtml,
   startOfPreviousYearHtml,
@@ -15,7 +16,6 @@ import {
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Button, Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
-import { isNull } from "util"
 
 // const DEBOUNCE = 500
 
@@ -44,9 +44,10 @@ type Props = {
   items: Item[]
   session: Session
   selectedItems: number[] | null
+  detailsFilledIn: boolean
 }
 
-export default function Services({ items, selectedItems }: Props) {
+export default function Services({ items, selectedItems, detailsFilledIn }: Props) {
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
@@ -87,9 +88,7 @@ export default function Services({ items, selectedItems }: Props) {
     }
   }
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
-    event.preventDefault()
-
+  const sendItemsToDb = () => {
     if (!formRef.current) throw new Error()
 
     const formData = new FormData(formRef.current)
@@ -116,9 +115,26 @@ export default function Services({ items, selectedItems }: Props) {
       body: JSON.stringify(query),
     })
 
-    router.push({
-      pathname: "details",
-    })
+    return query
+  }
+
+  const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
+    event.preventDefault()
+
+    const query = sendItemsToDb()
+
+    // the selected items will be in the query in case the db has not been updated by...
+    // the time the user has reached the generate-receipts pages
+    if (detailsFilledIn)
+      router.push({
+        pathname: "generate-receipts",
+        query: { items: items.join("+"), ...query.date },
+      })
+    else
+      router.push({
+        pathname: "details",
+        query: { items: true },
+      })
   }
 
   const mapItem = ({ id, name }: Item) => (
@@ -186,7 +202,7 @@ export default function Services({ items, selectedItems }: Props) {
       <input
         className={buttonStyling + " cursor-pointer block mx-auto text-l"}
         type="submit"
-        value="Enter Donee Details"
+        value={detailsFilledIn ? "Generate Receipts" : "Enter Donee Details"}
       />
     </form>
   )
@@ -203,12 +219,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
 
   // TODO not showing correctly
   const selectedItems = data.items || null
+  const detailsFilledIn = Boolean(context.query.details) || alreadyFilledIn(doc).doneeDetails
 
   return {
     props: {
       session,
       items,
       selectedItems,
+      detailsFilledIn,
     },
   }
 }

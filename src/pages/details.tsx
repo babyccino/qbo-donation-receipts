@@ -4,7 +4,7 @@ import { useRouter } from "next/router"
 import { getServerSession } from "next-auth"
 
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { Session } from "@/lib/util"
+import { Session, alreadyFilledIn } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
@@ -15,9 +15,10 @@ import { DoneeInfo } from "@/components/receipt"
 type Props = {
   doneeInfo: Partial<DoneeInfo>
   session: Session
+  itemsFilledIn: boolean
 }
 
-export default function Services({ doneeInfo }: Props) {
+export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -36,9 +37,8 @@ export default function Services({ doneeInfo }: Props) {
   //   debounceRef.current = setTimeout(sendFormData, DEBOUNCE) as any
   // }
 
-  const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
+  function sendDetailsToDb() {
     if (!formRef.current) throw new Error()
-    event.preventDefault()
 
     const formData = new FormData(formRef.current)
 
@@ -51,9 +51,6 @@ export default function Services({ doneeInfo }: Props) {
     const smallLogo = formData.get("smallLogo") as string
 
     const query = {
-      // companyName: companyName !== companyInfo.name ? companyName : undefined,
-      // address: address !== companyInfo.address ? address : undefined,
-      // country: country !== companyInfo.country ? country : undefined,
       companyName,
       companyAddress,
       country,
@@ -68,10 +65,26 @@ export default function Services({ doneeInfo }: Props) {
       body: JSON.stringify(query),
     })
 
-    router.push({
-      pathname: "generate-receipts",
-      query,
-    })
+    return query
+  }
+
+  const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
+    event.preventDefault()
+
+    const query = sendDetailsToDb()
+
+    // the selected items will be in the query in case the db has not been updated by...
+    // the time the user has reached the generate-receipts pages
+    if (itemsFilledIn)
+      router.push({
+        pathname: "generate-receipts",
+        query,
+      })
+    else
+      router.push({
+        pathname: "services",
+        query: { details: true },
+      })
   }
 
   return (
@@ -117,26 +130,29 @@ export default function Services({ doneeInfo }: Props) {
       <input
         className={buttonStyling + " cursor-pointer block mx-auto text-l"}
         type="submit"
-        value="Generate Receipts"
+        value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
       />
     </form>
   )
 }
 
-// --- server-side props ---\
+// --- server-side props --- //
 
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session: Session = (await getServerSession(context.req, context.res, authOptions)) as any
 
   const qboCompanyInfo = getCompanyInfo(session)
-  const dbUser = await user.doc(session.user.id).get()
-  const dbUserData = dbUser.data()
+  const doc = await user.doc(session.user.id).get()
+  const dbUserData = doc.data()
 
-  // if donee data is already in db use that to prefill form otherwise use get some data from quickbooks
+  const itemsFilledIn = Boolean(context.query.items) || alreadyFilledIn(doc).items
+
+  // if donee data is already in db use that to prefill form otherwise use data from quickbooks
   return {
     props: {
       session,
       doneeInfo: dbUserData?.donee || (await qboCompanyInfo),
+      itemsFilledIn,
     },
   }
 }

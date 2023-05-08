@@ -1,7 +1,7 @@
 import { ParsedUrlQuery } from "querystring"
 
 import { Session, fetchJsonData } from "./util"
-import { user } from "./db"
+import { DbUser, user } from "./db"
 
 export type QBOProfile = {
   sub: string
@@ -388,17 +388,14 @@ export const makeQueryUrl = (realmId: string, query: string) =>
  * @returns {[string, string]} An array containing the start and end dates as strings.
  * @throws {Error} If the date data is malformed.
  */
-async function getDates(id: string, query: ParsedUrlQuery): Promise<[string, string]> {
+async function getDates(dbUser: DbUser, query: ParsedUrlQuery): Promise<[string, string]> {
   const { startDate, endDate } = query
   if (startDate && startDate !== "" && endDate && endDate !== "")
     return [startDate as string, endDate as string]
 
-  const doc = await user.doc(id).get()
-  const dbData = doc.data()
+  if (!dbUser || !dbUser.date) throw new Error("Date data not found in query nor database")
 
-  if (!dbData || !dbData.date) throw new Error("Date data not found in query nor database")
-
-  return [dbData.date.startDate, dbData.date.endDate]
+  return [dbUser.date.startDate, dbUser.date.endDate]
 }
 
 /**
@@ -407,8 +404,12 @@ async function getDates(id: string, query: ParsedUrlQuery): Promise<[string, str
  * @param {GetServerSidePropsContext} context - The server-side context object.
  * @returns {Promise<CustomerSalesReport>} A promise resolving to the customer sales report.
  */
-export async function getCustomerSalesReport(session: Session, query: ParsedUrlQuery) {
-  const [startDate, endDate] = await getDates(session.user.id, query)
+export async function getCustomerSalesReport(
+  session: Session,
+  query: ParsedUrlQuery,
+  dbUser: DbUser
+) {
+  const [startDate, endDate] = await getDates(dbUser, query)
 
   const url = `${SANDBOX_BASE_API_ROUTE}/${session.realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
