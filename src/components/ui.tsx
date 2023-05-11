@@ -252,7 +252,7 @@ export namespace Form {
     <label
       htmlFor={htmlFor}
       className={
-        "block mb-2 text-sm font-medium " +
+        "block my-2 text-sm font-medium " +
         (disabled ? "text-gray-400" : "text-gray-900 dark:text-white")
       }
     >
