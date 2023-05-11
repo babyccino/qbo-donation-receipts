@@ -1,4 +1,11 @@
-import { FieldsetHTMLAttributes, HTMLAttributes, MouseEventHandler, ReactNode } from "react"
+import {
+  ChangeEventHandler,
+  FieldsetHTMLAttributes,
+  HTMLAttributes,
+  MouseEventHandler,
+  ReactNode,
+  useState,
+} from "react"
 import { multipleClasses } from "@/lib/util"
 
 // from flowbite.com
@@ -278,31 +285,62 @@ export namespace Form {
     </fieldset>
   )
 
-  export const FileInput = ({
+  const imageInputStyling = {
+    input: {
+      regular:
+        "transition-all block w-full text-sm border rounded-lg cursor-pointer focus:outline-none text-gray-900 border-gray-300 bg-gray-50 dark:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400",
+      error:
+        "transition-all block w-full text-sm border rounded-lg cursor-pointer focus:outline-none bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:bg-red-100 dark:border-red-400",
+    },
+    helper: {
+      regular: "transition-all mt-1 text-xs text-gray-500 dark:text-gray-300",
+      error: "transition-all mt-1 text-xs font-bold text-red-900 dark:text-red-500",
+    },
+  }
+  export function ImageInput({
     label,
     id,
     helper,
+    required,
   }: {
     label: string
     id: string
     helper?: string
-  }) => (
-    <p>
-      <label htmlFor={id} className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-        {label}
-      </label>
-      <input
-        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
-        type="file"
-        id={id}
-        name={id}
-        required
-      />
-      {helper && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300" id={id}>
-          {helper}
-        </p>
-      )}
-    </p>
-  )
+    required?: boolean
+  }) {
+    const [error, setError] = useState(false)
+
+    const handleFileInput: ChangeEventHandler<HTMLInputElement> = event => {
+      event.preventDefault()
+      const files = event.target.files
+      if (!files || files.length === 0) return
+      const extension = files[0].name.split(".").pop()
+      if (!extension || (extension !== "jpg" && extension !== "jpeg" && extension !== "png")) {
+        event.target.value = ""
+        return setError(true)
+      } else setError(false)
+    }
+
+    return (
+      <p>
+        <Label htmlFor={id}>{label}</Label>
+        <input
+          className={error ? imageInputStyling.input.error : imageInputStyling.input.regular}
+          type="file"
+          id={id}
+          name={id}
+          required={required}
+          onChange={handleFileInput}
+        />
+        {helper && (
+          <p
+            className={error ? imageInputStyling.helper.error : imageInputStyling.helper.regular}
+            id={id}
+          >
+            {helper}
+          </p>
+        )}
+      </p>
+    )
+  }
 }
