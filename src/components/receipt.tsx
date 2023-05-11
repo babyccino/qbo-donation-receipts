@@ -155,6 +155,7 @@ const pdfStyles = StyleSheet.create({
     display: "flex",
     flexDirection: "column",
   },
+  gap: { gap: 4 },
   alignCenter: {
     alignSelf: "center",
   },
@@ -173,7 +174,8 @@ const pdfStyles = StyleSheet.create({
     justifyContent: "space-between",
   },
   smallLogo: {
-    width: 6,
+    width: 50,
+    height: 50,
   },
   donorDetails: {
     fontSize: 24,
@@ -188,6 +190,8 @@ const pdfStyles = StyleSheet.create({
   },
   signature: {
     alignSelf: "flex-end",
+    maxHeight: 100,
+    maxWidth: 250,
   },
   img: {
     width: 10,
@@ -201,7 +205,8 @@ const pdfStyles = StyleSheet.create({
     alignSelf: "center",
   },
   largeLogo: {
-    width: 15,
+    height: 100,
+    width: 100,
   },
   ownRecordsOrg: {
     fontSize: 14,
@@ -265,8 +270,8 @@ export function ReceiptPdfDocument({
           <Text style={pdfStyles.bold}>Receipt# {receiptNo}</Text>
         </View>
         <View style={[pdfStyles.doneeDetails, pdfStyles.flexRow]}>
-          <View style={pdfStyles.flexRow}>
-            {/* <PdfImage style={pdfStyles.smallLogo} src={donee.smallLogo} /> */}
+          <View style={[pdfStyles.flexRow, pdfStyles.gap]}>
+            <PdfImage style={pdfStyles.smallLogo} src={donee.smallLogo} />
             <View>
               <Text>{donee.companyName}</Text>
               <Text>{donee.companyAddress}</Text>
@@ -289,7 +294,7 @@ export function ReceiptPdfDocument({
             <Text style={pdfStyles.giftAmount}>{formatCurrency(donation.total)}</Text>
           </View>
           <View style={pdfStyles.signature}>
-            {/* <PdfImage src={donee.signature} /> */}
+            <PdfImage src={donee.signature} style={pdfStyles.signature} />
             <Text>{donee.signatoryName}</Text>
           </View>
         </View>
@@ -299,7 +304,7 @@ export function ReceiptPdfDocument({
         </View>
         <View style={pdfStyles.break} />
         <Text style={pdfStyles.alignCenter}>For your own records</Text>
-        {/* <PdfImage style={pdfStyles.largeLogo} src={donee.largeLogo || donee.smallLogo} /> */}
+        <PdfImage style={pdfStyles.largeLogo} src={donee.largeLogo || donee.smallLogo} />
         <Text style={pdfStyles.ownRecordsOrg}>{donee.companyName}</Text>
         <View style={[pdfStyles.spaceBetween, pdfStyles.flexRow]}>
           <View>
