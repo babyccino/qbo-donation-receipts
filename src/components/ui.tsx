@@ -1,6 +1,8 @@
 import { FieldsetHTMLAttributes, HTMLAttributes, MouseEventHandler, ReactNode } from "react"
 import { multipleClasses } from "@/lib/util"
 
+// from flowbite.com
+
 export const buttonStyling =
   "text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
 export const Button = ({
@@ -223,9 +225,10 @@ export namespace Form {
         className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 disabled:text-gray-400"
         type="date"
         id={id}
-        name="dateRange"
+        name={id}
         defaultValue={defaultValue}
         disabled={disabled}
+        required
       />
     </p>
   )
@@ -273,5 +276,33 @@ export namespace Form {
     >
       {children}
     </fieldset>
+  )
+
+  export const FileInput = ({
+    label,
+    id,
+    helper,
+  }: {
+    label: string
+    id: string
+    helper?: string
+  }) => (
+    <p>
+      <label htmlFor={id} className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+        {label}
+      </label>
+      <input
+        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+        type="file"
+        id={id}
+        name={id}
+        required
+      />
+      {helper && (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-300" id={id}>
+          {helper}
+        </p>
+      )}
+    </p>
   )
 }
