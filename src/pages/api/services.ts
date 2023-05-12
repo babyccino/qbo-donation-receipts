@@ -1,8 +1,10 @@
 import { NextApiRequest, NextApiResponse } from "next"
 import { getServerSession } from "next-auth"
+import { z } from "zod"
 
 import { user } from "@/lib/db"
 import { authOptions } from "./auth/[...nextauth]"
+import { parseRequestBody } from "@/lib/parse"
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(404).end()
@@ -12,7 +14,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const id = session.user.id
 
   try {
-    await user.doc(id).update(JSON.parse(req.body))
+    const data = parseRequestBody(
+      {
+        items: z.array(z.number()),
+        date: z.object({
+          startDate: z.coerce.date(),
+          endDate: z.coerce.date(),
+        }),
+      },
+      req.body
+    )
+
+    await user.doc(id).update(data)
 
     res.status(200).end()
   } catch (error) {

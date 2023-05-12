@@ -4,7 +4,7 @@ import { OAuthConfig } from "next-auth/providers"
 
 import { user } from "@/lib/db"
 import { QBOProfile } from "@/lib/qbo-api"
-import { base64Encode, fetchJsonData } from "@/lib/util"
+import { base64EncodeString, fetchJsonData } from "@/lib/parse"
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
@@ -29,7 +29,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
   const url = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 
-  const encoded = base64Encode(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET)
+  const encoded = base64EncodeString(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET)
   const response = await fetch(url, {
     method: "POST",
     headers: {

@@ -1,7 +1,7 @@
 import { Session } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
 
-import { fetchJsonData } from "./util"
+import { fetchJsonData } from "./parse"
 import { DbUser } from "./db"
 
 export type QBOProfile = {
