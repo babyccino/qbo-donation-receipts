@@ -11,12 +11,14 @@
     "@react-pdf/renderer": "^3.1.9",
     "firebase-admin": "^11.7.0",
     "flowbite": "^1.6.5",
+    "flowbite-react": "^0.4.4",
     "next": "^13.2.4",
     "next-auth": "^4.22.1",
     "patch-package": "^7.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "sass": "^1.60.0"
+    "sass": "^1.60.0",
+    "zod": "^3.21.4"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
