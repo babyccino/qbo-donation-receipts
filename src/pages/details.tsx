@@ -4,11 +4,11 @@ import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
 
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { alreadyFilledIn, postJsonData, toBase64 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
+import { alreadyFilledIn, postJsonData, base64EncodeFile } from "@/lib/parse"
 
 // const DEBOUNCE = 500
 
@@ -47,8 +47,8 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
     const country = formData.get("country") as string
     const registrationNumber = formData.get("registrationNumber") as string
     const signatoryName = formData.get("signatoryName") as string
-    const signature = formData.get("signature") as string
-    const smallLogo = formData.get("smallLogo") as string
+    const signature = formData.get("signature") as File
+    const smallLogo = formData.get("smallLogo") as File
 
     return {
       companyName,
@@ -56,8 +56,8 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
       country,
       registrationNumber,
       signatoryName,
-      signature,
-      smallLogo,
+      signature: await base64EncodeFile(signature),
+      smallLogo: await base64EncodeFile(smallLogo),
     }
   }
 
@@ -70,7 +70,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
     if (itemsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: { ...formData, signature: true },
+        query: { ...formData, signature: true, smallLogo: true },
       })
     else
       router.push({
@@ -108,15 +108,17 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           label="Signatory's name"
           defaultValue={doneeInfo.signatoryName}
         />
-        <Form.TextInput
+        <Form.ImageInput
           id="signature"
           label="Image of signatory's signature"
-          defaultValue={doneeInfo.signature}
+          helper="PNG, JPG or GIF (MAX. 800x400px)."
+          required
         />
-        <Form.TextInput
+        <Form.ImageInput
           id="smallLogo"
           label="Small image of organisation's logo"
-          defaultValue={doneeInfo.smallLogo}
+          helper="PNG, JPG or GIF (MAX. 800x400px)."
+          required
         />
       </Form.Fieldset>
       <input

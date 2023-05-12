@@ -49,8 +49,8 @@ export type DbUser = {
   realmId: string
   items: number[]
   date: {
-    startDate: string
-    endDate: string
+    startDate: Date
+    endDate: Date
   }
 }
 
@@ -58,7 +58,12 @@ export const firestore = admin.firestore()
 
 const converter = {
   toFirestore: (data: DbUser) => data,
-  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as DbUser,
+  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => {
+    const data = snap.data()
+    const startDate = data.date.startDate.toDate()
+    const endDate = data.date.endDate.toDate()
+    return { ...data, date: { startDate, endDate } } as DbUser
+  },
 }
 
 export const user = firestore.collection("user").withConverter(converter)

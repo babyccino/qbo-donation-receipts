@@ -2,9 +2,19 @@ import { NextApiRequest, NextApiResponse } from "next"
 import { getServerSession } from "next-auth"
 import { z } from "zod"
 
-import { user } from "@/lib/db"
+import { storageBucket, user } from "@/lib/db"
 import { authOptions } from "./auth/[...nextauth]"
-import { parseRequestBody } from "@/lib/parse"
+import { isJpegOrPngDataURL, parseRequestBody } from "@/lib/parse"
+
+async function uploadImage(dataUrl: string, path: string): Promise<string> {
+  const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
+  const base64String = dataUrl.slice(dataUrl.indexOf(",") + 1)
+  const buffer = Buffer.from(base64String, "base64")
+  const file = storageBucket.file(`${path}.${extension}`)
+  await file.save(buffer, { contentType: "image" })
+  file.makePublic()
+  return file.publicUrl()
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end()
@@ -21,13 +31,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         country: z.string(),
         registrationNumber: z.string(),
         signatoryName: z.string(),
-        signature: z.string(),
-        smallLogo: z.string(),
+        signature: z.string().refine(isJpegOrPngDataURL),
+        smallLogo: z.string().refine(isJpegOrPngDataURL),
       },
       req.body
     )
 
-    await user.doc(id).update(data)
+    const [signatureUrl, smallLogoUrl] = await Promise.all([
+      uploadImage(data.signature, `${id}/signature`),
+      uploadImage(data.smallLogo, `${id}/smallLogo`),
+    ])
+    await user
+      .doc(id)
+      .update({ donee: { ...req.body, signature: signatureUrl, smallLogo: smallLogoUrl } })
 
     res.status(200).end()
   } catch (error) {

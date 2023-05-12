@@ -2,6 +2,8 @@ export const formatDate = (date: Date) =>
   `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
 export const formatDateHtml = (date: Date) =>
   `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`
+export const formatDateHtmlReverse = (date: Date) =>
+  `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
 
 const getThisYear = () => new Date().getFullYear()
 export const startOfPreviousYearHtml = () => `${getThisYear() - 1}-01-01`

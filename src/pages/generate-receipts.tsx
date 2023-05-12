@@ -134,7 +134,6 @@ const doneeInfoKeys: (keyof DoneeInfo)[] = [
   "companyAddress",
   "companyName",
   "country",
-  "largeLogo",
   "registrationNumber",
   "signatoryName",
   "signature",
@@ -150,10 +149,9 @@ function doesQueryHaveAllFields(query: ParsedUrlQuery): boolean {
 
 function combineQueryWithDb(query: ParsedUrlQuery, donee: DoneeInfo): DoneeInfo {
   for (const key of doneeInfoKeys) {
-    if (!query.companyName && !donee.companyName)
-      throw new Error(`${key} wasn't found in query nor in the db`)
+    if (!query[key] && !donee[key]) throw new Error(`${key} wasn't found in query nor in the db`)
 
-    donee[key] = (query.companyName as string) || donee.companyName
+    donee[key] = (query[key] as string) || (donee[key] as string)
   }
 
   return donee

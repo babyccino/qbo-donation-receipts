@@ -3,6 +3,7 @@ import { ParsedUrlQuery } from "querystring"
 
 import { fetchJsonData } from "./parse"
 import { DbUser } from "./db"
+import { formatDateHtmlReverse } from "./util"
 
 export type QBOProfile = {
   sub: string
@@ -396,7 +397,7 @@ async function getDates(dbUser: DbUser, query: ParsedUrlQuery): Promise<[string,
 
   if (!dbUser || !dbUser.date) throw new Error("Date data not found in query nor database")
 
-  return [dbUser.date.startDate, dbUser.date.endDate]
+  return [formatDateHtmlReverse(dbUser.date.startDate), formatDateHtmlReverse(dbUser.date.endDate)]
 }
 
 /**
