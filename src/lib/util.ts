@@ -44,6 +44,24 @@ export async function fetchJsonData<T = any>(url: string, accessToken: string): 
   return report
 }
 
+export async function postJsonData<T = any>(url: string, json: any): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(json),
+  })
+  const report: T = await response.json()
+
+  if (!response.ok) {
+    throw { ...report, url }
+  }
+
+  return report
+}
+
 export type DeepPartial<T> = T extends object
   ? {
       [P in keyof T]?: DeepPartial<T[P]>

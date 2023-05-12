@@ -9,6 +9,7 @@ import {
   alreadyFilledIn,
   endOfPreviousYearHtml,
   endOfThisYearHtml,
+  postJsonData,
   startOfPreviousYearHtml,
   startOfThisYearHtml,
 } from "@/lib/util"
@@ -87,7 +88,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
     }
   }
 
-  const sendItemsToDb = () => {
+  const getFormData = () => {
     if (!formRef.current) throw new Error()
 
     const formData = new FormData(formRef.current)
@@ -101,33 +102,27 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
       formData.getAll("dateRange") as string[]
     )
 
-    const query = {
+    return {
       items,
       date: {
         startDate,
         endDate,
       },
     }
-
-    const response = fetch("/api/services", {
-      method: "POST",
-      body: JSON.stringify(query),
-    })
-
-    return query
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const query = sendItemsToDb()
+    const formData = getFormData()
+    const apiResponse = postJsonData("/api/services", formData)
 
     // the selected items will be in the query in case the db has not been updated by...
     // the time the user has reached the generate-receipts pages
     if (detailsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: { items: items.join("+"), ...query.date },
+        query: { items: items.join("+"), ...formData.date },
       })
     else
       router.push({

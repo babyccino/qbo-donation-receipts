@@ -4,7 +4,7 @@ import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
 
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { alreadyFilledIn } from "@/lib/util"
+import { alreadyFilledIn, postJsonData, toBase64 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
@@ -37,7 +37,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   //   debounceRef.current = setTimeout(sendFormData, DEBOUNCE) as any
   // }
 
-  function sendDetailsToDb() {
+  async function getFormData() {
     if (!formRef.current) throw new Error()
 
     const formData = new FormData(formRef.current)
@@ -50,7 +50,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
     const signature = formData.get("signature") as string
     const smallLogo = formData.get("smallLogo") as string
 
-    const query = {
+    return {
       companyName,
       companyAddress,
       country,
@@ -59,26 +59,18 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
       signature,
       smallLogo,
     }
-
-    const response = fetch("/api/details", {
-      method: "POST",
-      body: JSON.stringify(query),
-    })
-
-    return query
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const query = sendDetailsToDb()
+    const formData = await getFormData()
+    const apiResponse = postJsonData("/api/details", formData)
 
-    // the selected items will be in the query in case the db has not been updated by...
-    // the time the user has reached the generate-receipts pages
     if (itemsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query,
+        query: { ...formData, signature: true },
       })
     else
       router.push({
