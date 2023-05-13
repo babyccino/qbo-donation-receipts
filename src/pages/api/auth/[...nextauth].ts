@@ -64,19 +64,17 @@ export const authOptions: NextAuthOptions = {
     secret: process.env.JWT_SECRET,
   },
   callbacks: {
-    async session({ session, token }) {
-      return {
-        ...session,
-        accessToken: token.accessToken,
-        realmId: token.realmId,
-        user: {
-          id: token.id,
-          name: token.name,
-          image: token.image,
-          email: token.email,
-        },
-      } as any
-    },
+    session: async ({ session, token }) => ({
+      ...session,
+      accessToken: token.accessToken as string,
+      realmId: token.realmId as string,
+      user: {
+        id: token.id as string,
+        name: token.name as string,
+        image: token.image as string,
+        email: token.email as string,
+      },
+    }),
     async jwt({ token, account, profile }) {
       if (account && profile) {
         if (!account.access_token || !account.refresh_token || account.expires_at === undefined)
@@ -84,7 +82,7 @@ export const authOptions: NextAuthOptions = {
 
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
-        token.accessTokenExpires = account.expires_at * 1000
+        token.accessTokenExpires = Date.now() + 3600000
         token.id = account.providerAccountId
         token.realmId = profile.realmid
 
