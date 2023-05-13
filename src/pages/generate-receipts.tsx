@@ -12,7 +12,7 @@ import {
 } from "@/lib/qbo-api"
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
 import { Button, buttonStyling } from "@/components/ui"
-import { alreadyFilledIn } from "@/lib/parse"
+import { alreadyFilledIn } from "@/lib/app-api"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { DbUser, user } from "@/lib/db"
 import Link from "next/link"

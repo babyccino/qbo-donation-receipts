@@ -4,7 +4,7 @@ import { OAuthConfig } from "next-auth/providers"
 
 import { user } from "@/lib/db"
 import { QBOProfile } from "@/lib/qbo-api"
-import { base64EncodeString, fetchJsonData } from "@/lib/parse"
+import { base64EncodeString, fetchJsonData } from "@/lib/app-api"
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",

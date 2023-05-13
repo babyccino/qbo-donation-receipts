@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import { user } from "@/lib/db"
 import { authOptions } from "./auth/[...nextauth]"
-import { parseRequestBody } from "@/lib/parse"
+import { parseRequestBody } from "@/lib/app-api"
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(404).end()

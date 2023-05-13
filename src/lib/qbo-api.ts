@@ -1,7 +1,7 @@
 import { Session } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
 
-import { fetchJsonData } from "./parse"
+import { fetchJsonData } from "./app-api"
 import { DbUser } from "./db"
 import { formatDateHtmlReverse } from "./util"
 

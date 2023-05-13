@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import { storageBucket, user } from "@/lib/db"
 import { authOptions } from "./auth/[...nextauth]"
-import { isJpegOrPngDataURL, parseRequestBody } from "@/lib/parse"
+import { isJpegOrPngDataURL, parseRequestBody } from "@/lib/app-api"
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
   const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))

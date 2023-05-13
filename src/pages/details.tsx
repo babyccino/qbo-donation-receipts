@@ -8,7 +8,7 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
-import { alreadyFilledIn, postJsonData, base64EncodeFile } from "@/lib/parse"
+import { alreadyFilledIn, postJsonData, base64EncodeFile } from "@/lib/app-api"
 
 // const DEBOUNCE = 500
 
