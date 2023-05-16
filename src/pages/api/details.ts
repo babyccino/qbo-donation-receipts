@@ -41,11 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       uploadImage(data.signature, `${id}/signature`),
       uploadImage(data.smallLogo, `${id}/smallLogo`),
     ])
-    await user
-      .doc(id)
-      .update({ donee: { ...req.body, signature: signatureUrl, smallLogo: smallLogoUrl } })
+    const newData = { donee: { ...req.body, signature: signatureUrl, smallLogo: smallLogoUrl } }
+    await user.doc(id).update(newData)
 
-    res.status(200).end()
+    res.status(200).json(newData)
   } catch (error) {
     console.error(error)
     return res.status(400).json(error)

@@ -8,12 +8,12 @@ export async function fetchJsonData<T = any>(url: string, accessToken: string): 
       Accept: "application/json",
     },
   })
-  const report: T = await response.json()
 
   if (!response.ok) {
-    throw { ...report, url }
+    throw new Error(`GET request to url: ${url} failed`)
   }
 
+  const report: T = await response.json()
   return report
 }
 
@@ -26,12 +26,12 @@ export async function postJsonData<T = any>(url: string, json: any): Promise<T> 
     },
     body: JSON.stringify(json),
   })
-  const report: T = await response.json()
 
   if (!response.ok) {
-    throw { ...report, url }
+    throw new Error(`POST request to url: ${url} failed`)
   }
 
+  const report: T = await response.json()
   return report
 }
 

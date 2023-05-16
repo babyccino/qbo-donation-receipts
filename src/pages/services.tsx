@@ -79,10 +79,10 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
     const dateRangeType = formData.get("dateRangeType")
     if (!dateRangeType) throw new Error("dateRangeType is undefined")
-    const [startDate, endDate] = getStartEndDates(
-      dateRangeType as DateRangeType,
-      formData.getAll("dateRange") as string[]
-    )
+    const [startDate, endDate] = getStartEndDates(dateRangeType as DateRangeType, [
+      formData.get("dateStart") as string,
+      formData.get("dateEnd") as string,
+    ])
 
     return {
       items,

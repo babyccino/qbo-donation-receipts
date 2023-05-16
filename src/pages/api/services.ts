@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await user.doc(id).update(data)
 
-    res.status(200).end()
+    res.status(200).json(data)
   } catch (error) {
     return res.status(400).end()
   }
