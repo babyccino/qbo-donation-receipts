@@ -11,7 +11,9 @@ import {
   getItems,
   parseCompanyInfo,
 } from "@/lib/qbo-api"
-import { DeepPartial, fetchJsonData, Session } from "@/lib/util"
+import { DeepPartial } from "@/lib/util"
+import { fetchJsonData } from "@/lib/app-api"
+import { Session } from "next-auth"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -748,7 +750,7 @@ const createMockSession = (): Session => ({
 })
 
 // Mock the fetchJsonData function
-jest.mock("./../../src/lib/util", () => ({
+jest.mock("./../../src/lib/app-api", () => ({
   fetchJsonData: jest.fn(),
 }))
 
@@ -811,8 +813,8 @@ describe("parseCompanyInfo", () => {
     const companyInfo = parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)
 
     expect(companyInfo).toEqual({
-      name: "Acme Corp",
-      address: "123 Main St, San Francisco 94105 CA",
+      companyName: "Acme Corp",
+      companyAddress: "123 Main St, San Francisco 94105 CA",
       country: "USA",
     })
   })
@@ -839,8 +841,8 @@ describe("parseCompanyInfo", () => {
     const companyInfo = parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)
 
     expect(companyInfo).toEqual({
-      name: "Acme Corp",
-      address: "456 Market St, San Francisco 94105 CA",
+      companyName: "Acme Corp",
+      companyAddress: "456 Market St, San Francisco 94105 CA",
       country: "USA",
     })
   })
@@ -881,8 +883,8 @@ describe("parseCompanyInfo", () => {
     }
 
     const expectedCompanyInfo = {
-      name: "Test Legal Name",
-      address: "123 Test Street, Test City 12345 Test State",
+      companyName: "Test Legal Name",
+      companyAddress: "123 Test Street, Test City 12345 Test State",
       country: "Test Country",
     }
 
@@ -906,8 +908,8 @@ describe("parseCompanyInfo", () => {
     }
 
     const expectedCompanyInfo = {
-      name: "Test Company",
-      address: "No address on file",
+      companyName: "Test Company",
+      companyAddress: "No address on file",
       country: "Test Country",
     }
 

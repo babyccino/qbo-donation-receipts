@@ -43,17 +43,27 @@ export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<DbUser>)
 
   if (!dbData) return { items: false, doneeDetails: false }
 
+  const { items, donee, date } = dbData
+  const {
+    companyAddress,
+    companyName,
+    country,
+    registrationNumber,
+    signatoryName,
+    signature,
+    smallLogo,
+  } = donee || {}
+
   return {
-    items: Boolean(dbData.items) && Boolean(dbData.date),
+    items: Boolean(items && date),
     doneeDetails: Boolean(
-      dbData.donee &&
-        dbData.donee.companyAddress &&
-        dbData.donee.companyName &&
-        dbData.donee.country &&
-        dbData.donee.registrationNumber &&
-        dbData.donee.signatoryName &&
-        dbData.donee.signature &&
-        dbData.donee.smallLogo
+      companyAddress &&
+        companyName &&
+        country &&
+        registrationNumber &&
+        signatoryName &&
+        signature &&
+        smallLogo
     ),
   }
 }
