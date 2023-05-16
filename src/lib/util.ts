@@ -5,7 +5,7 @@ export const formatDateHtml = (date: Date) =>
 export const formatDateHtmlReverse = (date: Date) =>
   `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
 
-const getThisYear = () => new Date().getFullYear()
+export const getThisYear = () => new Date().getFullYear()
 export const startOfPreviousYearHtml = () => `${getThisYear() - 1}-01-01`
 export const endOfPreviousYearHtml = () => `${getThisYear() - 1}-12-31`
 export const startOfThisYearHtml = () => `${getThisYear()}-01-01`
