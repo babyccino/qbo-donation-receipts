@@ -1,13 +1,19 @@
 import { TypeOf, ZodObject, ZodRawShape, z } from "zod"
 import { DbUser } from "./db"
 
-export async function fetchJsonData<T = any>(url: string, accessToken: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  })
+export async function fetchJsonData<T = any>(url: string, accessToken?: string): Promise<T> {
+  const response = await (accessToken
+    ? fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      })
+    : fetch(url, {
+        headers: {
+          Accept: "application/json",
+        },
+      }))
 
   if (!response.ok) {
     throw new Error(`GET request to url: ${url} failed`)

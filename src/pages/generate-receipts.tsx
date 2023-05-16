@@ -1,7 +1,11 @@
+import { useState } from "react"
 import { GetServerSidePropsContext } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
+import Link from "next/link"
+import download from "downloadjs"
 
+import { authOptions } from "./api/auth/[...nextauth]"
 import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
 import {
   Donation,
@@ -11,11 +15,32 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
-import { Button, buttonStyling } from "@/components/ui"
+import { Button, Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { authOptions } from "./api/auth/[...nextauth]"
 import { DbUser, user } from "@/lib/db"
-import Link from "next/link"
+import { getThisYear } from "@/lib/util"
+
+function DownloadAllFiles() {
+  const [loading, setLoading] = useState(false)
+
+  const onClick = async () => {
+    setLoading(true)
+    const response = await fetch("/api/receipts")
+    if (!response.ok) throw new Error()
+    setLoading(false)
+    download(await response.blob())
+  }
+
+  return (
+    <div className="inline-flex items-center mx-auto mb-4 p-6 space-x-4 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+      <p className="font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
+      <div className="w-12 h-12 text-gray-500 flex items-center">
+        <Svg.HandDrawnRightArrow />
+      </div>
+      <Button onClick={onClick}>{loading ? "...Zipping your receipts" : "Download"}</Button>
+    </div>
+  )
+}
 
 type Props =
   | {
@@ -53,16 +78,17 @@ export default function IndexPage(props: Props) {
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
   const { customerData, doneeInfo } = props
 
-  const mapCustomerToTableRow = (entry: Donation): JSX.Element => {
+  const currentYear = getThisYear()
+  const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
     const fileName = `${entry.name}.pdf`
-    const Receipt = () => (
+    const receipt = (
       <ReceiptPdfDocument
         currency="USD"
         currentDate={new Date()}
         donation={entry}
         donationDate={new Date()}
         donee={doneeInfo}
-        receiptNo={1}
+        receiptNo={currentYear + index}
       />
     )
 
@@ -80,13 +106,13 @@ export default function IndexPage(props: Props) {
             Show receipt
             <div className="hidden fixed inset-0 p-4 group-focus-within:flex justify-center bg-black bg-opacity-50">
               <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
-                <Receipt />
+                {receipt}
               </PDFViewer>
             </div>
           </Button>
         </td>
         <td className="px-6 py-4">
-          <PDFDownloadLink document={<Receipt />} fileName={fileName} className={buttonStyling}>
+          <PDFDownloadLink document={receipt} fileName={fileName} className={buttonStyling}>
             {({ loading }) => (loading ? "Loading document..." : "Download")}
           </PDFDownloadLink>
         </td>
@@ -95,25 +121,28 @@ export default function IndexPage(props: Props) {
   }
 
   return (
-    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-      <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-        <tr>
-          <th scope="col" className="px-6 py-3">
-            Donor Name
-          </th>
-          <th scope="col" className="px-6 py-3">
-            Total
-          </th>
-          <th scope="col" className="px-6 py-3">
-            Show Receipt
-          </th>
-          <th scope="col" className="px-6 py-3">
-            Download Receipt
-          </th>
-        </tr>
-      </thead>
-      <tbody>{customerData.map(mapCustomerToTableRow)}</tbody>
-    </table>
+    <>
+      <DownloadAllFiles />
+      <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+          <tr>
+            <th scope="col" className="px-6 py-3">
+              Donor Name
+            </th>
+            <th scope="col" className="px-6 py-3">
+              Total
+            </th>
+            <th scope="col" className="px-6 py-3">
+              Show Receipt
+            </th>
+            <th scope="col" className="px-6 py-3">
+              Download Receipt
+            </th>
+          </tr>
+        </thead>
+        <tbody>{customerData.map(mapCustomerToTableRow)}</tbody>
+      </table>
+    </>
   )
 }
 
@@ -182,17 +211,18 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
   const doc = await user.doc(session.user.id).get()
   // if items/date and donee details have to be in the query or in the db
   // if they aren't, a page should be rendered directing the user to fill in those forms
-  const filledIn = alreadyFilledIn(doc)
-  const itemsInQueryOrDb = query.items || filledIn.items
-  const doneeDetailsInQueryOrDb = query.companyName || filledIn.doneeDetails
+  const inDatabase = alreadyFilledIn(doc)
+  const itemsInQueryOrDb = query.items || inDatabase.items
+  const doneeDetailsInQueryOrDb = query.companyName || inDatabase.doneeDetails
   if (!(itemsInQueryOrDb && doneeDetailsInQueryOrDb))
     return {
       props: {
-        filledIn,
+        filledIn: inDatabase,
       },
     }
 
-  const dbUser = doc.data() as DbUser
+  const dbUser = doc.data()
+  if (!dbUser) throw new Error("No user data found in database")
 
   const [salesReport, customerQueryResult] = await Promise.all([
     getCustomerSalesReport(session, query, dbUser),
