@@ -18,7 +18,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       </header>
       <div className="w-64" />
 
-      <main className="flex-1 p-4">{children}</main>
+      <main className="flex flex-col flex-1 p-4">{children}</main>
     </div>
   )
 }
