@@ -42,16 +42,16 @@ if (!admin.apps.length) {
 }
 
 export type DbUser = {
-  donee: DoneeInfo
   email: string
   id: string
   name: string
   realmId: string
-  items: number[]
-  date: {
+  items?: number[]
+  date?: {
     startDate: Date
     endDate: Date
   }
+  donee?: DoneeInfo
 }
 
 export const firestore = admin.firestore()
@@ -60,9 +60,13 @@ const converter = {
   toFirestore: (data: DbUser) => data,
   fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => {
     const data = snap.data()
-    const startDate = data.date.startDate.toDate()
-    const endDate = data.date.endDate.toDate()
-    return { ...data, date: { startDate, endDate } } as DbUser
+    const date = data.date
+      ? {
+          startDate: data.date.startDate.toDate(),
+          endDate: data.date.endDate.toDate(),
+        }
+      : undefined
+    return { ...data, date } as DbUser
   },
 }
 
