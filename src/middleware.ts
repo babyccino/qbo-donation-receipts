@@ -5,5 +5,3 @@ export default withAuth({
     authorized: ({ token }) => !!token,
   },
 })
-
-export const config = { matcher: ["/"] }
