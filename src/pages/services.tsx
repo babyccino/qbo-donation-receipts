@@ -71,7 +71,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
   }
 
   const getFormData = () => {
-    if (!formRef.current) throw new Error()
+    if (!formRef.current) throw new Error("Form html element has not yet been initialised")
 
     const formData = new FormData(formRef.current)
 

@@ -26,7 +26,7 @@ function DownloadAllFiles() {
   const onClick = async () => {
     setLoading(true)
     const response = await fetch("/api/receipts")
-    if (!response.ok) throw new Error()
+    if (!response.ok) throw new Error("There was an issue downloading the ZIP file")
     setLoading(false)
     download(await response.blob())
   }
