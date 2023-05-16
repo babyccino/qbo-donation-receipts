@@ -10,8 +10,6 @@ import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
 import { alreadyFilledIn, postJsonData, base64EncodeFile } from "@/lib/app-api"
 
-// const DEBOUNCE = 500
-
 type Props = {
   doneeInfo: Partial<DoneeInfo>
   session: Session
@@ -21,21 +19,6 @@ type Props = {
 export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
-
-  // TODO save user's selected items in db
-  // const debounceRef = useRef<number>(-1)
-  // const sendFormData = () => {
-  //   if (!formRef.current) throw new Error()
-
-  //   const formData = new FormData(formRef.current)
-  //   const selectedItems = new Set(formData.keys())
-  //   console.log(selectedItems)
-  // }
-
-  // const debounce = () => {
-  //   clearTimeout(debounceRef.current)
-  //   debounceRef.current = setTimeout(sendFormData, DEBOUNCE) as any
-  // }
 
   async function getFormData() {
     if (!formRef.current) throw new Error()

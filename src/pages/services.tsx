@@ -16,8 +16,6 @@ import { Button, Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn, postJsonData } from "@/lib/app-api"
 
-// const DEBOUNCE = 500
-
 function getStartEndDates(
   dateRangeType: DateRangeType,
   customDateRange: string[]
@@ -55,21 +53,6 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
   const handleSelectChange: ChangeEventHandler<HTMLSelectElement> = event =>
     setSelectedValue(event.target.value as DateRangeType)
-
-  // TODO save user's selected items in db
-  // const debounceRef = useRef<number>(-1)
-  // const sendFormData = () => {
-  //   if (!formRef.current) throw new Error()
-
-  //   const formData = new FormData(formRef.current)
-  //   const selectedItems = new Set(formData.keys())
-  //   console.log(selectedItems)
-  // }
-
-  // const debounce = () => {
-  //   clearTimeout(debounceRef.current)
-  //   debounceRef.current = setTimeout(sendFormData, DEBOUNCE) as any
-  // }
 
   const previousYear = new Date().getFullYear() - 1
 
