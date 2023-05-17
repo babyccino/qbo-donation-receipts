@@ -6,33 +6,44 @@ import { getServerSession, Session } from "next-auth"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Svg } from "@/components/ui"
 import { multipleClasses } from "@/lib/util"
+import { user } from "@/lib/db"
+import { alreadyFilledIn } from "@/lib/app-api"
 
 const Card = ({
   title,
   body,
   href,
   className,
+  completed,
 }: {
   title: string
   body?: string
   href: string
   className?: string
+  completed?: boolean
 }) => (
   <Link
     href={href}
     className={multipleClasses(
-      "max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700",
+      "relative max-w-sm p-6 bg-white border border-gray-200 rounded-lg shadow hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700",
       className
     )}
   >
     <h6 className="mb-2 text-xl font-bold tracking-tight text-gray-900 dark:text-white">{title}</h6>
     {body && <p className="font-normal text-gray-700 dark:text-gray-400">{body}</p>}
+    {completed && (
+      <div className="absolute top-4 right-2 w-8 h-8 text-green-400">
+        <Svg.Tick />
+      </div>
+    )}
   </Link>
 )
 
-type Props = { session: Session | null }
+type Props =
+  | { session: null; filledIn: false }
+  | { session: Session; filledIn: { items: boolean; doneeDetails: boolean } }
 
-export default function IndexPage() {
+export default function IndexPage({ filledIn }: Props) {
   return (
     <section className="py-8 px-4 space-y-12 mx-auto max-w-screen-xl text-center lg:py-16">
       <div>
@@ -48,8 +59,9 @@ export default function IndexPage() {
           href="/services"
           title="Select your qualifying items"
           body="Select which of your quickbooks sales constitute a gift"
+          completed={filledIn && filledIn.items}
         />
-        <div className="h-10 w-10 text-white rotate-180 mt-3">
+        <div className="h-10 w-10 text-slate-400 rotate-180 mt-3">
           <Svg.HandDrawnUpArrow />
         </div>
         <Card
@@ -57,8 +69,9 @@ export default function IndexPage() {
           className="mt-4"
           title="Enter your organisation's details"
           body="Enter necessary information such as registration number, signature, company logo, etc."
+          completed={filledIn && filledIn.doneeDetails}
         />
-        <div className="h-10 w-10 text-white rotate-180 mt-3">
+        <div className="h-10 w-10 text-slate-400 rotate-180 mt-3">
           <Svg.HandDrawnUpArrow />
         </div>
         <Card
@@ -66,6 +79,7 @@ export default function IndexPage() {
           className="mt-4"
           title="Generate your clients' receipts"
           body="Receipts can be downloaded individually or all together. We can also automatically email receipts to all qualifying donors"
+          completed={filledIn && filledIn.doneeDetails && filledIn.items}
         />
       </div>
     </section>
@@ -74,12 +88,25 @@ export default function IndexPage() {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session = await getServerSession(context.req, context.res, authOptions)
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+  const session = await getServerSession(req, res, authOptions)
+
+  if (!session)
+    return {
+      props: {
+        session,
+        filledIn: false,
+      },
+    }
+
+  const doc = await user.doc(session.user.id).get()
+
+  const filledIn = alreadyFilledIn(doc)
 
   return {
     props: {
       session,
+      filledIn,
     },
   }
 }
