@@ -2,7 +2,7 @@ import type { MouseEventHandler, ReactNode } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
 
-import { Svg } from "../components/ui"
+import { Svg } from "@/components/ui"
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { data: session } = useSession()
@@ -16,9 +16,9 @@ export default function Layout({ children }: { children: ReactNode }) {
         <OpenSidebar />
         <Nav />
       </header>
-      <div className="z-40 w-64" />
+      <div className="w-64" />
 
-      <main className="flex-1 p-4">{children}</main>
+      <main className="flex flex-col flex-1 p-4">{children}</main>
     </div>
   )
 }
@@ -31,7 +31,8 @@ const Nav = () => (
   >
     <ul className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800 space-y-2 font-medium">
       <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
-      <NavLink link="services" logo={<Svg.Products />} label="Services" />
+      <NavLink link="services" logo={<Svg.Products />} label="Items" />
+      <NavLink link="details" logo={<Svg.Components />} label="Details" />
       <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
       <NavAnchor
         href="api/auth/signout"

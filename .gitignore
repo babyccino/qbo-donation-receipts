@@ -22,3 +22,5 @@ next-env.d.ts
 pages/pdf-example.tsx
 
 coverage
+
+serviceAccountKey.json

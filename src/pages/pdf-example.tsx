@@ -1,8 +1,16 @@
 import { PDFViewer } from "@react-pdf/renderer"
 
-import { ReceiptPdfDocument } from "../components/receipt"
+import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
+import { Donation } from "@/lib/qbo-api"
 
-const props = {
+const props: {
+  donation: Donation
+  receiptNo: number
+  donee: DoneeInfo
+  currentDate: Date
+  donationDate: Date
+  currency: string
+} = {
   donation: {
     name: "John Doe",
     id: 123,
@@ -15,11 +23,11 @@ const props = {
   },
   receiptNo: 12345,
   donee: {
-    name: "Charitable Organization",
-    address: "123 Main St, Anytown USA",
+    companyName: "Charitable Organization",
+    companyAddress: "123 Main St, Anytown USA",
     registrationNumber: "12345-ABC",
     country: "USA",
-    signatory: "Jane Smith",
+    signatoryName: "Jane Smith",
     signature: "",
     smallLogo: "",
     largeLogo: "",

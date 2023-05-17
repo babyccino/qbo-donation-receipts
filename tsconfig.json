@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/lib/*": ["src/lib/*"],
+      "@/components/*": ["src/components/*"]
+    },
     "target": "ES2015",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -18,7 +23,6 @@
   "include": [
     "process.d.ts",
     "next-env.d.ts",
-    "next-auth.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "jest.setup.js",

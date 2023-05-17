@@ -1,6 +1,9 @@
-import { GetServerSidePropsContext } from "next"
-import { Session, fetchJsonData } from "./util"
+import { Session } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
+
+import { fetchJsonData } from "./app-api"
+import { DbUser } from "./db"
+import { formatDateHtmlReverse } from "./util"
 
 export type QBOProfile = {
   sub: string
@@ -223,8 +226,8 @@ export type CompanyInfoQueryResult = {
 }
 
 export type CompanyInfo = {
-  name: string
-  address: string
+  companyName: string
+  companyAddress: string
   country: string
 }
 
@@ -387,12 +390,14 @@ export const makeQueryUrl = (realmId: string, query: string) =>
  * @returns {[string, string]} An array containing the start and end dates as strings.
  * @throws {Error} If the date data is malformed.
  */
-function getDates(query: ParsedUrlQuery): [string, string] {
+async function getDates(dbUser: DbUser, query: ParsedUrlQuery): Promise<[string, string]> {
   const { startDate, endDate } = query
-  // TODO if date is not in query get from db
-  if (!startDate || typeof startDate !== "string" || !endDate || typeof endDate !== "string")
-    throw new Error("date data is malformed")
-  return [startDate, endDate]
+  if (startDate && startDate !== "" && endDate && endDate !== "")
+    return [startDate as string, endDate as string]
+
+  if (!dbUser || !dbUser.date) throw new Error("Date data not found in query nor database")
+
+  return [formatDateHtmlReverse(dbUser.date.startDate), formatDateHtmlReverse(dbUser.date.endDate)]
 }
 
 /**
@@ -401,8 +406,12 @@ function getDates(query: ParsedUrlQuery): [string, string] {
  * @param {GetServerSidePropsContext} context - The server-side context object.
  * @returns {Promise<CustomerSalesReport>} A promise resolving to the customer sales report.
  */
-export function getCustomerSalesReport(session: Session, context: GetServerSidePropsContext) {
-  const [startDate, endDate] = getDates(context.query)
+export async function getCustomerSalesReport(
+  session: Session,
+  query: ParsedUrlQuery,
+  dbUser: DbUser
+) {
+  const [startDate, endDate] = await getDates(dbUser, query)
 
   const url = `${SANDBOX_BASE_API_ROUTE}/${session.realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
@@ -461,8 +470,8 @@ export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): Com
   if (!companyInfo) throw new Error("No company info found")
   const { LegalName, CompanyName, LegalAddr, CompanyAddr, Country } = companyInfo
   return {
-    name: LegalName || CompanyName,
-    address: getValidAddress(LegalAddr, CompanyAddr),
+    companyName: LegalName || CompanyName,
+    companyAddress: getValidAddress(LegalAddr, CompanyAddr),
     country: Country,
   }
 }
