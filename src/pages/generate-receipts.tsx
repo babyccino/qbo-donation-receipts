@@ -32,12 +32,9 @@ function DownloadAllFiles() {
   }
 
   return (
-    <div className="inline-flex items-center mx-auto mb-4 p-6 space-x-4 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
-      <p className="font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
-      <div className="w-12 h-12 text-gray-500 flex items-center">
-        <Svg.HandDrawnRightArrow />
-      </div>
-      <Button onClick={onClick}>{loading ? "...Zipping your receipts" : "Download"}</Button>
+    <div className="mx-auto mb-4 p-6 space-x-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+      <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
+      <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
     </div>
   )
 }
@@ -102,14 +99,7 @@ export default function IndexPage(props: Props) {
         </th>
         <td className="px-6 py-4">{formatter.format(entry.total)}</td>
         <td className="px-6 py-4">
-          <Button className="group">
-            Show receipt
-            <div className="hidden fixed inset-0 p-4 group-focus-within:flex justify-center bg-black bg-opacity-50">
-              <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
-                {receipt}
-              </PDFViewer>
-            </div>
-          </Button>
+          <ShowReceipt receipt={receipt} />
         </td>
         <td className="px-6 py-4">
           <PDFDownloadLink document={receipt} fileName={fileName} className={buttonStyling}>
@@ -142,6 +132,29 @@ export default function IndexPage(props: Props) {
         </thead>
         <tbody>{customerData.map(mapCustomerToTableRow)}</tbody>
       </table>
+    </>
+  )
+}
+
+function ShowReceipt({ receipt }: { receipt: JSX.Element }) {
+  const [show, setShow] = useState(false)
+  const containerClassName =
+    (show ? "flex" : "hidden") + " fixed inset-0 p-4 justify-center bg-black bg-opacity-50 z-50"
+
+  return (
+    <>
+      <Button onClick={() => setShow(true)}>Show receipt</Button>
+      <div className={containerClassName} onClick={() => setShow(false)}>
+        <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
+          {receipt}
+        </PDFViewer>
+        <button
+          className="fixed right-4 top-4 h-14 w-14 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 rounded-lg dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+          onClick={() => setShow(false)}
+        >
+          <Svg.Cross />
+        </button>
+      </div>
     </>
   )
 }
