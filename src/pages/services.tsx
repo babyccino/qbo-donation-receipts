@@ -4,6 +4,7 @@ import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
 import Datepicker from "react-tailwindcss-datepicker"
 
+import { Form, buttonStyling, Button, Alert, Svg } from "@/components/ui"
 import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
@@ -14,7 +15,6 @@ import {
   startOfThisYear,
 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Form, buttonStyling, Button } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn, postJsonData } from "@/lib/app-api"
 
@@ -117,7 +117,18 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
       <Form.Fieldset>
-        <Form.Legend className="mb-4">Selected items</Form.Legend>
+        <Form.Legend className="mb-3">Selected items</Form.Legend>
+        <Alert
+          color="info"
+          className="mb-4"
+          icon={() => (
+            <div className="h-6 w-6 mr-2">
+              <Svg.Info />
+            </div>
+          )}
+        >
+          Make sure to only choose your Quickbooks sales items which qualify as donations
+        </Alert>
         {items.map(({ id, name }) => (
           <Form.Toggle
             key={id}
