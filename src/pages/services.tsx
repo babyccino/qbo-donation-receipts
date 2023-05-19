@@ -2,40 +2,22 @@ import { ChangeEventHandler, FormEventHandler, MouseEventHandler, useRef, useSta
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
+import Datepicker from "react-tailwindcss-datepicker"
 
 import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
-  endOfPreviousYearHtml,
-  endOfThisYearHtml,
-  startOfPreviousYearHtml,
-  startOfThisYearHtml,
+  endOfPreviousYear,
+  endOfThisYear,
+  formatDateHtmlReverse,
+  startOfPreviousYear,
+  startOfThisYear,
 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Button, Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn, postJsonData } from "@/lib/app-api"
-
-function getStartEndDates(
-  dateRangeType: DateRangeType,
-  customDateRange: string[]
-): [string, string] {
-  switch (dateRangeType) {
-    case DateRangeType.LastYear:
-      return [startOfPreviousYearHtml(), endOfPreviousYearHtml()]
-    case DateRangeType.ThisYear:
-      return [startOfThisYearHtml(), endOfThisYearHtml()]
-    case DateRangeType.Ytd:
-      return [startOfThisYearHtml(), endOfThisYearHtml()]
-    case DateRangeType.Custom:
-      if (customDateRange.length !== 2)
-        throw new Error(
-          "Custom date range selected but custom dates not provided" +
-            JSON.stringify({ customDateRange })
-        )
-      return [customDateRange[0], customDateRange[1]]
-  }
-}
+import { Label } from "flowbite-react"
 
 type Props = {
   items: Item[]
@@ -44,17 +26,47 @@ type Props = {
   detailsFilledIn: boolean
 }
 
+type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
+
 export default function Services({ items, selectedItems, detailsFilledIn }: Props) {
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
-  const [selectedValue, setSelectedValue] = useState<DateRangeType>(DateRangeType.LastYear)
-  const dateRangeIsCustom = selectedValue === DateRangeType.Custom
-
-  const handleSelectChange: ChangeEventHandler<HTMLSelectElement> = event =>
-    setSelectedValue(event.target.value as DateRangeType)
+  const [dateRangeState, setDateRangeState] = useState<DateRangeType>(DateRangeType.LastYear)
+  const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
   const previousYear = new Date().getFullYear() - 1
+  const [customDateState, setCustomDateState] = useState({
+    // startDate: new Date(`${previousYear}/01/01`),
+    // change to above in prod
+    startDate: new Date(`1970/01/01`),
+    endDate: new Date(`${previousYear}/12/31`),
+  })
+  const onDateChange = (date: DateValueType) => {
+    if (!date || !date.endDate || !date.startDate) return
+    const startDate = typeof date.startDate == "string" ? new Date(date.startDate) : date.startDate
+    const endDate = typeof date.endDate == "string" ? new Date(date.endDate) : date.endDate
+    setCustomDateState({ startDate, endDate })
+  }
+
+  const handleSelectChange: ChangeEventHandler<HTMLSelectElement> = event => {
+    const dateRangeType = event.target.value as DateRangeType
+    setDateRangeState(dateRangeType)
+
+    switch (dateRangeType) {
+      case DateRangeType.ThisYear:
+        return setCustomDateState({ startDate: startOfThisYear(), endDate: endOfThisYear() })
+      case DateRangeType.Ytd:
+        return setCustomDateState({ startDate: startOfThisYear(), endDate: new Date() })
+      case DateRangeType.LastYear:
+      case DateRangeType.Custom:
+      default:
+        return setCustomDateState({
+          startDate: startOfPreviousYear(),
+          endDate: endOfPreviousYear(),
+        })
+    }
+  }
 
   const checkAll: MouseEventHandler<HTMLButtonElement> = event => {
     event.preventDefault()
@@ -70,41 +82,31 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
     }
   }
 
-  const getFormData = () => {
+  const getItems = () => {
     if (!formRef.current) throw new Error("Form html element has not yet been initialised")
 
     const formData = new FormData(formRef.current)
-
-    const items = (formData.getAll("items") as string[]).map(item => parseInt(item))
-
-    const dateRangeType = formData.get("dateRangeType")
-    if (!dateRangeType) throw new Error("dateRangeType is undefined")
-    const [startDate, endDate] = getStartEndDates(dateRangeType as DateRangeType, [
-      formData.get("dateStart") as string,
-      formData.get("dateEnd") as string,
-    ])
-
-    return {
-      items,
-      date: {
-        startDate,
-        endDate,
-      },
-    }
+    return (formData.getAll("items") as string[]).map(item => parseInt(item))
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const formData = getFormData()
-    const apiResponse = postJsonData("/api/services", formData)
+    const items = getItems()
+    const apiResponse = postJsonData("/api/services", { items, date: customDateState })
+
+    console.log({ formData: items })
 
     // the selected items will be in the query in case the db has not been updated by...
     // the time the user has reached the generate-receipts pages
     if (detailsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: { items: items.join("+"), ...formData.date },
+        query: {
+          items: items.join("+"),
+          startDate: formatDateHtmlReverse(customDateState.startDate),
+          endDate: formatDateHtmlReverse(customDateState.endDate),
+        },
       })
     else
       router.push({
@@ -159,21 +161,14 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           <option value={DateRangeType.Ytd}>This year to date</option>
           <option value={DateRangeType.Custom}>Custom range</option>
         </select>
-        {/* //TODO make states for start and end date and make sure start is always less than end */}
-        <Form.DateInput
-          id="dateStart"
-          defaultValue={`1970-01-01`}
-          disabled={!dateRangeIsCustom}
-          // TODO change to below for prod. Just have this as 1970 to fit the sandbox data
-          // defaultValue={`${previousYear}-01-01`}
-          label="Start date"
-        />
-        <Form.DateInput
-          id="dateEnd"
-          disabled={!dateRangeIsCustom}
-          defaultValue={`${previousYear}-12-31`}
-          label="End date"
-        />
+        <p className="space-y-1">
+          <Label>Date Range</Label>
+          <Datepicker
+            value={customDateState}
+            onChange={onDateChange}
+            disabled={!dateRangeIsCustom}
+          />
+        </p>
       </Form.Fieldset>
       <input
         className={buttonStyling + " cursor-pointer block mx-auto text-l"}

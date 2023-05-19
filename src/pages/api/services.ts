@@ -18,8 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       {
         items: z.array(z.number()),
         date: z.object({
-          startDate: z.coerce.date(),
-          endDate: z.coerce.date(),
+          startDate: z.date(),
+          endDate: z.date(),
         }),
       },
       req.body
@@ -29,6 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(200).json(data)
   } catch (error) {
+    console.error(error)
     return res.status(400).end()
   }
 }
