@@ -368,14 +368,16 @@ export namespace Form {
     defaultValue,
     minLength,
     label,
+    className,
   }: {
     id: string
     label: string
     defaultValue?: string
     minLength?: number
+    className?: string
   }) => (
-    <p>
-      <Label className="mb-2" htmlFor={id}>
+    <p className={className}>
+      <Label className="inline-block mb-2" htmlFor={id}>
         {label}
       </Label>
       <FlowbiteTextInput
@@ -392,7 +394,7 @@ export namespace Form {
     <legend
       className={multipleClasses(
         className,
-        "font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white mb-3"
+        "font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white"
       )}
     >
       {children}
@@ -420,7 +422,7 @@ export namespace Form {
   }: {
     label: string
     id: string
-    helper?: string
+    helper?: ReactNode
     required?: boolean
   }) {
     const [error, setError] = useState(false)
@@ -439,7 +441,7 @@ export namespace Form {
 
     return (
       <p>
-        <Label className="mb-2" htmlFor={id}>
+        <Label className="inline-block mb-2" htmlFor={id}>
           {label}
         </Label>
         <FileInput
@@ -449,7 +451,6 @@ export namespace Form {
           onChange={handleFileInput}
           color={error ? "failure" : undefined}
           helperText={helper}
-          // theme={{field: {input: {}}}}
         />
       </p>
     )

@@ -63,16 +63,17 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
-      <Form.Fieldset>
-        <Form.Legend>Organisation</Form.Legend>
-        <Form.TextInput id="companyName" defaultValue={doneeInfo.companyName} label="Legal name" />
+    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4">
+      <Form.Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
+        <Form.Legend className="sm:col-span-2">Organisation</Form.Legend>
         <Form.TextInput
           id="companyAddress"
           minLength={10}
           defaultValue={doneeInfo.companyAddress}
           label="Address"
+          className="sm:col-span-2"
         />
+        <Form.TextInput id="companyName" defaultValue={doneeInfo.companyName} label="Legal name" />
         <Form.TextInput
           id="country"
           minLength={2}
@@ -91,6 +92,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           label="Signatory's name"
           defaultValue={doneeInfo.signatoryName}
         />
+        {/* // TODO allow users to not select a file if there is already one on file */}
         <Form.ImageInput
           id="signature"
           label="Image of signatory's signature"
@@ -103,12 +105,12 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           helper="PNG, JPG or GIF (MAX. 800x400px)."
           required
         />
+        <input
+          className={buttonStyling + " cursor-pointer block mr-auto text-l"}
+          type="submit"
+          value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
+        />
       </Form.Fieldset>
-      <input
-        className={buttonStyling + " cursor-pointer block mx-auto text-l"}
-        type="submit"
-        value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
-      />
     </form>
   )
 }
