@@ -62,6 +62,15 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
       })
   }
 
+  const imageHelper = "PNG, JPG or GIF (MAX. 800x400px)."
+  const imageNotRequiredHelper = (
+    <>
+      Choose an image to replace your saved image
+      <br />
+      {imageHelper}
+    </>
+  )
+
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4">
       <Form.Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
@@ -92,18 +101,17 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           label="Signatory's name"
           defaultValue={doneeInfo.signatoryName}
         />
-        {/* // TODO allow users to not select a file if there is already one on file */}
         <Form.ImageInput
           id="signature"
           label="Image of signatory's signature"
-          helper="PNG, JPG or GIF (MAX. 800x400px)."
-          required
+          helper={doneeInfo.signatoryName ? imageNotRequiredHelper : imageHelper}
+          required={!Boolean(doneeInfo.signatoryName)}
         />
         <Form.ImageInput
           id="smallLogo"
           label="Small image of organisation's logo"
-          helper="PNG, JPG or GIF (MAX. 800x400px)."
-          required
+          helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
+          required={!Boolean(doneeInfo.smallLogo)}
         />
         <input
           className={buttonStyling + " cursor-pointer block mr-auto text-l"}
