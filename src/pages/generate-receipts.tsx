@@ -32,7 +32,7 @@ function DownloadAllFiles() {
   }
 
   return (
-    <div className="mx-auto mb-4 p-6 space-x-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+    <div className="mx-auto mb-4 p-6 flex flex-row gap-6 items-baseline bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
       <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
     </div>
