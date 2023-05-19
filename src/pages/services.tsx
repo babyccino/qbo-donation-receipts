@@ -14,10 +14,9 @@ import {
   startOfThisYear,
 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Button, Form, buttonStyling } from "@/components/ui"
+import { Form, buttonStyling, Button } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn, postJsonData } from "@/lib/app-api"
-import { Label } from "flowbite-react"
 
 type Props = {
   items: Item[]
@@ -148,7 +147,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
       </Form.Fieldset>
       <Form.Fieldset>
         <Form.Legend>Date range</Form.Legend>
-        <Label htmlFor="dateRangeType">Range</Label>
+        <Form.Label htmlFor="dateRangeType">Range</Form.Label>
         <select
           onChange={handleSelectChange}
           name="dateRangeType"
@@ -162,7 +161,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           <option value={DateRangeType.Custom}>Custom range</option>
         </select>
         <p className="space-y-1">
-          <Label>Date Range</Label>
+          <Form.Label>Date Range</Form.Label>
           <Datepicker
             value={customDateState}
             onChange={onDateChange}

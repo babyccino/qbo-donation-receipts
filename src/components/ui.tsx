@@ -2,12 +2,13 @@ import {
   ChangeEventHandler,
   FieldsetHTMLAttributes,
   HTMLAttributes,
-  MouseEventHandler,
   ReactNode,
   useState,
 } from "react"
 import { multipleClasses } from "@/lib/util"
-import { FileInput, Label, TextInput as FlowbiteTextInput } from "flowbite-react"
+import { FileInput, Label as FlowbiteLabel, TextInput as FlowbiteTextInput } from "flowbite-react"
+
+export { Button } from "flowbite-react"
 
 // components from flowbite.com
 // svg from heroicons.dev
@@ -15,19 +16,6 @@ import { FileInput, Label, TextInput as FlowbiteTextInput } from "flowbite-react
 
 export const buttonStyling =
   "text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
-export const Button = ({
-  onClick,
-  children,
-  className,
-}: {
-  onClick?: MouseEventHandler<HTMLButtonElement>
-  children: ReactNode
-  className?: string
-}) => (
-  <button onClick={onClick} className={multipleClasses(buttonStyling, className)}>
-    {children}
-  </button>
-)
 
 export namespace Svg {
   export const Sidebar = () => (
@@ -363,6 +351,7 @@ export namespace Svg {
 }
 
 export namespace Form {
+  export const Label = FlowbiteLabel
   export const TextInput = ({
     id,
     defaultValue,
@@ -377,9 +366,9 @@ export namespace Form {
     className?: string
   }) => (
     <p className={className}>
-      <Label className="inline-block mb-2" htmlFor={id}>
+      <FlowbiteLabel className="inline-block mb-2" htmlFor={id}>
         {label}
-      </Label>
+      </FlowbiteLabel>
       <FlowbiteTextInput
         required
         minLength={minLength}
@@ -441,9 +430,9 @@ export namespace Form {
 
     return (
       <p>
-        <Label className="inline-block mb-2" htmlFor={id}>
+        <FlowbiteLabel className="inline-block mb-2" htmlFor={id}>
           {label}
-        </Label>
+        </FlowbiteLabel>
         <FileInput
           id={id}
           name={id}
