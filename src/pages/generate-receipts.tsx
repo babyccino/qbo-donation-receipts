@@ -41,17 +41,28 @@ function DownloadAllFiles() {
 
 type Props =
   | {
+      status: "success"
       customerData: Donation[]
       doneeInfo: DoneeInfo
       session: Session
-      filledIn: null
     }
   | {
+      status: "missing data"
       filledIn: { items: boolean; details: boolean }
     }
+  | { status: "error"; error: string }
 
 export default function IndexPage(props: Props) {
-  if (props.filledIn)
+  if (props.status === "error")
+    return (
+      <div className="flex flex-col gap-4 text-center bg-white rounded-lg shadow dark:border md:mt-8 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 mx-auto">
+        <span className="col-span-full font-medium text-gray-900 dark:text-white">
+          We were not able to gather your Quickbooks Online data.
+        </span>
+      </div>
+    )
+
+  if (props.status === "missing data")
     return (
       <div className="flex flex-col gap-4 text-center bg-white rounded-lg shadow dark:border md:mt-8 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 mx-auto">
         <span className="col-span-full font-medium text-gray-900 dark:text-white">
@@ -230,6 +241,7 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
   if (!(itemsInQueryOrDb && doneeDetailsInQueryOrDb))
     return {
       props: {
+        status: "missing data",
         filledIn: inDatabase,
       },
     }
@@ -243,6 +255,15 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
   ])
 
   const doneeInfo = getDoneeInfo(query, dbUser)
+
+  if (salesReport.Fault)
+    return {
+      props: {
+        status: "error",
+        error: "",
+      },
+    }
+
   const products = getProducts(query, dbUser)
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(
@@ -252,6 +273,7 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
 
   return {
     props: {
+      status: "success",
       session,
       customerData,
       doneeInfo,
