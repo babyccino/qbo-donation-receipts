@@ -114,54 +114,42 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
       })
   }
 
-  const mapItem = ({ id, name }: Item) => (
-    <div key={id}>
-      <label
-        htmlFor={id.toString()}
-        className="relative inline-flex items-center mb-4 cursor-pointer"
-      >
-        <input
-          className="sr-only peer"
-          ref={el => (el ? inputRefs.current.push(el) : null)}
-          type="checkbox"
-          name="items"
-          value={id}
-          id={id.toString()}
-          defaultChecked={selectedItems ? selectedItems.includes(id) : true}
-        />
-        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600" />
-        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{name}</span>
-      </label>
-    </div>
-  )
-
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
       <Form.Fieldset>
-        <Form.Legend>Selected items</Form.Legend>
-        {items.map(mapItem)}
-        <div className="pb-2 pt-1 space-x-2">
+        <Form.Legend className="mb-4">Selected items</Form.Legend>
+        {items.map(({ id, name }) => (
+          <Form.Toggle
+            key={id}
+            defaultChecked={selectedItems ? selectedItems.includes(id) : true}
+            id={id}
+            label={name}
+            ref={el => (el ? inputRefs.current.push(el) : null)}
+          />
+        ))}
+        <div className="pb-2 pt-1 flex flex-row gap-2">
           <Button onClick={checkAll}>Check All</Button>
           <Button onClick={unCheckAll}>Uncheck All</Button>
         </div>
       </Form.Fieldset>
       <Form.Fieldset>
-        <Form.Legend>Date range</Form.Legend>
-        <Form.Label htmlFor="dateRangeType">Range</Form.Label>
-        <select
+        <Form.Legend className="mb-4">Date range</Form.Legend>
+        <Form.Label className="inline-block mb-2" htmlFor="dateRangeType">
+          Range
+        </Form.Label>
+        <Form.Select
           onChange={handleSelectChange}
           name="dateRangeType"
           id="dateRangeType"
           defaultValue={DateRangeType.LastYear}
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         >
           <option value={DateRangeType.LastYear}>Last year</option>
           <option value={DateRangeType.ThisYear}>This year</option>
           <option value={DateRangeType.Ytd}>This year to date</option>
           <option value={DateRangeType.Custom}>Custom range</option>
-        </select>
-        <p className="space-y-1">
-          <Form.Label>Date Range</Form.Label>
+        </Form.Select>
+        <p className="space-y-1 mt-2">
+          <Form.Label className="inline-block mb-2">Date Range</Form.Label>
           <Datepicker
             value={customDateState}
             onChange={onDateChange}
