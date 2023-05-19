@@ -8,12 +8,7 @@ import {
   ForwardedRef,
 } from "react"
 import { multipleClasses } from "@/lib/util"
-import {
-  FileInput,
-  Label as FlowbiteLabel,
-  TextInput as FlowbiteTextInput,
-  Select as FlowbiteSelect,
-} from "flowbite-react"
+import { FileInput, Label as FlowbiteLabel, Select as FlowbiteSelect } from "flowbite-react"
 
 export { Button, Alert } from "flowbite-react"
 
@@ -408,23 +403,26 @@ export namespace Form {
     minLength,
     label,
     className,
+    required,
   }: {
     id: string
     label: string
     defaultValue?: string
     minLength?: number
     className?: string
+    required?: boolean
   }) => (
     <p className={className}>
       <FlowbiteLabel className="inline-block mb-2" htmlFor={id}>
         {label}
       </FlowbiteLabel>
-      <FlowbiteTextInput
-        required
-        minLength={minLength}
+      <input
+        type="text"
         id={id}
-        name={id}
+        minLength={minLength}
+        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         defaultValue={defaultValue}
+        required={required}
       />
     </p>
   )

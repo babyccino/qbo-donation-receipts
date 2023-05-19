@@ -65,9 +65,8 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   const imageHelper = "PNG, JPG or GIF (MAX. 800x400px)."
   const imageNotRequiredHelper = (
     <>
-      Choose an image to replace your saved image
-      <br />
-      {imageHelper}
+      <p className="mb-2">{imageHelper}</p>
+      <p>Choose an image if you wish to replace your saved image</p>
     </>
   )
 
@@ -81,25 +80,34 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           defaultValue={doneeInfo.companyAddress}
           label="Address"
           className="sm:col-span-2"
+          required
         />
-        <Form.TextInput id="companyName" defaultValue={doneeInfo.companyName} label="Legal name" />
+        <Form.TextInput
+          id="companyName"
+          defaultValue={doneeInfo.companyName}
+          label="Legal name"
+          required
+        />
         <Form.TextInput
           id="country"
           minLength={2}
           defaultValue={doneeInfo.country}
           label="Country"
+          required
         />
         <Form.TextInput
           id="registrationNumber"
           minLength={15}
           defaultValue={doneeInfo.registrationNumber}
           label="Charity registration number"
+          required
         />
         <Form.TextInput
           id="signatoryName"
           minLength={5}
           label="Signatory's name"
           defaultValue={doneeInfo.signatoryName}
+          required
         />
         <Form.ImageInput
           id="signature"
