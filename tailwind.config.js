@@ -11,6 +11,18 @@ module.exports = {
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
     "./public/**/*.html",
   ],
-  theme: {},
+  theme: {
+    extend: {
+      animation: {
+        fadeIn: " fadeIn 0.3s ease 0s 1 normal forwards running",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0%" },
+          "100%": { opacity: "100%" },
+        },
+      },
+    },
+  },
   plugins: [require("flowbite/plugin")],
 }

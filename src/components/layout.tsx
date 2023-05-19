@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactNode } from "react"
+import { MouseEventHandler, ReactNode, useState } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
 
@@ -6,27 +6,47 @@ import { Svg } from "@/components/ui"
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { data: session } = useSession()
+  const [showSidebar, setShowSidebar] = useState(false)
 
   // users who are not signed in will be redirected to the sign-in page
   if (!session?.user) return null
 
   return (
-    <div className="flex flex-row">
+    <div className="flex flex-row relative">
       <header>
-        <OpenSidebar />
-        <Nav />
+        <button
+          aria-controls="separator-sidebar"
+          type="button"
+          className="absolute inline-flex items-center p-2 mt-2 ml-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 left-0 top-0 z-40"
+          onClick={() => setShowSidebar(true)}
+        >
+          <span className="sr-only">Open sidebar</span>
+          <div className="w-6 h-6">
+            <Svg.Sidebar />
+          </div>
+        </button>
+        {showSidebar && (
+          <div
+            className="fixed inset-0 bg-black/40 z-20 animate-fadeIn"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
+        <Nav show={showSidebar} />
       </header>
-      <div className="w-64" />
+      <div className="w-64 hidden sm:block" />
 
       <main className="flex flex-col items-center flex-1 p-4">{children}</main>
     </div>
   )
 }
 
-const Nav = () => (
+const Nav = ({ show }: { show: boolean }) => (
   <nav
     id="separator-sidebar"
-    className="fixed top-0 left-0 z-40 w-64 h-screen transition-transform"
+    className={
+      "fixed top-0 left-0 z-40 w-64 h-screen transition-transform sm:translate-x-0" +
+      (show ? "" : " -translate-x-full")
+    }
     aria-label="Sidebar"
   >
     <ul className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800 space-y-2 font-medium">
@@ -48,21 +68,6 @@ const Nav = () => (
       <NavLink link="help" logo={<Svg.Help />} label="Help" />
     </ul>
   </nav>
-)
-
-const OpenSidebar = () => (
-  <button
-    data-drawer-target="separator-sidebar"
-    data-drawer-toggle="separator-sidebar"
-    aria-controls="separator-sidebar"
-    type="button"
-    className="inline-flex items-center p-2 mt-2 ml-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-  >
-    <span className="sr-only">Open sidebar</span>
-    <div className="w-6 h-6">
-      <Svg.Sidebar />
-    </div>
-  </button>
 )
 
 type NavInnerProps = {
