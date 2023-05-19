@@ -148,7 +148,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
       </Form.Fieldset>
       <Form.Fieldset>
         <Form.Legend>Date range</Form.Legend>
-        <Form.Label htmlFor="dateRangeType">Range</Form.Label>
+        <Label htmlFor="dateRangeType">Range</Label>
         <select
           onChange={handleSelectChange}
           name="dateRangeType"
