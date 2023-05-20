@@ -15,7 +15,7 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
-import { Button, Svg, buttonStyling } from "@/components/ui"
+import { Alert, Button, Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { DbUser, user } from "@/lib/db"
 import { getThisYear } from "@/lib/util"
@@ -89,7 +89,7 @@ export default function IndexPage(props: Props) {
   const currentYear = getThisYear()
   const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
     const fileName = `${entry.name}.pdf`
-    const receipt = (
+    const Receipt = () => (
       <ReceiptPdfDocument
         currency="USD"
         currentDate={new Date()}
@@ -104,63 +104,94 @@ export default function IndexPage(props: Props) {
       <tr key={entry.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
         <th
           scope="row"
-          className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+          className="px-6 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white"
         >
           {entry.name}
         </th>
-        <td className="px-6 py-4">{formatter.format(entry.total)}</td>
-        <td className="px-6 py-4">
-          <ShowReceipt receipt={receipt} />
+        <td className="px-6 py-2">{formatter.format(entry.total)}</td>
+        <td className="px-6 py-2">
+          <ShowReceipt Receipt={Receipt} />
         </td>
-        <td className="px-6 py-4">
-          <PDFDownloadLink document={receipt} fileName={fileName} className={buttonStyling}>
-            {({ loading }) => (loading ? "Loading document..." : "Download")}
+        <td className="px-6 py-2">
+          <PDFDownloadLink document={<Receipt />} fileName={fileName} className={buttonStyling}>
+            {({ loading }) =>
+              loading ? (
+                "Loading document..."
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Download</span>
+                  <span className="inline-block sm:ml-2 h-5 w-5 -mb-1">
+                    <Svg.Download />
+                  </span>
+                </>
+              )
+            }
           </PDFDownloadLink>
         </td>
       </tr>
     )
   }
 
+  // TODO add sort by total donation/name
   return (
     <>
       <DownloadAllFiles />
-      <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-          <tr>
-            <th scope="col" className="px-6 py-3">
-              Donor Name
-            </th>
-            <th scope="col" className="px-6 py-3">
-              Total
-            </th>
-            <th scope="col" className="px-6 py-3">
-              Show Receipt
-            </th>
-            <th scope="col" className="px-6 py-3">
-              Download Receipt
-            </th>
-          </tr>
-        </thead>
-        <tbody>{customerData.map(mapCustomerToTableRow)}</tbody>
-      </table>
+      <Alert
+        color="info"
+        className="mb-4 sm:hidden"
+        icon={() => (
+          <div className="h-6 w-6 mr-2">
+            <Svg.RightArrow />
+          </div>
+        )}
+      >
+        Scroll right to view/download individual receipts
+      </Alert>
+      <div className="w-full overflow-x-auto sm:rounded-lg">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+              <th scope="col" className="px-6 py-3">
+                Donor Name
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Total
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Show Receipt
+              </th>
+              <th scope="col" className="px-6 py-3">
+                Download Receipt
+              </th>
+            </tr>
+          </thead>
+          <tbody>{customerData.map(mapCustomerToTableRow)}</tbody>
+        </table>
+      </div>
     </>
   )
 }
 
-function ShowReceipt({ receipt }: { receipt: JSX.Element }) {
+function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
   const [show, setShow] = useState(false)
   const containerClassName =
-    (show ? "flex" : "hidden") + " fixed inset-0 p-4 justify-center bg-black bg-opacity-50 z-50"
+    (show ? "flex" : "hidden") +
+    " fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
 
   return (
     <>
-      <Button onClick={() => setShow(true)}>Show receipt</Button>
+      <Button onClick={() => setShow(true)}>
+        <span className="hidden sm:inline">Show receipt</span>
+        <span className="inline-block sm:ml-2 h-5 w-5">
+          <Svg.Plus />
+        </span>
+      </Button>
       <div className={containerClassName} onClick={() => setShow(false)}>
         <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
-          {receipt}
+          <Receipt />
         </PDFViewer>
         <button
-          className="fixed right-4 top-4 h-14 w-14 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 rounded-lg dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+          className="fixed right-4 top-4 h-14 w-14 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 rounded-lg dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 z-40"
           onClick={() => setShow(false)}
         >
           <Svg.Cross />
