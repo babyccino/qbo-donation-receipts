@@ -1,23 +1,31 @@
-import { MouseEventHandler, ReactNode, useState } from "react"
+import { MouseEventHandler, ReactNode, useState, useEffect } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
 
 import { Svg } from "@/components/ui"
+import { useRouter } from "next/router"
 
 export default function Layout({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const { data: session } = useSession()
   const [showSidebar, setShowSidebar] = useState(false)
+
+  useEffect(() => {
+    const cb = () => setShowSidebar(false)
+    router.events.on("routeChangeStart", cb)
+    return () => router.events.off("routeChangeStart", cb)
+  }, [router.events])
 
   // users who are not signed in will be redirected to the sign-in page
   if (!session?.user) return null
 
   return (
-    <div className="flex flex-row relative">
+    <div className="flex flex-col sm:flex-row relative">
       <header>
         <button
           aria-controls="separator-sidebar"
           type="button"
-          className="absolute inline-flex items-center p-2 mt-2 ml-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 left-0 top-0 z-40"
+          className="inline-flex items-center p-2 mt-2 ml-3 text-sm text-gray-500 rounded-lg sm:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
           onClick={() => setShowSidebar(true)}
         >
           <span className="sr-only">Open sidebar</span>
