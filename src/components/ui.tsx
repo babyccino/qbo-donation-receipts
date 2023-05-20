@@ -363,6 +363,46 @@ export namespace Svg {
       />
     </svg>
   )
+  export const Plus = () => (
+    <svg fill="currentColor" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path
+        d="M12,0C5.38,0,0,5.38,0,12c0,6.62,5.38,12,12,12c6.62,0,12-5.38,12-12C24,5.38,18.62,0,12,0z M12,22C6.49,22,2,17.51,2,12
+	C2,6.49,6.49,2,12,2c5.51,0,10,4.49,10,10C22,17.51,17.51,22,12,22z M20,11v2h-7v7h-2v-7H4v-2h7V4h2v7H20z"
+      />
+    </svg>
+  )
+  export const Download = () => (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke="currentColor">
+      <path
+        d="M3,12.3v7a2,2,0,0,0,2,2H19a2,2,0,0,0,2-2v-7"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <g>
+        <polyline
+          data-name="Right"
+          fill="none"
+          id="Right-2"
+          points="7.9 12.3 12 16.3 16.1 12.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <line
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          x1="12"
+          x2="12"
+          y1="2.7"
+          y2="14.2"
+        />
+      </g>
+    </svg>
+  )
 }
 
 export namespace Form {
