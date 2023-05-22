@@ -122,6 +122,7 @@ type Row = {
 }
 
 export type CustomerSalesReport = {
+  Fault: undefined
   Header: {
     Time: string
     ReportName: string
@@ -142,6 +143,16 @@ export type CustomerSalesReport = {
   Rows: {
     Row: (CustomerSalesRow | CustomerSalesSectionRow | CustomerSalesTotalsRow)[]
   }
+}
+type CustomerSalesReportError = {
+  Fault: { Error: QboError[]; type: string }
+  time: string
+}
+type QboError = {
+  Message: string
+  Detail: string
+  code: string
+  element: string
 }
 
 export type CustomerSalesRow = {
@@ -416,7 +427,7 @@ export async function getCustomerSalesReport(
   const url = `${SANDBOX_BASE_API_ROUTE}/${session.realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
 
-  return fetchJsonData<CustomerSalesReport>(url, session.accessToken)
+  return fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(url, session.accessToken)
 }
 
 /**

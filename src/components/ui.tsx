@@ -2,29 +2,27 @@ import {
   ChangeEventHandler,
   FieldsetHTMLAttributes,
   HTMLAttributes,
-  MouseEventHandler,
   ReactNode,
   useState,
+  forwardRef,
+  ForwardedRef,
 } from "react"
 import { multipleClasses } from "@/lib/util"
+import {
+  FileInput,
+  Label as FlowbiteLabel,
+  Select as FlowbiteSelect,
+  TextInput as FlowbiteTextInput,
+} from "flowbite-react"
 
-// from flowbite.com
+export { Button, Alert } from "flowbite-react"
+
+// components from flowbite.com
+// svg from heroicons.dev
+// hand drawn arrows from svgrepo.com
 
 export const buttonStyling =
   "text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
-export const Button = ({
-  onClick,
-  children,
-  className,
-}: {
-  onClick?: MouseEventHandler<HTMLButtonElement>
-  children: ReactNode
-  className?: string
-}) => (
-  <button onClick={onClick} className={multipleClasses(buttonStyling, className)}>
-    {children}
-  </button>
-)
 
 export namespace Svg {
   export const Sidebar = () => (
@@ -44,12 +42,11 @@ export namespace Svg {
   export const Kanban = () => (
     <svg
       aria-hidden="true"
-      className="flex-shrink-0 w-6 h-6 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
       fill="currentColor"
       viewBox="0 0 20 20"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
     </svg>
   )
   export const Dashboard = () => (
@@ -59,8 +56,8 @@ export namespace Svg {
       viewBox="0 0 20 20"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"></path>
-      <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"></path>
+      <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
+      <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
     </svg>
   )
   export const Help = () => (
@@ -74,7 +71,7 @@ export namespace Svg {
         fillRule="evenodd"
         d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-2 0c0 .993-.241 1.929-.668 2.754l-1.524-1.525a3.997 3.997 0 00.078-2.183l1.562-1.562C15.802 8.249 16 9.1 16 10zm-5.165 3.913l1.58 1.58A5.98 5.98 0 0110 16a5.976 5.976 0 01-2.516-.552l1.562-1.562a4.006 4.006 0 001.789.027zm-4.677-2.796a4.002 4.002 0 01-.041-2.08l-.08.08-1.53-1.533A5.98 5.98 0 004 10c0 .954.223 1.856.619 2.657l1.54-1.54zm1.088-6.45A5.974 5.974 0 0110 4c.954 0 1.856.223 2.657.619l-1.54 1.54a4.002 4.002 0 00-2.346.033L7.246 4.668zM12 10a2 2 0 11-4 0 2 2 0 014 0z"
         clipRule="evenodd"
-      ></path>
+      />
     </svg>
   )
   export const Components = () => (
@@ -84,7 +81,7 @@ export namespace Svg {
       viewBox="0 0 20 20"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
+      <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
     </svg>
   )
   export const Documentation = () => (
@@ -94,28 +91,22 @@ export namespace Svg {
       viewBox="0 0 20 20"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
       <path
         fillRule="evenodd"
         d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
         clipRule="evenodd"
-      ></path>
+      />
     </svg>
   )
   export const Upgrade = () => (
     <svg
       aria-hidden="true"
-      focusable="false"
-      data-prefix="fas"
-      data-icon="gem"
-      role="img"
-      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
       viewBox="0 0 512 512"
+      xmlns="http://www.w3.org/2000/svg"
     >
-      <path
-        fill="currentColor"
-        d="M378.7 32H133.3L256 182.7L378.7 32zM512 192l-107.4-141.3L289.6 192H512zM107.4 50.67L0 192h222.4L107.4 50.67zM244.3 474.9C247.3 478.2 251.6 480 256 480s8.653-1.828 11.67-5.062L510.6 224H1.365L244.3 474.9z"
-      ></path>
+      <path d="M378.7 32H133.3L256 182.7L378.7 32zM512 192l-107.4-141.3L289.6 192H512zM107.4 50.67L0 192h222.4L107.4 50.67zM244.3 474.9C247.3 478.2 251.6 480 256 480s8.653-1.828 11.67-5.062L510.6 224H1.365L244.3 474.9z" />
     </svg>
   )
   export const Products = () => (
@@ -129,7 +120,7 @@ export namespace Svg {
         fillRule="evenodd"
         d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
         clipRule="evenodd"
-      ></path>
+      />
     </svg>
   )
   export const Users = () => (
@@ -143,7 +134,7 @@ export namespace Svg {
         fillRule="evenodd"
         d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
         clipRule="evenodd"
-      ></path>
+      />
     </svg>
   )
   export const SignUp = () => (
@@ -157,7 +148,7 @@ export namespace Svg {
         fillRule="evenodd"
         d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z"
         clipRule="evenodd"
-      ></path>
+      />
     </svg>
   )
   export const Inbox = () => (
@@ -167,8 +158,8 @@ export namespace Svg {
       viewBox="0 0 20 20"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M8.707 7.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l2-2a1 1 0 00-1.414-1.414L11 7.586V3a1 1 0 10-2 0v4.586l-.293-.293z"></path>
-      <path d="M3 5a2 2 0 012-2h1a1 1 0 010 2H5v7h2l1 2h4l1-2h2V5h-1a1 1 0 110-2h1a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5z"></path>
+      <path d="M8.707 7.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l2-2a1 1 0 00-1.414-1.414L11 7.586V3a1 1 0 10-2 0v4.586l-.293-.293z" />
+      <path d="M3 5a2 2 0 012-2h1a1 1 0 010 2H5v7h2l1 2h4l1-2h2V5h-1a1 1 0 110-2h1a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" />
     </svg>
   )
   export const SignIn = () => (
@@ -182,7 +173,7 @@ export namespace Svg {
         fillRule="evenodd"
         d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
         clipRule="evenodd"
-      ></path>
+      />
     </svg>
   )
   export const HandDrawnRightArrow = () => (
@@ -277,86 +268,213 @@ export namespace Svg {
       </g>
     </svg>
   )
+  export const HandDrawnUpArrow = () => (
+    <svg
+      fill="currentColor"
+      version="1.1"
+      id="Capa_1"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 339.193 339.193"
+    >
+      <g>
+        <g>
+          <path
+            d="M170.71,303.132c-1.836-2.448-4.896-2.448-6.732,0c-3.06,3.672-1.836,7.956-1.836,12.853
+			c0,6.12-0.612,12.239-1.836,18.359c-1.224,4.896,6.12,6.732,7.956,2.448c1.837-4.896,3.061-10.404,3.673-15.912
+			C172.547,314.76,174.383,308.028,170.71,303.132z"
+          />
+          <path
+            d="M171.322,277.428c-1.224-3.672-1.836-6.731-2.449-10.403c0-1.836,0.612-3.672,0-5.509
+			c-0.612-1.836-0.612-3.06-1.835-4.896c-1.224-2.448-5.508-2.448-6.732,0c-1.836,4.284-1.836,7.344-0.612,11.628
+			s1.836,7.956,4.284,12.24C166.426,284.16,172.547,281.712,171.322,277.428z"
+          />
+          <path
+            d="M167.038,202.152c-1.224-1.836-4.284-1.836-6.12,0c-2.448,3.06-1.836,5.508-1.836,9.18s0.612,6.732,0.612,10.404
+			c0.612,4.896,7.344,4.896,7.344,0c0-3.061,0.612-6.12,0.612-9.181C168.874,208.884,170.099,205.824,167.038,202.152z"
+          />
+          <path
+            d="M167.65,174.612c-2.448-6.732-1.224-13.464-3.06-20.196c-1.224-3.672-6.732-3.672-7.956,0
+			c-2.448,7.344,0,15.912,4.284,22.645C162.754,180.732,168.874,178.284,167.65,174.612z"
+          />
+          <path
+            d="M163.366,96.276c-1.224-1.224-3.672-1.224-4.896,0c-3.672,3.672-2.448,8.568-2.448,13.464c0,4.284,0,9.18,0.612,13.464
+			c0.612,3.672,6.732,3.672,7.344,0c0.612-4.284,0.612-7.956,0.612-12.24C165.814,106.068,167.038,100.56,163.366,96.276z"
+          />
+          <path
+            d="M157.246,43.644c-3.672,0-6.12,3.672-4.896,6.732c1.224,4.896,1.224,11.016,1.836,15.912c0.612,3.06,6.12,3.06,6.732,0
+			c0.612-5.508,0-11.016,1.836-15.912C163.366,47.316,160.918,43.644,157.246,43.644z"
+          />
+          <path
+            d="M215.387,41.196c-14.076-15.3-29.376-30.6-48.349-40.392c-2.448-1.224-5.508-1.224-7.344,1.224
+			c-12.852,15.3-22.644,32.436-36.108,47.124c-4.896,4.896,3.06,12.24,7.344,7.344c12.24-13.464,21.42-29.376,33.66-42.84
+			c15.912,9.792,26.929,23.868,41.005,36.72C212.326,56.496,220.895,47.316,215.387,41.196z"
+          />
+        </g>
+      </g>
+    </svg>
+  )
+  export const Cross = () => (
+    <svg
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+  export const Tick = () => (
+    <svg
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+  export const RightArrow = () => (
+    <svg
+      aria-hidden="true"
+      fill="currentColor"
+      viewBox="0 0 20 20"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        fillRule="evenodd"
+        d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+  export const Info = () => (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-.696-3.534c.63 0 1.332-.288 2.196-1.458l.911-1.22a.334.334 0 0 0-.074-.472.38.38 0 0 0-.505.06l-1.475 1.679a.241.241 0 0 1-.279.061.211.211 0 0 1-.12-.244l1.858-7.446a.499.499 0 0 0-.575-.613l-3.35.613a.35.35 0 0 0-.276.258l-.086.334a.25.25 0 0 0 .243.312h1.73l-1.476 5.922c-.054.234-.144.63-.144.918 0 .666.396 1.296 1.422 1.296zm1.83-10.536c.702 0 1.242-.414 1.386-1.044.036-.144.054-.306.054-.414 0-.504-.396-.972-1.134-.972-.702 0-1.242.414-1.386 1.044a1.868 1.868 0 0 0-.054.414c0 .504.396.972 1.134.972z"
+        fill="#000000"
+      />
+    </svg>
+  )
+  export const Plus = () => (
+    <svg fill="currentColor" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+      <path
+        d="M12,0C5.38,0,0,5.38,0,12c0,6.62,5.38,12,12,12c6.62,0,12-5.38,12-12C24,5.38,18.62,0,12,0z M12,22C6.49,22,2,17.51,2,12
+	C2,6.49,6.49,2,12,2c5.51,0,10,4.49,10,10C22,17.51,17.51,22,12,22z M20,11v2h-7v7h-2v-7H4v-2h7V4h2v7H20z"
+      />
+    </svg>
+  )
+  export const Download = () => (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" stroke="currentColor">
+      <path
+        d="M3,12.3v7a2,2,0,0,0,2,2H19a2,2,0,0,0,2-2v-7"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <g>
+        <polyline
+          data-name="Right"
+          fill="none"
+          id="Right-2"
+          points="7.9 12.3 12 16.3 16.1 12.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+        />
+        <line
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          x1="12"
+          x2="12"
+          y1="2.7"
+          y2="14.2"
+        />
+      </g>
+    </svg>
+  )
 }
 
 export namespace Form {
+  export const Select = FlowbiteSelect
+  export const Label = FlowbiteLabel
+
+  type ToggleProps = {
+    className?: string
+    id: number
+    defaultChecked: boolean
+    label: string
+  }
+  const _Toggle = (
+    { className, id, defaultChecked, label }: ToggleProps,
+    ref: ForwardedRef<HTMLInputElement>
+  ) => (
+    <p className={className}>
+      <label
+        htmlFor={id.toString()}
+        className="relative inline-flex items-center mb-4 cursor-pointer"
+      >
+        <input
+          className="sr-only peer"
+          ref={ref}
+          type="checkbox"
+          name="items"
+          value={id}
+          id={id.toString()}
+          // if the user has already made a selection then the list will be prefilled with that data
+          // otherwise all will be marked by default
+          defaultChecked={defaultChecked}
+        />
+        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600" />
+        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{label}</span>
+      </label>
+    </p>
+  )
+  export const Toggle = forwardRef<HTMLInputElement, ToggleProps>(_Toggle)
+
   export const TextInput = ({
     id,
     defaultValue,
     minLength,
     label,
+    className,
+    required,
   }: {
     id: string
     label: string
     defaultValue?: string
     minLength?: number
+    className?: string
+    required?: boolean
   }) => (
-    <p>
-      <Label htmlFor={id}>{label}</Label>
-      <input
-        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-        required
-        minLength={minLength}
-        type="text"
-        id={id}
-        name={id}
-        defaultValue={defaultValue}
-      />
-    </p>
-  )
-
-  export const DateInput = ({
-    label,
-    id,
-    defaultValue,
-    disabled,
-  }: {
-    label: string
-    id: string
-    defaultValue?: string
-    disabled?: boolean
-  }) => (
-    <p>
-      <Label htmlFor={id} disabled={disabled}>
+    <p className={className}>
+      <FlowbiteLabel className="inline-block mb-2" htmlFor={id}>
         {label}
-      </Label>
-      <input
-        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 disabled:text-gray-400"
-        type="date"
+      </FlowbiteLabel>
+      <FlowbiteTextInput
         id={id}
-        name={id}
+        minLength={minLength}
         defaultValue={defaultValue}
-        disabled={disabled}
-        required
+        required={required}
       />
     </p>
-  )
-
-  export const Label = ({
-    htmlFor,
-    children,
-    disabled,
-  }: {
-    htmlFor: string
-    children: ReactNode
-    disabled?: boolean
-  }) => (
-    <label
-      htmlFor={htmlFor}
-      className={
-        "block my-2 text-sm font-medium " +
-        (disabled ? "text-gray-400" : "text-gray-900 dark:text-white")
-      }
-    >
-      {children}
-    </label>
   )
 
   export const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement>) => (
     <legend
       className={multipleClasses(
         className,
-        "font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white mb-3"
+        "font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white"
       )}
     >
       {children}
@@ -370,25 +488,12 @@ export namespace Form {
     <fieldset
       className={multipleClasses(
         className,
-        "w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 m-auto"
+        "w-full bg-white rounded-lg shadow dark:border md:mt-0 p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 m-auto"
       )}
     >
       {children}
     </fieldset>
   )
-
-  const imageInputStyling = {
-    input: {
-      regular:
-        "transition-all block w-full text-sm border rounded-lg cursor-pointer focus:outline-none text-gray-900 border-gray-300 bg-gray-50 dark:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400",
-      error:
-        "transition-all block w-full text-sm border rounded-lg cursor-pointer focus:outline-none bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:bg-red-100 dark:border-red-400",
-    },
-    helper: {
-      regular: "transition-all mt-1 text-xs text-gray-500 dark:text-gray-300",
-      error: "transition-all mt-1 text-xs font-bold text-red-900 dark:text-red-500",
-    },
-  }
   export function ImageInput({
     label,
     id,
@@ -397,7 +502,7 @@ export namespace Form {
   }: {
     label: string
     id: string
-    helper?: string
+    helper?: ReactNode
     required?: boolean
   }) {
     const [error, setError] = useState(false)
@@ -416,23 +521,17 @@ export namespace Form {
 
     return (
       <p>
-        <Label htmlFor={id}>{label}</Label>
-        <input
-          className={error ? imageInputStyling.input.error : imageInputStyling.input.regular}
-          type="file"
+        <FlowbiteLabel className="inline-block mb-2" htmlFor={id}>
+          {label}
+        </FlowbiteLabel>
+        <FileInput
           id={id}
           name={id}
           required={required}
           onChange={handleFileInput}
+          color={error ? "failure" : undefined}
+          helperText={helper}
         />
-        {helper && (
-          <p
-            className={error ? imageInputStyling.helper.error : imageInputStyling.helper.regular}
-            id={id}
-          >
-            {helper}
-          </p>
-        )}
       </p>
     )
   }

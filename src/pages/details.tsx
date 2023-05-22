@@ -62,53 +62,71 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
       })
   }
 
+  const imageHelper = "PNG, JPG or GIF (MAX. 800x400px)."
+  const imageNotRequiredHelper = (
+    <>
+      <p className="mb-2">{imageHelper}</p>
+      <p>Choose an image if you wish to replace your saved image</p>
+    </>
+  )
+
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
-      <Form.Fieldset>
-        <Form.Legend>Organisation</Form.Legend>
-        <Form.TextInput id="companyName" defaultValue={doneeInfo.companyName} label="Legal name" />
+    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4">
+      <Form.Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
+        <Form.Legend className="sm:col-span-2">Organisation</Form.Legend>
         <Form.TextInput
           id="companyAddress"
           minLength={10}
           defaultValue={doneeInfo.companyAddress}
           label="Address"
+          className="sm:col-span-2"
+          required
+        />
+        <Form.TextInput
+          id="companyName"
+          defaultValue={doneeInfo.companyName}
+          label="Legal name"
+          required
         />
         <Form.TextInput
           id="country"
           minLength={2}
           defaultValue={doneeInfo.country}
           label="Country"
+          required
         />
         <Form.TextInput
           id="registrationNumber"
           minLength={15}
           defaultValue={doneeInfo.registrationNumber}
           label="Charity registration number"
+          required
         />
         <Form.TextInput
           id="signatoryName"
           minLength={5}
           label="Signatory's name"
           defaultValue={doneeInfo.signatoryName}
+          required
         />
         <Form.ImageInput
           id="signature"
           label="Image of signatory's signature"
-          helper="PNG, JPG or GIF (MAX. 800x400px)."
-          required
+          helper={doneeInfo.signatoryName ? imageNotRequiredHelper : imageHelper}
+          required={!Boolean(doneeInfo.signatoryName)}
         />
         <Form.ImageInput
           id="smallLogo"
           label="Small image of organisation's logo"
-          helper="PNG, JPG or GIF (MAX. 800x400px)."
-          required
+          helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
+          required={!Boolean(doneeInfo.smallLogo)}
+        />
+        <input
+          className={buttonStyling + " cursor-pointer block mr-auto text-l"}
+          type="submit"
+          value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
         />
       </Form.Fieldset>
-      <input
-        className={buttonStyling + " cursor-pointer block mx-auto text-l"}
-        type="submit"
-        value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
-      />
     </form>
   )
 }

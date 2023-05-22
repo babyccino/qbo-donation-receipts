@@ -2,40 +2,21 @@ import { ChangeEventHandler, FormEventHandler, MouseEventHandler, useRef, useSta
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
+import Datepicker from "react-tailwindcss-datepicker"
 
+import { Form, buttonStyling, Button, Alert, Svg } from "@/components/ui"
 import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
-  endOfPreviousYearHtml,
-  endOfThisYearHtml,
-  startOfPreviousYearHtml,
-  startOfThisYearHtml,
+  endOfPreviousYear,
+  endOfThisYear,
+  formatDateHtmlReverse,
+  startOfPreviousYear,
+  startOfThisYear,
 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Button, Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn, postJsonData } from "@/lib/app-api"
-
-function getStartEndDates(
-  dateRangeType: DateRangeType,
-  customDateRange: string[]
-): [string, string] {
-  switch (dateRangeType) {
-    case DateRangeType.LastYear:
-      return [startOfPreviousYearHtml(), endOfPreviousYearHtml()]
-    case DateRangeType.ThisYear:
-      return [startOfThisYearHtml(), endOfThisYearHtml()]
-    case DateRangeType.Ytd:
-      return [startOfThisYearHtml(), endOfThisYearHtml()]
-    case DateRangeType.Custom:
-      if (customDateRange.length !== 2)
-        throw new Error(
-          "Custom date range selected but custom dates not provided" +
-            JSON.stringify({ customDateRange })
-        )
-      return [customDateRange[0], customDateRange[1]]
-  }
-}
 
 type Props = {
   items: Item[]
@@ -44,17 +25,47 @@ type Props = {
   detailsFilledIn: boolean
 }
 
+type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
+
 export default function Services({ items, selectedItems, detailsFilledIn }: Props) {
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
-  const [selectedValue, setSelectedValue] = useState<DateRangeType>(DateRangeType.LastYear)
-  const dateRangeIsCustom = selectedValue === DateRangeType.Custom
-
-  const handleSelectChange: ChangeEventHandler<HTMLSelectElement> = event =>
-    setSelectedValue(event.target.value as DateRangeType)
+  const [dateRangeState, setDateRangeState] = useState<DateRangeType>(DateRangeType.LastYear)
+  const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
   const previousYear = new Date().getFullYear() - 1
+  const [customDateState, setCustomDateState] = useState({
+    // startDate: new Date(`${previousYear}/01/01`),
+    // change to above in prod
+    startDate: new Date(`1970/01/01`),
+    endDate: new Date(`${previousYear}/12/31`),
+  })
+  const onDateChange = (date: DateValueType) => {
+    if (!date || !date.endDate || !date.startDate) return
+    const startDate = typeof date.startDate == "string" ? new Date(date.startDate) : date.startDate
+    const endDate = typeof date.endDate == "string" ? new Date(date.endDate) : date.endDate
+    setCustomDateState({ startDate, endDate })
+  }
+
+  const handleSelectChange: ChangeEventHandler<HTMLSelectElement> = event => {
+    const dateRangeType = event.target.value as DateRangeType
+    setDateRangeState(dateRangeType)
+
+    switch (dateRangeType) {
+      case DateRangeType.ThisYear:
+        return setCustomDateState({ startDate: startOfThisYear(), endDate: endOfThisYear() })
+      case DateRangeType.Ytd:
+        return setCustomDateState({ startDate: startOfThisYear(), endDate: new Date() })
+      case DateRangeType.LastYear:
+      case DateRangeType.Custom:
+      default:
+        return setCustomDateState({
+          startDate: startOfPreviousYear(),
+          endDate: endOfPreviousYear(),
+        })
+    }
+  }
 
   const checkAll: MouseEventHandler<HTMLButtonElement> = event => {
     event.preventDefault()
@@ -70,41 +81,31 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
     }
   }
 
-  const getFormData = () => {
+  const getItems = () => {
     if (!formRef.current) throw new Error("Form html element has not yet been initialised")
 
     const formData = new FormData(formRef.current)
-
-    const items = (formData.getAll("items") as string[]).map(item => parseInt(item))
-
-    const dateRangeType = formData.get("dateRangeType")
-    if (!dateRangeType) throw new Error("dateRangeType is undefined")
-    const [startDate, endDate] = getStartEndDates(dateRangeType as DateRangeType, [
-      formData.get("dateStart") as string,
-      formData.get("dateEnd") as string,
-    ])
-
-    return {
-      items,
-      date: {
-        startDate,
-        endDate,
-      },
-    }
+    return (formData.getAll("items") as string[]).map(item => parseInt(item))
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const formData = getFormData()
-    const apiResponse = postJsonData("/api/services", formData)
+    const items = getItems()
+    const apiResponse = postJsonData("/api/services", { items, date: customDateState })
+
+    console.log({ formData: items })
 
     // the selected items will be in the query in case the db has not been updated by...
     // the time the user has reached the generate-receipts pages
     if (detailsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: { items: items.join("+"), ...formData.date },
+        query: {
+          items: items.join("+"),
+          startDate: formatDateHtmlReverse(customDateState.startDate),
+          endDate: formatDateHtmlReverse(customDateState.endDate),
+        },
       })
     else
       router.push({
@@ -113,67 +114,59 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
       })
   }
 
-  const mapItem = ({ id, name }: Item) => (
-    <div key={id}>
-      <label
-        htmlFor={id.toString()}
-        className="relative inline-flex items-center mb-4 cursor-pointer"
-      >
-        <input
-          className="sr-only peer"
-          ref={el => (el ? inputRefs.current.push(el) : null)}
-          type="checkbox"
-          name="items"
-          value={id}
-          id={id.toString()}
-          defaultChecked={selectedItems ? selectedItems.includes(id) : true}
-        />
-        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600" />
-        <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{name}</span>
-      </label>
-    </div>
-  )
-
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
       <Form.Fieldset>
-        <Form.Legend>Selected items</Form.Legend>
-        {items.map(mapItem)}
-        <div className="pb-2 pt-1 space-x-2">
+        <Form.Legend className="mb-3">Selected items</Form.Legend>
+        <Alert
+          color="info"
+          className="mb-4"
+          icon={() => (
+            <div className="h-6 w-6 mr-2">
+              <Svg.Info />
+            </div>
+          )}
+        >
+          Make sure to only choose your Quickbooks sales items which qualify as donations
+        </Alert>
+        {items.map(({ id, name }) => (
+          <Form.Toggle
+            key={id}
+            defaultChecked={selectedItems ? selectedItems.includes(id) : true}
+            id={id}
+            label={name}
+            ref={el => (el ? inputRefs.current.push(el) : null)}
+          />
+        ))}
+        <div className="pb-2 pt-1 flex flex-row gap-2">
           <Button onClick={checkAll}>Check All</Button>
           <Button onClick={unCheckAll}>Uncheck All</Button>
         </div>
       </Form.Fieldset>
       <Form.Fieldset>
-        <Form.Legend>Date range</Form.Legend>
-        <Form.Label htmlFor="dateRangeType">Range</Form.Label>
-        <select
+        <Form.Legend className="mb-4">Date range</Form.Legend>
+        <Form.Label className="inline-block mb-2" htmlFor="dateRangeType">
+          Range
+        </Form.Label>
+        <Form.Select
           onChange={handleSelectChange}
           name="dateRangeType"
           id="dateRangeType"
           defaultValue={DateRangeType.LastYear}
-          className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
         >
           <option value={DateRangeType.LastYear}>Last year</option>
           <option value={DateRangeType.ThisYear}>This year</option>
           <option value={DateRangeType.Ytd}>This year to date</option>
           <option value={DateRangeType.Custom}>Custom range</option>
-        </select>
-        {/* //TODO make states for start and end date and make sure start is always less than end */}
-        <Form.DateInput
-          id="dateStart"
-          defaultValue={`1970-01-01`}
-          disabled={!dateRangeIsCustom}
-          // TODO change to below for prod. Just have this as 1970 to fit the sandbox data
-          // defaultValue={`${previousYear}-01-01`}
-          label="Start date"
-        />
-        <Form.DateInput
-          id="dateEnd"
-          disabled={!dateRangeIsCustom}
-          defaultValue={`${previousYear}-12-31`}
-          label="End date"
-        />
+        </Form.Select>
+        <p className="space-y-1 mt-2">
+          <Form.Label className="inline-block mb-2">Date Range</Form.Label>
+          <Datepicker
+            value={customDateState}
+            onChange={onDateChange}
+            disabled={!dateRangeIsCustom}
+          />
+        </p>
       </Form.Fieldset>
       <input
         className={buttonStyling + " cursor-pointer block mx-auto text-l"}
