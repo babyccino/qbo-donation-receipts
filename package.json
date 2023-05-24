@@ -21,6 +21,7 @@
     "react-dom": "^18.2.0",
     "react-tailwindcss-datepicker": "^1.6.1",
     "sass": "^1.60.0",
+    "stripe": "^12.6.0",
     "zod": "^3.21.4"
   },
   "devDependencies": {
