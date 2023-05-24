@@ -8,7 +8,8 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
-import { alreadyFilledIn, postJsonData, base64EncodeFile } from "@/lib/app-api"
+import { alreadyFilledIn, base64EncodeFile } from "@/lib/app-api"
+import { postJsonData } from "@/lib/util"
 
 type Props = {
   doneeInfo: Partial<DoneeInfo>
@@ -39,8 +40,8 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
       country,
       registrationNumber,
       signatoryName,
-      signature: await base64EncodeFile(signature),
-      smallLogo: await base64EncodeFile(smallLogo),
+      signature: signature.name !== "" ? await base64EncodeFile(signature) : undefined,
+      smallLogo: smallLogo.name !== "" ? await base64EncodeFile(smallLogo) : undefined,
     }
   }
 
@@ -48,6 +49,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
     event.preventDefault()
 
     const formData = await getFormData()
+    console.log({ sig: formData.signature?.length, sl: formData.smallLogo?.length })
     const apiResponse = postJsonData("/api/details", formData)
 
     if (itemsFilledIn)

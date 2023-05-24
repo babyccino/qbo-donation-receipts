@@ -5,46 +5,6 @@ import { Session, getServerSession } from "next-auth"
 import { authOptions } from "src/pages/api/auth/[...nextauth]"
 import { ApiError } from "next/dist/server/api-utils"
 
-export async function fetchJsonData<T = any>(url: string, accessToken?: string): Promise<T> {
-  const response = await (accessToken
-    ? fetch(url, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      })
-    : fetch(url, {
-        headers: {
-          Accept: "application/json",
-        },
-      }))
-
-  if (!response.ok) {
-    throw new Error(`GET request to url: ${url} failed`)
-  }
-
-  const report: T = await response.json()
-  return report
-}
-
-export async function postJsonData<T = any>(url: string, json: any): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(json),
-  })
-
-  if (!response.ok) {
-    throw new Error(`POST request to url: ${url} failed`)
-  }
-
-  const report: T = await response.json()
-  return report
-}
-
 export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<DbUser>): {
   items: boolean
   doneeDetails: boolean

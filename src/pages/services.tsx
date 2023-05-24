@@ -11,12 +11,13 @@ import {
   endOfPreviousYear,
   endOfThisYear,
   formatDateHtmlReverse,
+  postJsonData,
   startOfPreviousYear,
   startOfThisYear,
 } from "@/lib/util"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
-import { alreadyFilledIn, postJsonData } from "@/lib/app-api"
+import { alreadyFilledIn } from "@/lib/app-api"
 
 type Props = {
   items: Item[]
@@ -92,7 +93,8 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
     event.preventDefault()
 
     const items = getItems()
-    const apiResponse = postJsonData("/api/services", { items, date: customDateState })
+    const postData = { items, date: customDateState }
+    const apiResponse = postJsonData("/api/services", postData)
 
     console.log({ formData: items })
 

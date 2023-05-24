@@ -12,7 +12,7 @@ import {
   parseCompanyInfo,
 } from "@/lib/qbo-api"
 import { DeepPartial } from "@/lib/util"
-import { fetchJsonData } from "@/lib/app-api"
+import { fetchJsonData } from "@/lib/util"
 import { Session } from "next-auth"
 
 const Header = Object.freeze({
@@ -29,6 +29,7 @@ const Header = Object.freeze({
 describe("processCustomerData", () => {
   it("should convert a report with one customer and one product correctly", () => {
     const report: CustomerSalesReport = {
+      Fault: undefined,
       Header,
       Columns: {
         Column: [
@@ -119,6 +120,7 @@ describe("processCustomerData", () => {
 
   it("should convert a report with one customer section and one product correctly", () => {
     const report: CustomerSalesReport = {
+      Fault: undefined,
       Header,
       Columns: {
         Column: [
@@ -236,6 +238,7 @@ describe("processCustomerData", () => {
 
   it("selecting item which is not in customer's data gives empty array", () => {
     const report: CustomerSalesReport = {
+      Fault: undefined,
       Header,
       Columns: {
         Column: [
@@ -311,6 +314,7 @@ describe("processCustomerData", () => {
 
   it("should convert a report with multiple products and customers correctly", () => {
     const report: CustomerSalesReport = {
+      Fault: undefined,
       Header,
       Columns: {
         Column: [

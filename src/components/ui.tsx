@@ -462,6 +462,7 @@ export namespace Form {
         {label}
       </FlowbiteLabel>
       <FlowbiteTextInput
+        name={id}
         id={id}
         minLength={minLength}
         defaultValue={defaultValue}
