@@ -37,7 +37,7 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
-export const getUrl = () => {
+export const getBaseUrl = () => {
   const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL
   const url = vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000/"
   if (url.at(-1) === "/") return url
