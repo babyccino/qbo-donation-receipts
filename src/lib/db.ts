@@ -1,4 +1,5 @@
 import admin from "firebase-admin"
+import Stripe from "stripe"
 
 import { DoneeInfo } from "@/components/receipt"
 
@@ -52,11 +53,52 @@ export type DbUser = {
     endDate: Date
   }
   donee?: DoneeInfo
+  subscription?: Subscription
+}
+
+export type Subscription = {
+  id: string /* primary key */
+  status?: Stripe.Subscription.Status
+  metadata?: Stripe.Metadata
+  priceId?: string /* foreign key to prices.id */
+  quantity?: number
+  cancelAtPeriodEnd?: boolean
+  created: string
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  endedAt?: string
+  cancelAt?: string
+  canceledAt?: string
+  trialStart?: string
+  trialEnd?: string
+}
+
+export type Product = {
+  id: string /* primary key */
+  active?: boolean
+  name?: string
+  description?: string
+  image?: string
+  metadata?: Stripe.Metadata
+  prices?: Price[]
+}
+
+export type Price = {
+  id: string /* primary key */
+  active?: boolean
+  description?: string
+  unitAmount?: number
+  currency?: string
+  type?: Stripe.Price.Type
+  interval?: Stripe.Price.Recurring.Interval
+  intervalCount?: number
+  metadata?: Stripe.Metadata
+  products?: Product
 }
 
 export const firestore = admin.firestore()
 
-const converter = {
+const userConverter = {
   toFirestore: (data: DbUser) => data,
   fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => {
     const data = snap.data()
@@ -70,5 +112,11 @@ const converter = {
   },
 }
 
-export const user = firestore.collection("user").withConverter(converter)
+const productConverter = {
+  toFirestore: (data: Product) => data,
+  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as Product,
+}
+
+export const user = firestore.collection("user").withConverter(userConverter)
+export const product = firestore.collection("product").withConverter(productConverter)
 export const storageBucket = admin.storage().bucket(`${FIREBASE_PROJECT_ID}.appspot.com`)
