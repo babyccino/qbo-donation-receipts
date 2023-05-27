@@ -17,8 +17,9 @@ import {
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
 import { Alert, Button, Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { DbUser, user } from "@/lib/db"
+import { user } from "@/lib/db"
 import { getThisYear } from "@/lib/util"
+import { User } from "@/types/db"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -203,7 +204,7 @@ function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
 
 // --- server-side props ---
 
-function getProducts({ items }: ParsedUrlQuery, dbUser: DbUser): Set<number> {
+function getProducts({ items }: ParsedUrlQuery, dbUser: User): Set<number> {
   if (items)
     return typeof items == "string"
       ? new Set(items.split("+").map(str => parseInt(str)))
@@ -241,7 +242,7 @@ function combineQueryWithDb(query: ParsedUrlQuery, donee: DoneeInfo): DoneeInfo 
   return donee
 }
 
-function getDoneeInfo(query: ParsedUrlQuery, dbUser: DbUser): DoneeInfo {
+function getDoneeInfo(query: ParsedUrlQuery, dbUser: User): DoneeInfo {
   if (doesQueryHaveAllFields(query)) {
     return {
       companyName: query.companyName as string,

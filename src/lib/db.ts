@@ -1,7 +1,6 @@
 import admin from "firebase-admin"
-import Stripe from "stripe"
 
-import { DoneeInfo } from "@/components/receipt"
+import { Price, Product, User } from "src/types/db"
 
 // set env variable FIRESTORE_EMULATOR_HOST to use firebase emulator
 
@@ -42,73 +41,32 @@ if (!admin.apps.length) {
   }
 }
 
-export type DbUser = {
-  email: string
-  id: string
-  name: string
-  realmId: string
-  items?: number[]
-  date?: {
-    startDate: Date
-    endDate: Date
-  }
-  donee?: DoneeInfo
-  subscription?: Subscription
-}
-
-export type Subscription = {
-  id: string /* primary key */
-  status?: Stripe.Subscription.Status
-  metadata?: Stripe.Metadata
-  priceId?: string /* foreign key to prices.id */
-  quantity?: number
-  cancelAtPeriodEnd?: boolean
-  created: string
-  currentPeriodStart: string
-  currentPeriodEnd: string
-  endedAt?: string
-  cancelAt?: string
-  canceledAt?: string
-  trialStart?: string
-  trialEnd?: string
-}
-
-export type Product = {
-  id: string /* primary key */
-  active?: boolean
-  name?: string
-  description?: string
-  image?: string
-  metadata?: Stripe.Metadata
-  prices?: Price[]
-}
-
-export type Price = {
-  id: string /* primary key */
-  active?: boolean
-  description?: string
-  unitAmount?: number
-  currency?: string
-  type?: Stripe.Price.Type
-  interval?: Stripe.Price.Recurring.Interval
-  intervalCount?: number
-  metadata?: Stripe.Metadata
-  products?: Product
-}
-
 export const firestore = admin.firestore()
 
 const userConverter = {
-  toFirestore: (data: DbUser) => data,
+  toFirestore: (data: User) => data,
   fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => {
     const data = snap.data()
-    const date = data.date
+    const rawDate = data.date
+    const date = rawDate
       ? {
-          startDate: data.date.startDate.toDate(),
-          endDate: data.date.endDate.toDate(),
+          startDate: rawDate.startDate.toDate(),
+          endDate: rawDate.endDate.toDate(),
         }
       : undefined
-    return { ...data, date } as DbUser
+    const rawSubscription = data.subscription
+    const subscription = rawSubscription
+      ? {
+          ...rawSubscription,
+          created: rawSubscription.created.toDate(),
+          currentPeriodStart: rawSubscription.currentPeriodStart.toDate(),
+          currentPeriodEnd: rawSubscription.currentPeriodEnd.toDate(),
+          endedAt: rawSubscription.endedAt?.toDate(),
+          cancelAt: rawSubscription.cancelAt?.toDate(),
+          canceledAt: rawSubscription.canceledAt?.toDate(),
+        }
+      : undefined
+    return { ...data, date, subscription } as User
   },
 }
 
@@ -116,7 +74,13 @@ const productConverter = {
   toFirestore: (data: Product) => data,
   fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as Product,
 }
+const priceConverter = {
+  toFirestore: (data: Price) => data,
+  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as Price,
+}
 
 export const user = firestore.collection("user").withConverter(userConverter)
 export const product = firestore.collection("product").withConverter(productConverter)
+export const price = (id: string) =>
+  product.doc(id).collection("price").withConverter(priceConverter)
 export const storageBucket = admin.storage().bucket(`${FIREBASE_PROJECT_ID}.appspot.com`)

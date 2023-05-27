@@ -1,5 +1,5 @@
 import { alreadyFilledIn, base64EncodeString, isJpegOrPngDataURL } from "@/lib/app-api"
-import { DbUser } from "@/lib/db"
+import { User } from "@/types/db"
 
 describe("base64EncodeString", () => {
   it("encodes a string to base64", () => {
@@ -37,7 +37,7 @@ describe("isJpegOrPngDataURL", () => {
 
 describe("alreadyFilledIn", () => {
   // Mocked document snapshot data
-  const docData: DbUser = {
+  const docData: User = {
     items: [1],
     date: { startDate: new Date(), endDate: new Date() },
     donee: {

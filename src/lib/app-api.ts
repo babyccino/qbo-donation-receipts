@@ -1,11 +1,12 @@
 import { TypeOf, ZodObject, ZodRawShape, z } from "zod"
-import { DbUser } from "./db"
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
 import { Session, getServerSession } from "next-auth"
-import { authOptions } from "src/pages/api/auth/[...nextauth]"
 import { ApiError } from "next/dist/server/api-utils"
 
-export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<DbUser>): {
+import { authOptions } from "src/pages/api/auth/[...nextauth]"
+import { User } from "@/types/db"
+
+export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<User>): {
   items: boolean
   doneeDetails: boolean
 } {
