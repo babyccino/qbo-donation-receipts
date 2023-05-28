@@ -42,6 +42,10 @@ if (!admin.apps.length) {
 }
 
 export const firestore = admin.firestore()
+// this function will throw if it is called more than once (ex: when hot-reloading)
+try {
+  firestore.settings({ ignoreUndefinedProperties: true })
+} catch {}
 
 const userConverter = {
   toFirestore: (data: User) => data,
