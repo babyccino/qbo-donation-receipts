@@ -14,6 +14,13 @@ export type User = {
   }
   donee?: DoneeInfo
   subscription?: Subscription
+  billingAddress?: BillingAddress
+}
+
+type BillingAddress = {
+  phone: string
+  address: Stripe.Address
+  name: string
 }
 
 export type Subscription = {
