@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "paths": {
       "@/lib/*": ["src/lib/*"],
-      "@/components/*": ["src/components/*"]
+      "@/components/*": ["src/components/*"],
+      "@/types/*": ["src/types/*"]
     },
     "target": "ES2015",
     "lib": ["dom", "dom.iterable", "esnext"],
