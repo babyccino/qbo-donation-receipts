@@ -8,8 +8,8 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
-import { alreadyFilledIn, base64EncodeFile } from "@/lib/app-api"
-import { postJsonData } from "@/lib/util"
+import { alreadyFilledIn } from "@/lib/app-api"
+import { base64EncodeFile, postJsonData } from "@/lib/util"
 
 type Props = {
   doneeInfo: Partial<DoneeInfo>

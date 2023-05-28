@@ -39,24 +39,6 @@ export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<User>): 
   }
 }
 
-export function isJpegOrPngDataURL(str: string): boolean {
-  if (!str.startsWith("data:image/jpeg;base64,") && !str.startsWith("data:image/png;base64,")) {
-    return false
-  }
-  const regex = /^data:image\/(jpeg|png);base64,([a-zA-Z0-9+/]*={0,2})$/
-  return regex.test(str)
-}
-
-export const base64EncodeString = (str: string) => Buffer.from(str).toString("base64")
-
-export const base64EncodeFile = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-  })
-
 export function parseRequestBody<T extends ZodRawShape>(shape: T, body: any): TypeOf<ZodObject<T>> {
   const response = z.object(shape).safeParse(body)
 

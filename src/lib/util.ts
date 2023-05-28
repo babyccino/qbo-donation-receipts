@@ -44,6 +44,24 @@ export const getBaseUrl = () => {
   else return `${url}/`
 }
 
+export function isJpegOrPngDataURL(str: string): boolean {
+  if (!str.startsWith("data:image/jpeg;base64,") && !str.startsWith("data:image/png;base64,")) {
+    return false
+  }
+  const regex = /^data:image\/(jpeg|png);base64,([a-zA-Z0-9+/]*={0,2})$/
+  return regex.test(str)
+}
+
+export const base64EncodeString = (str: string) => Buffer.from(str).toString("base64")
+
+export const base64EncodeFile = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+  })
+
 export async function fetchJsonData<T = any>(url: string, accessToken?: string): Promise<T> {
   const response = await (accessToken
     ? fetch(url, {
@@ -82,4 +100,27 @@ export async function postJsonData<T = any>(url: string, json: any): Promise<T> 
 
   const report: T = await response.json()
   return report
+}
+
+type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
+  ? `${Lowercase<T>}${Capitalize<SnakeToCamelCase<U>>}`
+  : S
+type SnakeToCamelCaseNested<T> = T extends object
+  ? {
+      [K in keyof T as SnakeToCamelCase<K & string>]: SnakeToCamelCaseNested<T[K]>
+    }
+  : T
+
+const snakeToCamel = (str: string) => str.replace(/([-_]\w)/g, match => match[1].toUpperCase())
+export function snakeKeysToCamel<T extends object>(obj: T) {
+  const keys = Object.keys(obj) as (keyof T)[]
+  return keys.reduce<any>((result, key) => {
+    const camelKey = snakeToCamel(key as string)
+    const nested = obj[key]
+
+    if (typeof obj === "object") result[camelKey] = snakeKeysToCamel(nested as object)
+    else result[camelKey] = nested
+
+    return result
+  }, {}) as SnakeToCamelCaseNested<T>
 }
