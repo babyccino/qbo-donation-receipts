@@ -20,7 +20,7 @@ next-env.d.ts
 .env*.local
 
 src/pages/pdf-example.tsx
-src/pages/api/test.ts
+src/pages/api/test-api.ts
 
 coverage
 
