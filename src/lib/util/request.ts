@@ -1,9 +1,5 @@
-import { ApiError } from "next/dist/server/api-utils"
-
 export async function subscribe() {
-  const { url } = await postJsonData("/api/stripe/create-checkout-session", {
-    priceId: "price_1NB3qQGK67vW62jMlz5UyIPm",
-  })
+  const { url } = await postJsonData("/api/stripe/create-checkout-session")
 
   if (typeof url !== "string") throw new Error()
 
@@ -66,14 +62,14 @@ export async function fetchJsonData<T = any>(url: string, accessToken?: string):
   return responseContent as T
 }
 
-export async function postJsonData<T = any>(url: string, json: any): Promise<T> {
+export async function postJsonData<T = any>(url: string, json?: any): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(json),
+    body: json && JSON.stringify(json),
   })
 
   const responseContent = await getResponseContent(response)
