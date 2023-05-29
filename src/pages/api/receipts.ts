@@ -9,7 +9,7 @@ import {
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
-import { getThisYear } from "@/lib/util"
+import { getThisYear } from "@/lib/util/date"
 import { AuthorisedHanlder, createAuthorisedHandler } from "@/lib/app-api"
 import { ApiError } from "next/dist/server/api-utils"
 

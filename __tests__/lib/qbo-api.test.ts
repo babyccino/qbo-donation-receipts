@@ -11,8 +11,8 @@ import {
   getItems,
   parseCompanyInfo,
 } from "@/lib/qbo-api"
-import { DeepPartial } from "@/lib/util"
-import { fetchJsonData } from "@/lib/util"
+import { DeepPartial } from "@/lib/util/etc"
+import { fetchJsonData } from "@/lib/util/etc"
 import { Session } from "next-auth"
 
 const Header = Object.freeze({

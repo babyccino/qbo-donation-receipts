@@ -5,7 +5,7 @@ import { getServerSession, Session } from "next-auth"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { buttonStyling, Svg } from "@/components/ui"
-import { multipleClasses } from "@/lib/util"
+import { multipleClasses } from "@/lib/util/etc"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"
 

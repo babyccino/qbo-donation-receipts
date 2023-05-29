@@ -18,7 +18,7 @@ import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
 import { Alert, Button, Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { user } from "@/lib/db"
-import { getThisYear } from "@/lib/util"
+import { getThisYear } from "@/lib/util/date"
 import { User } from "@/types/db"
 
 function DownloadAllFiles() {

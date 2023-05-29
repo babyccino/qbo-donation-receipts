@@ -11,10 +11,10 @@ import {
   endOfPreviousYear,
   endOfThisYear,
   formatDateHtmlReverse,
-  postJsonData,
   startOfPreviousYear,
   startOfThisYear,
-} from "@/lib/util"
+} from "@/lib/util/date"
+import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"

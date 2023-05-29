@@ -1,9 +1,9 @@
 import { Session } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
 
-import { fetchJsonData } from "./util"
+import { formatDateHtmlReverse } from "./util/date"
+import { fetchJsonData } from "./util/request"
 import { User } from "@/types/db"
-import { formatDateHtmlReverse } from "./util"
 
 export type QBOProfile = {
   sub: string

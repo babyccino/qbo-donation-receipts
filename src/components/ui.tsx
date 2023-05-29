@@ -7,7 +7,7 @@ import {
   forwardRef,
   ForwardedRef,
 } from "react"
-import { multipleClasses } from "@/lib/util"
+import { multipleClasses } from "@/lib/util/etc"
 import {
   FileInput,
   Label as FlowbiteLabel,
@@ -15,7 +15,7 @@ import {
   TextInput as FlowbiteTextInput,
 } from "flowbite-react"
 
-export { Button, Alert } from "flowbite-react"
+export { Button, Alert, Card } from "flowbite-react"
 
 // components from flowbite.com
 // svg from heroicons.dev

@@ -9,7 +9,7 @@ import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { base64EncodeFile, postJsonData } from "@/lib/util"
+import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 
 type Props = {
   doneeInfo: Partial<DoneeInfo>
