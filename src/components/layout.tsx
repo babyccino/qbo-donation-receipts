@@ -4,6 +4,8 @@ import { signOut, useSession } from "next-auth/react"
 
 import { Svg } from "@/components/ui"
 import { useRouter } from "next/router"
+import { Session } from "next-auth"
+import { subscribe } from "@/lib/util/request"
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
@@ -15,9 +17,6 @@ export default function Layout({ children }: { children: ReactNode }) {
     router.events.on("routeChangeStart", cb)
     return () => router.events.off("routeChangeStart", cb)
   }, [router.events])
-
-  // users who are not signed in will be redirected to the sign-in page
-  if (!session?.user) return null
 
   return (
     <div className="flex flex-col sm:flex-row relative">
@@ -39,7 +38,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             onClick={() => setShowSidebar(false)}
           />
         )}
-        <Nav show={showSidebar} />
+        <Nav show={showSidebar} user={session?.user} />
       </header>
       <div className="w-64 hidden sm:block" />
 
@@ -48,7 +47,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   )
 }
 
-const Nav = ({ show }: { show: boolean }) => (
+const Nav = ({ show, user }: { show: boolean; user?: Session["user"] }) => (
   <nav
     id="separator-sidebar"
     className={
@@ -62,18 +61,24 @@ const Nav = ({ show }: { show: boolean }) => (
       <NavLink link="services" logo={<Svg.Products />} label="Items" />
       <NavLink link="details" logo={<Svg.Components />} label="Details" />
       <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
-      <NavAnchor
-        href="api/auth/signout"
-        logo={<Svg.SignIn />}
-        onClick={e => {
-          e.preventDefault()
-          signOut()
-        }}
-        label="Sign Out"
-      />
+      {user && <NavLink link="account" logo={<Svg.Users />} label="Account" />}
+      {user ? (
+        <NavAnchor
+          href="api/auth/signout"
+          logo={<Svg.SignIn />}
+          onClick={e => {
+            e.preventDefault()
+            signOut()
+          }}
+          label="Sign Out"
+        />
+      ) : (
+        <NavLink link="api/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
+      )}
       <hr style={{ margin: "1rem 0" }} className="border-t border-gray-200 dark:border-gray-700" />
-      <NavLink link="documentaion" logo={<Svg.Documentation />} label="Documentation" />
-      <NavLink link="help" logo={<Svg.Help />} label="Help" />
+      <NavAnchor href="#" onClick={subscribe} logo={<Svg.Upgrade />} label="Upgrade To Pro" />
+      <NavLink link="" logo={<Svg.Documentation />} label="Documentation" />
+      <NavLink link="" logo={<Svg.Help />} label="Help" />
     </ul>
   </nav>
 )
@@ -131,7 +136,7 @@ const NavItemInner = ({ logo, label, notification, extra }: NavInnerProps) => (
     ) : null}
     {extra ? (
       <span className="inline-flex items-center justify-center px-2 ml-3 text-sm font-medium text-gray-800 bg-gray-200 rounded-full dark:bg-gray-700 dark:text-gray-300">
-        Pro
+        {extra}
       </span>
     ) : null}
   </>
