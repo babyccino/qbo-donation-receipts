@@ -1,3 +1,5 @@
+import { ApiError } from "next/dist/server/api-utils"
+
 export async function subscribe() {
   const { url } = await postJsonData("/api/stripe/create-checkout-session", {
     priceId: "price_1NB3qQGK67vW62jMlz5UyIPm",
@@ -33,6 +35,15 @@ export const base64EncodeFile = (file: File) =>
     reader.onerror = reject
   })
 
+async function getResponseContent(response: Response) {
+  const contentType = response.headers.get("content-type")
+  if (contentType && contentType.includes("application/json")) {
+    return response.json()
+  } else {
+    return await response.text()
+  }
+}
+
 export async function fetchJsonData<T = any>(url: string, accessToken?: string): Promise<T> {
   const response = await (accessToken
     ? fetch(url, {
@@ -47,12 +58,12 @@ export async function fetchJsonData<T = any>(url: string, accessToken?: string):
         },
       }))
 
+  const responseContent = await getResponseContent(response)
   if (!response.ok) {
-    throw new Error(`GET request to url: ${url} failed`)
+    throw new Error(`GET request to url: ${url} failed, error: ${responseContent}}`)
   }
 
-  const report: T = await response.json()
-  return report
+  return responseContent as T
 }
 
 export async function postJsonData<T = any>(url: string, json: any): Promise<T> {
@@ -65,10 +76,10 @@ export async function postJsonData<T = any>(url: string, json: any): Promise<T> 
     body: JSON.stringify(json),
   })
 
+  const responseContent = await getResponseContent(response)
   if (!response.ok) {
-    throw new Error(`POST request to url: ${url} failed`)
+    throw new Error(`POST request to url: ${url} failed, error: ${responseContent}}`)
   }
 
-  const report: T = await response.json()
-  return report
+  return responseContent as T
 }
