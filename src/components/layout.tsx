@@ -4,12 +4,12 @@ import { signOut, useSession } from "next-auth/react"
 
 import { Svg } from "@/components/ui"
 import { useRouter } from "next/router"
-import { Session } from "next-auth"
 import { subscribe } from "@/lib/util/request"
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
   const { data: session } = useSession()
+  const user = session?.user
   const [showSidebar, setShowSidebar] = useState(false)
 
   useEffect(() => {
@@ -38,7 +38,50 @@ export default function Layout({ children }: { children: ReactNode }) {
             onClick={() => setShowSidebar(false)}
           />
         )}
-        <Nav show={showSidebar} user={session?.user} />
+        <nav
+          id="separator-sidebar"
+          className={
+            "fixed top-0 left-0 z-40 w-64 h-screen transition-transform sm:translate-x-0" +
+            (showSidebar ? "" : " -translate-x-full")
+          }
+          aria-label="Sidebar"
+        >
+          <ul className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800 space-y-2 font-medium">
+            <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
+            <NavLink link="services" logo={<Svg.Products />} label="Items" />
+            <NavLink link="details" logo={<Svg.Components />} label="Details" />
+            <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
+            {user && <NavLink link="account" logo={<Svg.Users />} label="Account" />}
+            {user ? (
+              <NavAnchor
+                href="api/auth/signout"
+                logo={<Svg.SignIn />}
+                onClick={e => {
+                  e.preventDefault()
+                  signOut()
+                }}
+                label="Sign Out"
+              />
+            ) : (
+              <NavLink link="api/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
+            )}
+            <hr
+              style={{ margin: "1rem 0" }}
+              className="border-t border-gray-200 dark:border-gray-700"
+            />
+            <NavAnchor
+              href="#"
+              onClick={e => {
+                e.preventDefault()
+                subscribe(router.pathname)
+              }}
+              logo={<Svg.Upgrade />}
+              label="Upgrade To Pro"
+            />
+            <NavLink link="" logo={<Svg.Documentation />} label="Documentation" />
+            <NavLink link="" logo={<Svg.Help />} label="Help" />
+          </ul>
+        </nav>
       </header>
       <div className="w-64 hidden sm:block" />
 
@@ -46,42 +89,6 @@ export default function Layout({ children }: { children: ReactNode }) {
     </div>
   )
 }
-
-const Nav = ({ show, user }: { show: boolean; user?: Session["user"] }) => (
-  <nav
-    id="separator-sidebar"
-    className={
-      "fixed top-0 left-0 z-40 w-64 h-screen transition-transform sm:translate-x-0" +
-      (show ? "" : " -translate-x-full")
-    }
-    aria-label="Sidebar"
-  >
-    <ul className="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800 space-y-2 font-medium">
-      <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
-      <NavLink link="services" logo={<Svg.Products />} label="Items" />
-      <NavLink link="details" logo={<Svg.Components />} label="Details" />
-      <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
-      {user && <NavLink link="account" logo={<Svg.Users />} label="Account" />}
-      {user ? (
-        <NavAnchor
-          href="api/auth/signout"
-          logo={<Svg.SignIn />}
-          onClick={e => {
-            e.preventDefault()
-            signOut()
-          }}
-          label="Sign Out"
-        />
-      ) : (
-        <NavLink link="api/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
-      )}
-      <hr style={{ margin: "1rem 0" }} className="border-t border-gray-200 dark:border-gray-700" />
-      <NavAnchor href="#" onClick={subscribe} logo={<Svg.Upgrade />} label="Upgrade To Pro" />
-      <NavLink link="" logo={<Svg.Documentation />} label="Documentation" />
-      <NavLink link="" logo={<Svg.Help />} label="Help" />
-    </ul>
-  </nav>
-)
 
 type NavInnerProps = {
   logo: JSX.Element

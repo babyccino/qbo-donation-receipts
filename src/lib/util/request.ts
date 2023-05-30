@@ -1,5 +1,5 @@
-export async function subscribe() {
-  const { url } = await postJsonData("/api/stripe/create-checkout-session")
+export async function subscribe(redirect?: string) {
+  const { url } = await postJsonData("/api/stripe/create-checkout-session", { redirect })
 
   if (typeof url !== "string") throw new Error()
 

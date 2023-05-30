@@ -79,7 +79,7 @@ const ReceiptLimitCard = () => (
       To save and send all of your organisation{"'"}s receipts click the link below to go pro
     </p>
     <div className="">
-      <Button onClick={subscribe}>Click here to go pro!</Button>
+      <Button onClick={() => subscribe("/generate-receipts")}>Click here to go pro!</Button>
     </div>
   </Card>
 )

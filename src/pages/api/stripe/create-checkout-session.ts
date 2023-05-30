@@ -8,12 +8,12 @@ import { ApiError } from "next/dist/server/api-utils"
 const handler: AuthorisedHanlder = async ({ body }, res, session) => {
   const data = parseRequestBody(
     {
-      quantity: z.number().default(1),
+      redirect: z.string().optional(),
       metadata: z.record(z.string(), z.any()).default({}),
     },
     body
   )
-  const { quantity, metadata } = data
+  const { metadata, redirect } = data
   const priceId = process.env.STRIPE_SUBSCRIBE_PRICE_ID
 
   const stripeSession = await stripe.checkout.sessions.create({
@@ -23,14 +23,14 @@ const handler: AuthorisedHanlder = async ({ body }, res, session) => {
     line_items: [
       {
         price: priceId,
-        quantity,
+        quantity: 1,
       },
     ],
     mode: "subscription",
     subscription_data: {
       metadata: { ...metadata, clientId: session.user.id },
     },
-    success_url: `${getBaseUrl()}/`,
+    success_url: `${getBaseUrl()}/${redirect || ""}`,
     cancel_url: `${getBaseUrl()}/`,
   })
 
