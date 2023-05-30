@@ -21,6 +21,7 @@ import { user } from "@/lib/db"
 import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
 import { User } from "@/types/db"
+import { subscribe } from "@/lib/util/request"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -78,12 +79,7 @@ const ReceiptLimitCard = () => (
       To save and send all of your organisation{"'"}s receipts click the link below to go pro
     </p>
     <div className="">
-      <Link
-        href="/api/strip/create-checkout-session"
-        className={multipleClasses("inline-block", buttonStyling)}
-      >
-        Click here to go pro!
-      </Link>
+      <Button onClick={subscribe}>Click here to go pro!</Button>
     </div>
   </Card>
 )
