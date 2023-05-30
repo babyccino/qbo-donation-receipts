@@ -78,7 +78,7 @@ async function handleEvent(event: Stripe.Event) {
       const subscription = event.data.object as Stripe.Subscription
       await Promise.all([
         manageSubscriptionStatusChange(subscription),
-        event.type === "customer.subscription.created" && addBillingAddress(subscription),
+        event.type === "customer.subscription.updated" && addBillingAddress(subscription),
       ])
       break
     }
