@@ -25,6 +25,7 @@ describe("fetchJsonData", () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: jest.fn().mockResolvedValueOnce(response),
+      headers: { get: () => "application/json" },
     } as unknown as Response)
 
     const result = await postJsonData(url, postData)
@@ -49,6 +50,7 @@ describe("fetchJsonData", () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       json: jest.fn().mockResolvedValueOnce(errorData),
+      headers: { get: () => "application/json" },
     } as unknown as Response)
 
     await expect(postJsonData(url, postData)).rejects.toThrow()
@@ -74,6 +76,7 @@ describe("fetchJsonData", () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
+      headers: { get: () => "application/json" },
       json: jest.fn().mockResolvedValueOnce(expectedData),
     } as unknown as Response)
 
@@ -95,6 +98,7 @@ describe("fetchJsonData", () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
+      headers: { get: () => "application/json" },
       json: jest.fn().mockResolvedValueOnce(expectedData),
     } as unknown as Response)
 

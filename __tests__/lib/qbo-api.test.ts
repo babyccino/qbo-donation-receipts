@@ -12,7 +12,7 @@ import {
   parseCompanyInfo,
 } from "@/lib/qbo-api"
 import { DeepPartial } from "@/lib/util/etc"
-import { fetchJsonData } from "@/lib/util/etc"
+import { fetchJsonData } from "@/lib/util/request"
 import { Session } from "next-auth"
 
 const Header = Object.freeze({
@@ -754,7 +754,7 @@ const createMockSession = (): Session => ({
 })
 
 // Mock the fetchJsonData function
-jest.mock("./../../src/lib/app-api", () => ({
+jest.mock("./../../src/lib/util/request", () => ({
   fetchJsonData: jest.fn(),
 }))
 
