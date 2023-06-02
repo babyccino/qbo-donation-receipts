@@ -15,5 +15,6 @@ export const config = {
     "/details",
     "/generate-receipts",
     "/services",
+    "/account",
   ],
 }
