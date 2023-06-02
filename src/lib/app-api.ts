@@ -39,8 +39,11 @@ export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<User>): 
   }
 }
 
-export function parseRequestBody<T extends ZodRawShape>(shape: T, body: any): TypeOf<ZodObject<T>> {
-  const response = z.object(shape).safeParse(body)
+export function parseRequestBody<T extends ZodRawShape>(
+  shape: ZodObject<T>,
+  body: any
+): TypeOf<ZodObject<T>> {
+  const response = shape.safeParse(body)
 
   if (!response.success) {
     const { errors } = response.error
@@ -56,12 +59,12 @@ export type AuthorisedHanlder = (
   res: NextApiResponse,
   session: Session
 ) => Promise<void>
-
+type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
 export const createAuthorisedHandler =
-  (handler: AuthorisedHanlder, methods: string[]): NextApiHandler =>
+  (handler: AuthorisedHanlder, methods: HttpVerb[]): NextApiHandler =>
   async (req, res) => {
-    console.log("handler")
-    if (!req.method || !methods.includes(req.method)) {
+    console.log(`${req.method} request made to ${req.url}`)
+    if (!req.method || !methods.includes(req.method as HttpVerb)) {
       return res.status(405).end()
     }
 

@@ -16,21 +16,21 @@ async function uploadImage(dataUrl: string, path: string): Promise<string> {
 
 const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
 
+export const parser = z.object({
+  companyName: z.string(),
+  companyAddress: z.string(),
+  country: z.string(),
+  registrationNumber: z.string(),
+  signatoryName: z.string(),
+  signature: z.string().optional().refine(dataUrlRefiner),
+  smallLogo: z.string().optional().refine(dataUrlRefiner),
+})
+export type DataType = z.infer<typeof parser>
+
 const handler: AuthorisedHanlder = async (req, res, session) => {
   const id = session.user.id
 
-  const data = parseRequestBody(
-    {
-      companyName: z.string(),
-      companyAddress: z.string(),
-      country: z.string(),
-      registrationNumber: z.string(),
-      signatoryName: z.string(),
-      signature: z.string().optional().refine(dataUrlRefiner),
-      smallLogo: z.string().optional().refine(dataUrlRefiner),
-    },
-    req.body
-  )
+  const data = parseRequestBody(parser, req.body)
 
   const [signatureUrl, smallLogoUrl] = await Promise.all([
     data.signature ? uploadImage(data.signature, `${id}/signature`) : undefined,

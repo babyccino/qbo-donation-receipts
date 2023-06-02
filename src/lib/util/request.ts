@@ -1,5 +1,8 @@
+import { DataType as CheckoutSessionDataType } from "@/pages/api/stripe/create-checkout-session"
+
 export async function subscribe(redirect?: string) {
-  const { url } = await postJsonData("/api/stripe/create-checkout-session", { redirect })
+  const data: CheckoutSessionDataType = { redirect }
+  const { url } = await postJsonData("/api/stripe/create-checkout-session", data)
 
   if (typeof url !== "string") throw new Error()
 

@@ -18,6 +18,7 @@ import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"
+import { DataType as ServicesApiDataType } from "@/pages/api/services"
 
 type Props = {
   items: Item[]
@@ -93,7 +94,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
     event.preventDefault()
 
     const items = getItems()
-    const postData = { items, date: customDateState }
+    const postData: ServicesApiDataType = { items, date: customDateState }
     const apiResponse = postJsonData("/api/services", postData)
 
     console.log({ formData: items })

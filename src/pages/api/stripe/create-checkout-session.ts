@@ -1,18 +1,18 @@
 import { z } from "zod"
+import { ApiError } from "next/dist/server/api-utils"
 
 import { stripe } from "@/lib/stripe"
 import { getBaseUrl } from "@/lib/util/request"
-import { AuthorisedHanlder, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
-import { ApiError } from "next/dist/server/api-utils"
+import { AuthorisedHanlder, parseRequestBody, createAuthorisedHandler } from "@/lib/app-api"
+
+export const parser = z.object({
+  redirect: z.string().optional(),
+  metadata: z.record(z.string(), z.any()).default({}),
+})
+export type DataType = Partial<z.infer<typeof parser>>
 
 const handler: AuthorisedHanlder = async ({ body }, res, session) => {
-  const data = parseRequestBody(
-    {
-      redirect: z.string().optional(),
-      metadata: z.record(z.string(), z.any()).default({}),
-    },
-    body
-  )
+  const data = parseRequestBody(parser, body)
   const { metadata, redirect } = data
   const priceId = process.env.STRIPE_SUBSCRIBE_PRICE_ID
 
