@@ -82,3 +82,39 @@ export async function postJsonData<T = any>(url: string, json?: any): Promise<T>
 
   return responseContent as T
 }
+
+export async function deleteJsonData<T = any>(url: string, json?: any): Promise<T> {
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: json && JSON.stringify(json),
+  })
+
+  const responseContent = await getResponseContent(response)
+  if (!response.ok) {
+    throw new Error(`DELETE request to url: ${url} failed, error: ${responseContent}}`)
+  }
+
+  return responseContent as T
+}
+
+export async function putJsonData<T = any>(url: string, json?: any): Promise<T> {
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: json && JSON.stringify(json),
+  })
+
+  const responseContent = await getResponseContent(response)
+  if (!response.ok) {
+    throw new Error(`PUT request to url: ${url} failed, error: ${responseContent}}`)
+  }
+
+  return responseContent as T
+}
