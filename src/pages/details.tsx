@@ -10,6 +10,7 @@ import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { base64EncodeFile, postJsonData } from "@/lib/util/request"
+import { DataType as DetailsApiDataType } from "@/pages/api/details"
 
 type Props = {
   doneeInfo: Partial<DoneeInfo>
@@ -48,8 +49,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const formData = await getFormData()
-    console.log({ sig: formData.signature?.length, sl: formData.smallLogo?.length })
+    const formData: DetailsApiDataType = await getFormData()
     const apiResponse = postJsonData("/api/details", formData)
 
     if (itemsFilledIn)
