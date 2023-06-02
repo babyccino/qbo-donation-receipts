@@ -2,7 +2,7 @@ import { NextApiHandler, NextApiRequest } from "next"
 import Stripe from "stripe"
 import { Readable } from "node:stream"
 
-import { stripe } from "@/lib/stripe"
+import { stripe, manageSubscriptionStatusChange } from "@/lib/stripe"
 import { price, product, user } from "@/lib/db"
 
 export const config = {
@@ -147,35 +147,6 @@ async function getSubscriptionFromCheckoutSession({
       expand: ["default_payment_method"],
     })
   return subscription
-}
-
-function getDate(timeStamp: number): Date
-function getDate(timeStamp: number | null | undefined): Date | undefined
-function getDate(timeStamp: number | null | undefined) {
-  if (typeof timeStamp === "number") return new Date(timeStamp * 1000)
-  else return undefined
-}
-async function manageSubscriptionStatusChange(subscription: Stripe.Subscription) {
-  const { clientId } = subscription.metadata
-  if (!clientId) throw new Error("user id not found in subscription metadata")
-
-  return await user.doc(clientId).set(
-    {
-      subscription: {
-        id: subscription.id,
-        status: subscription.status,
-        metadata: subscription.metadata,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        created: getDate(subscription.created),
-        currentPeriodStart: getDate(subscription.current_period_start),
-        currentPeriodEnd: getDate(subscription.current_period_end),
-        endedAt: getDate(subscription.ended_at),
-        cancelAt: getDate(subscription.cancel_at),
-        canceledAt: getDate(subscription.canceled_at),
-      },
-    },
-    { merge: true }
-  )
 }
 
 async function getPaymentMethodFromSubscription({
