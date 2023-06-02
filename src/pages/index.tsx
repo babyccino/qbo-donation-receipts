@@ -47,7 +47,7 @@ type Props =
   | { session: Session; filledIn: { items: boolean; doneeDetails: boolean } }
 
 const IndexPage = ({ filledIn }: Props) => (
-  <section className="sm:py-8 px-4 space-y-12 mx-auto max-w-screen-xl text-center lg:py-16">
+  <section className="sm:py-8 px-4 space-y-12 mx-auto max-w-screen-xl text-center lg:py-16 p-4">
     <div>
       <h1 className="mb-4 text-2xl font-extrabold tracking-tight leading-none text-gray-900 md:text-3xl lg:text-4xl dark:text-white">
         Speed up your organisation{"'"}s year-end

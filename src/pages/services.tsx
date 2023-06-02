@@ -118,14 +118,14 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-lg space-y-4 m-auto">
+    <form ref={formRef} onSubmit={onSubmit} className="m-auto w-full max-w-lg space-y-4 p-4">
       <Form.Fieldset>
         <Form.Legend className="mb-3">Selected items</Form.Legend>
         <Alert
           color="info"
           className="mb-4"
           icon={() => (
-            <div className="h-6 w-6 mr-2">
+            <div className="mr-2 h-6 w-6">
               <Svg.Info />
             </div>
           )}
@@ -141,14 +141,14 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
             ref={el => (el ? inputRefs.current.push(el) : null)}
           />
         ))}
-        <div className="pb-2 pt-1 flex flex-row gap-2">
+        <div className="flex flex-row gap-2 pb-2 pt-1">
           <Button onClick={checkAll}>Check All</Button>
           <Button onClick={unCheckAll}>Uncheck All</Button>
         </div>
       </Form.Fieldset>
       <Form.Fieldset>
         <Form.Legend className="mb-4">Date range</Form.Legend>
-        <Form.Label className="inline-block mb-2" htmlFor="dateRangeType">
+        <Form.Label className="mb-2 inline-block" htmlFor="dateRangeType">
           Range
         </Form.Label>
         <Form.Select
@@ -162,8 +162,8 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           <option value={DateRangeType.Ytd}>This year to date</option>
           <option value={DateRangeType.Custom}>Custom range</option>
         </Form.Select>
-        <p className="space-y-1 mt-2">
-          <Form.Label className="inline-block mb-2">Date Range</Form.Label>
+        <p className="mt-2 space-y-1">
+          <Form.Label className="mb-2 inline-block">Date Range</Form.Label>
           <Datepicker
             value={customDateState}
             onChange={onDateChange}
@@ -172,7 +172,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
         </p>
       </Form.Fieldset>
       <input
-        className={buttonStyling + " cursor-pointer block mx-auto text-l"}
+        className={buttonStyling + " text-l mx-auto block cursor-pointer"}
         type="submit"
         value={detailsFilledIn ? "Generate Receipts" : "Enter Donee Details"}
       />

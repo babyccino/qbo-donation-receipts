@@ -73,7 +73,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   )
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4">
+    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4 p-4">
       <Form.Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
         <Form.Legend className="sm:col-span-2">Organisation</Form.Legend>
         <Form.TextInput
