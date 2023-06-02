@@ -55,16 +55,25 @@ const IndexPage = ({ filledIn }: Props) => (
       <p className="mb-8 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 lg:px-48 dark:text-gray-400">
         In just a few easy steps we can create and send your client{"'"}s donation receipts
       </p>
-      {/* {(!filledIn || (!filledIn.items && !filledIn.doneeDetails)) && ( */}
-      <Link href="/services" className={"text-lg py-3 px-5 " + buttonStyling}>
-        Get started
-        <div className="ml-2 -mb-1 w-5 h-5 inline-block">
-          <Svg.RightArrow />
-        </div>
-      </Link>
-      {/* )} */}
+      {(!filledIn || (!filledIn.items && !filledIn.doneeDetails)) && (
+        <Link href="/services" className={"text-lg py-3 px-5 " + buttonStyling}>
+          Get started
+          <div className="ml-2 -mb-1 w-5 h-5 inline-block">
+            <Svg.RightArrow />
+          </div>
+        </Link>
+      )}
     </div>
     <div className="flex flex-col items-center w-full">
+      <Card
+        href="/api/auth/signin"
+        title="Link your account"
+        body="Sign in with your Quickbooks Online account and authorise our application"
+        completed={filledIn !== false}
+      />
+      <div className="h-10 w-10 text-slate-400 rotate-180 mt-3">
+        <Svg.HandDrawnUpArrow />
+      </div>
       <Card
         href="/services"
         title="Select your qualifying items"
