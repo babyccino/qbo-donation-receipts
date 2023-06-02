@@ -35,7 +35,7 @@ function DownloadAllFiles() {
   }
 
   return (
-    <div className="mx-auto mb-4 p-6 flex flex-row gap-6 items-baseline bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+    <div className="mx-auto mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
       <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
     </div>
@@ -43,7 +43,7 @@ function DownloadAllFiles() {
 }
 
 const ErrorComponent = () => (
-  <div className="flex flex-col gap-4 text-center bg-white rounded-lg shadow dark:border md:mt-8 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 mx-auto">
+  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
       We were not able to gather your Quickbooks Online data.
     </span>
@@ -51,7 +51,7 @@ const ErrorComponent = () => (
 )
 
 const MissingData = ({ filledIn }: { filledIn: { items: boolean; details: boolean } }) => (
-  <div className="flex flex-col gap-4 text-center bg-white rounded-lg shadow dark:border md:mt-8 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 mx-auto">
+  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
       Some information necessary to generate your receipts is missing
     </span>
@@ -87,7 +87,7 @@ const ReceiptLimitCard = () => (
 const receiptInner = (
   <>
     <span className="hidden sm:inline">Show Receipt</span>
-    <span className="inline-block sm:ml-2 h-5 w-5">
+    <span className="inline-block h-5 w-5 sm:ml-2">
       <Svg.Plus />
     </span>
   </>
@@ -106,7 +106,7 @@ function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
           <Receipt />
         </PDFViewer>
         <button
-          className="fixed right-4 top-4 h-14 w-14 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 rounded-lg dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 z-40"
+          className="fixed right-4 top-4 z-40 h-14 w-14 rounded-lg bg-blue-700 text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           onClick={() => setShow(false)}
         >
           <Svg.CircledPlus />
@@ -120,7 +120,7 @@ const FakeShowReceipt = () => <div className={buttonStyling + " inline-block"}>{
 const downloadReceiptInner = (
   <>
     <span className="hidden sm:inline">Download</span>
-    <span className="inline-block sm:ml-2 h-5 w-5 -mb-1">
+    <span className="-mb-1 inline-block h-5 w-5 sm:ml-2">
       <Svg.Download />
     </span>
   </>
@@ -169,13 +169,13 @@ const TableRow = ({
 }) => (
   <tr
     className={multipleClasses(
-      "bg-white border-b dark:bg-gray-800 dark:border-gray-700 relative",
+      "relative border-b bg-white dark:border-gray-700 dark:bg-gray-800",
       className
     )}
   >
     <th
       scope="row"
-      className="px-6 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+      className="whitespace-nowrap px-6 py-2 font-medium text-gray-900 dark:text-white"
     >
       {cols[0]}
     </th>
@@ -185,7 +185,7 @@ const TableRow = ({
     {(blur || hover) && (
       <div
         className={
-          "w-full h-full absolute z-40 left-0" + (blur ? " top-[2px] backdrop-blur-sm" : "")
+          "absolute left-0 z-40 h-full w-full" + (blur ? " top-[2px] backdrop-blur-sm" : "")
         }
       >
         {hover}
@@ -261,13 +261,13 @@ export default function IndexPage(props: Props) {
 
   // TODO add sort by total donation/name
   return (
-    <section className="w-full h-full p-8 flex flex-col">
+    <section className="flex h-full w-full flex-col p-8">
       {subscribed && <DownloadAllFiles />}
       <Alert
         color="info"
         className="mb-4 sm:hidden"
         icon={() => (
-          <div className="h-6 w-6 mr-2">
+          <div className="mr-2 h-6 w-6">
             <Svg.RightArrow />
           </div>
         )}
@@ -275,8 +275,8 @@ export default function IndexPage(props: Props) {
         Scroll right to view/download individual receipts
       </Alert>
       <div className="w-full overflow-x-auto overflow-y-hidden sm:rounded-lg">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+        <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+          <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
               <th scope="col" className="px-6 py-3">
                 Donor Name

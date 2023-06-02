@@ -124,7 +124,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           required={!Boolean(doneeInfo.smallLogo)}
         />
         <input
-          className={buttonStyling + " cursor-pointer block mr-auto text-l"}
+          className={buttonStyling + " text-l mr-auto block cursor-pointer"}
           type="submit"
           value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
         />

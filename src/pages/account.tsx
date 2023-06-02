@@ -27,12 +27,12 @@ type Props =
     }
 
 const Tick = () => (
-  <div className="w-5 -mb-1 mr-4 inline-block text-green-300">
+  <div className="-mb-1 mr-4 inline-block w-5 text-green-300">
     <Svg.Tick />
   </div>
 )
 const Cross = () => (
-  <div className="w-5 -mb-1 mr-4 inline-block text-red-300">
+  <div className="-mb-1 mr-4 inline-block w-5 text-red-300">
     <Svg.Cross />
   </div>
 )
@@ -70,7 +70,7 @@ const PricingCard = ({
         nonFeatures.map((nonFeature, idx) => (
           <li
             key={idx}
-            className="flex space-x-3 line-through decoration-gray-500 text-base font-normal leading-tight text-gray-500"
+            className="flex space-x-3 text-base font-normal leading-tight text-gray-500 line-through decoration-gray-500"
           >
             <Cross />
             {nonFeature}
@@ -110,24 +110,24 @@ function ProfileCard({
       />
       <h5 className="text-xl font-medium text-gray-500 dark:text-white">{name}</h5>
       <div className="space-y-1">
-        <p className="font-normal leading-tight text-gray-500 dark:text-gray-400 text-sm">
-          <div className="w-4 h-4 inline-block mr-2 mb-[-0.1rem] text-white">
+        <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
+          <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
             <Svg.Briefcase />
           </div>
           {companyName}
         </p>
-        <p className="font-normal leading-tight text-gray-500 dark:text-gray-400 text-sm">
-          <div className="w-4 h-4 inline-block mr-2 mb-[-0.1rem] text-white">
+        <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
+          <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
             <Svg.MapPin />
           </div>
           {country}
         </p>
       </div>
-      <p className="font-normal leading-tight text-gray-500 dark:text-gray-400 text-sm">
+      <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
         Subscribed since:{" "}
         <span className="text-gray-900 dark:text-white">{formatDate(createdAt)}</span>
       </p>
-      <p className="font-normal leading-tight text-gray-500 dark:text-gray-400 text-sm">
+      <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
         Your subscription will {cancelAtPeriodEnd ? "end" : "automatically renew"} in{" "}
         <span className="text-gray-900 dark:text-white">{daysLeft}</span> days
       </p>
@@ -158,8 +158,8 @@ const paidFeatures = [
 export default function AccountPage(props: Props) {
   const { subscribed } = props
   return (
-    <section className="flex flex-col sm:flex-row sm:justify-center min-h-screen p-4 sm:p-10">
-      <div className="pb-8 sm:p-14 text-white border-b sm:border-r sm:border-b-0 border-solid border-slate-700">
+    <section className="flex min-h-screen flex-col p-4 sm:flex-row sm:justify-center sm:p-10">
+      <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
         <PricingCard
           title="Your selected plan"
           features={subscribed ? paidFeatures : freeFeatures}
@@ -167,7 +167,7 @@ export default function AccountPage(props: Props) {
           price={subscribed ? 20 : 0}
         />
       </div>
-      <div className="pt-8 sm:p-14 text-white">
+      <div className="pt-8 text-white sm:p-14">
         {subscribed ? (
           <ProfileCard account={props.account} subscription={props.subscription} />
         ) : (

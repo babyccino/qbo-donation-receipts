@@ -483,10 +483,10 @@ export namespace Form {
     <p className={className}>
       <label
         htmlFor={id.toString()}
-        className="relative inline-flex items-center mb-4 cursor-pointer"
+        className="relative mb-4 inline-flex cursor-pointer items-center"
       >
         <input
-          className="sr-only peer"
+          className="peer sr-only"
           ref={ref}
           type="checkbox"
           name="items"
@@ -496,7 +496,7 @@ export namespace Form {
           // otherwise all will be marked by default
           defaultChecked={defaultChecked}
         />
-        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600" />
+        <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800" />
         <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{label}</span>
       </label>
     </p>
@@ -519,7 +519,7 @@ export namespace Form {
     required?: boolean
   }) => (
     <p className={className}>
-      <FlowbiteLabel className="inline-block mb-2" htmlFor={id}>
+      <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
         {label}
       </FlowbiteLabel>
       <FlowbiteTextInput
@@ -536,7 +536,7 @@ export namespace Form {
     <legend
       className={multipleClasses(
         className,
-        "font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white"
+        "font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl"
       )}
     >
       {children}
@@ -550,7 +550,7 @@ export namespace Form {
     <fieldset
       className={multipleClasses(
         className,
-        "w-full bg-white rounded-lg shadow dark:border md:mt-0 p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 m-auto"
+        "m-auto w-full rounded-lg bg-white p-6 pt-5 shadow dark:border dark:border-gray-700 dark:bg-gray-800 md:mt-0"
       )}
     >
       {children}
@@ -583,7 +583,7 @@ export namespace Form {
 
     return (
       <p>
-        <FlowbiteLabel className="inline-block mb-2" htmlFor={id}>
+        <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
           {label}
         </FlowbiteLabel>
         <FileInput
