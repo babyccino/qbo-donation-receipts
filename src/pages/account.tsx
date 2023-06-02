@@ -9,6 +9,7 @@ import { putJsonData, subscribe } from "@/lib/util/request"
 import Image from "next/image"
 import { useRouter } from "next/router"
 import { DataType } from "./api/stripe/update-subscription"
+import { getDaysBetweenDates } from "@/lib/util/date"
 
 type Account = { country: string; name: string; logo: string; companyName: string }
 type Subscription = {
@@ -80,16 +81,8 @@ const PricingCard = ({
   </Card>
 )
 
-const msInDay = 1000 * 60 * 60 * 24
-function getDaysBetweenDates(date1: Date, date2: Date) {
-  // Calculate the time difference in milliseconds
-  const timeDiff = Math.abs(date2.getTime() - date1.getTime())
-
-  // Convert milliseconds to days
-  const days = Math.ceil(timeDiff / msInDay)
-
-  return days
-}
+const formatDate = (date: Date) =>
+  date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
 
 function ProfileCard({
   account: { companyName, logo, name, country },
@@ -132,7 +125,7 @@ function ProfileCard({
       </div>
       <p className="font-normal leading-tight text-gray-500 dark:text-gray-400 text-sm">
         Subscribed since:{" "}
-        <span className="text-gray-900 dark:text-white">{createdAt.toDateString()}</span>
+        <span className="text-gray-900 dark:text-white">{formatDate(createdAt)}</span>
       </p>
       <p className="font-normal leading-tight text-gray-500 dark:text-gray-400 text-sm">
         Your subscription will {cancelAtPeriodEnd ? "end" : "automatically renew"} in{" "}
@@ -162,19 +155,22 @@ const paidFeatures = [
   "Unlimited receipts",
   "Automatic emailing",
 ]
-export default function IndexPage(props: Props) {
-  if (!props.subscribed)
-    return (
-      <section className="flex flex-row justify-center w-full h-full p-10">
-        <div className="p-14 text-white border-r border-solid border-slate-700">
-          <PricingCard
-            title="Your selected plan"
-            features={freeFeatures}
-            nonFeatures={freeNonFeatures}
-            price={0}
-          />
-        </div>
-        <div className="p-14 text-white">
+export default function AccountPage(props: Props) {
+  const { subscribed } = props
+  return (
+    <section className="flex flex-col sm:flex-row sm:justify-center min-h-screen p-4 sm:p-10">
+      <div className="pb-8 sm:p-14 text-white border-b sm:border-r sm:border-b-0 border-solid border-slate-700">
+        <PricingCard
+          title="Your selected plan"
+          features={subscribed ? paidFeatures : freeFeatures}
+          nonFeatures={subscribed ? undefined : freeNonFeatures}
+          price={subscribed ? 20 : 0}
+        />
+      </div>
+      <div className="pt-8 sm:p-14 text-white">
+        {subscribed ? (
+          <ProfileCard account={props.account} subscription={props.subscription} />
+        ) : (
           <PricingCard
             title="Pro plan"
             features={paidFeatures}
@@ -187,18 +183,7 @@ export default function IndexPage(props: Props) {
               },
             }}
           />
-        </div>
-      </section>
-    )
-
-  const { subscription, account } = props
-  return (
-    <section className="flex flex-row justify-center w-full h-full p-10">
-      <div className="p-14 text-white border-r border-solid border-slate-700">
-        <PricingCard title="Your selected plan" features={paidFeatures} price={20} />
-      </div>
-      <div className="p-14 text-white">
-        <ProfileCard account={account} subscription={subscription} />
+        )}
       </div>
     </section>
   )
