@@ -5,7 +5,9 @@ export default class MyDocument extends Document {
     const pageProps = this.props?.__NEXT_DATA__?.props?.pageProps
     return (
       <Html>
-        <Head />
+        <Head>
+          <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+        </Head>
         <body className="dark:bg-gray-900">
           <Main />
           <NextScript />
