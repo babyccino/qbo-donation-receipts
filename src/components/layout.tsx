@@ -85,7 +85,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       </header>
       <div className="w-64 hidden sm:block" />
 
-      <main className="flex flex-col items-center flex-1 p-4">{children}</main>
+      <main className="flex flex-col items-center flex-1 min-h-screen">{children}</main>
     </div>
   )
 }

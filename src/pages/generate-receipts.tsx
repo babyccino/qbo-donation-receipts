@@ -261,7 +261,7 @@ export default function IndexPage(props: Props) {
 
   // TODO add sort by total donation/name
   return (
-    <>
+    <section className="w-full h-full p-8 flex flex-col">
       {subscribed && <DownloadAllFiles />}
       <Alert
         color="info"
@@ -313,7 +313,7 @@ export default function IndexPage(props: Props) {
           </tbody>
         </table>
       </div>
-    </>
+    </section>
   )
 }
 
