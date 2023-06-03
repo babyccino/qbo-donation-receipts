@@ -1,5 +1,6 @@
 import Stripe from "stripe"
 import { user } from "./db"
+import { User } from "@/types/db"
 
 export const stripe = new Stripe(process.env.STRIPE_PRIVATE_KEY ?? "", { apiVersion: "2022-11-15" })
 
@@ -30,4 +31,10 @@ export async function manageSubscriptionStatusChange(subscription: Stripe.Subscr
     },
     { merge: true }
   )
+}
+
+export function isUserSubscribed({ subscription }: User) {
+  if (!subscription) return false
+  if (subscription.status) return subscription.status === "active"
+  return subscription.currentPeriodEnd.getTime() >= new Date().getTime()
 }

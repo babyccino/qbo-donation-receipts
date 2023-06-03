@@ -22,6 +22,7 @@ import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
 import { User } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
+import { isUserSubscribed } from "@/lib/stripe"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -372,12 +373,6 @@ function getDoneeInfo(query: ParsedUrlQuery, dbUser: User): DoneeInfo {
 
   if (!dbUser || !dbUser.donee) throw new Error("donee data not found in query nor database")
   return combineQueryWithDb(query, dbUser.donee)
-}
-
-function isUserSubscribed({ subscription }: User) {
-  if (!subscription) return false
-  if (subscription.status) return subscription.status === "active"
-  return subscription.currentPeriodEnd.getTime() >= new Date().getTime()
 }
 
 export const getServerSideProps = async ({ req, res, query }: GetServerSidePropsContext) => {

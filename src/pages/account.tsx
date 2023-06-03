@@ -3,6 +3,7 @@ import { Session, getServerSession } from "next-auth"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
+import { Subscription } from "@/types/db"
 import { Button, Card, Svg } from "@/components/ui"
 import { MouseEventHandler, ReactNode } from "react"
 import { putJsonData, subscribe } from "@/lib/util/request"
@@ -10,9 +11,10 @@ import Image from "next/image"
 import { useRouter } from "next/router"
 import { DataType } from "./api/stripe/update-subscription"
 import { getDaysBetweenDates } from "@/lib/util/date"
+import { isUserSubscribed } from "@/lib/stripe"
 
 type Account = { country: string; name: string; logo: string; companyName: string }
-type Subscription = {
+type PropsSubscription = {
   cancelAtPeriodEnd: boolean
   periodEnd: number
   createdAt: number
@@ -22,7 +24,7 @@ type Props =
   | {
       session: Session
       subscribed: true
-      subscription: Subscription
+      subscription: PropsSubscription
       account: Account
     }
 
@@ -89,7 +91,7 @@ function ProfileCard({
   subscription,
 }: {
   account: Account
-  subscription: Subscription
+  subscription: PropsSubscription
 }) {
   const router = useRouter()
 
@@ -205,20 +207,23 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   const data = (await user.doc(session.user.id).get()).data()
   if (!data) throw new Error("User signed in but was not found in db")
 
-  const { subscription, donee, billingAddress } = data
-
-  if (!subscription)
+  const subscribed = isUserSubscribed(data)
+  if (!subscribed)
     return {
       props: {
         session,
-        subscribed: false,
+        subscribed,
       },
     }
+
+  const { donee, billingAddress } = data
+  // if isUserSubscribed returns true then subscription can not be undefined
+  const subscription = data.subscription as Subscription
 
   return {
     props: {
       session,
-      subscribed: true,
+      subscribed,
       subscription: {
         cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd),
         periodEnd: subscription.currentPeriodEnd.getTime(),
