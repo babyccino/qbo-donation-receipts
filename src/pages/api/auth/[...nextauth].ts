@@ -8,14 +8,20 @@ import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 
 const MS_IN_HOUR = 3600000
 
+if (!process.env.QBO_CLIENT_ID) throw new Error("missing vital env variable: QBO_CLIENT_ID")
+if (!process.env.QBO_CLIENT_SECRET) throw new Error("missing vital env variable: QBO_CLIENT_SECRET")
+if (!process.env.QBO_WELL_KNOWN) throw new Error("missing vital env variable: QBO_WELL_KNOWN")
+if (!process.env.NEXTAUTH_JWT_SECRET)
+  throw new Error("missing vital env variable: NEXTAUTH_JWT_SECRET")
+
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
   name: "QBO",
-  clientId: process.env.CLIENT_ID,
-  clientSecret: process.env.CLIENT_SECRET,
+  clientId: process.env.QBO_CLIENT_ID,
+  clientSecret: process.env.QBO_CLIENT_SECRET,
   type: "oauth",
   version: "2.0",
-  wellKnown: process.env.WELL_KNOWN,
+  wellKnown: process.env.QBO_WELL_KNOWN,
   authorization: {
     params: { scope: "com.intuit.quickbooks.accounting openid profile address email phone" },
   },
@@ -31,7 +37,9 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
   const url = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 
-  const encoded = base64EncodeString(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET)
+  const encoded = base64EncodeString(
+    process.env.QBO_CLIENT_ID + ":" + process.env.QBO_CLIENT_SECRET
+  )
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -63,7 +71,7 @@ export const authOptions: NextAuthOptions = {
     colorScheme: "dark",
   },
   jwt: {
-    secret: process.env.JWT_SECRET,
+    secret: process.env.NEXTAUTH_JWT_SECRET,
   },
   callbacks: {
     session: async ({ session, token }) => ({

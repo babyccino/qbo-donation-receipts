@@ -19,9 +19,11 @@ async function buffer(readable: Readable) {
   return Buffer.concat(chunks)
 }
 
+if (!process.env.STRIPE_WEBHOOK_SECRET) throw new Error("missing vital env variable: STRIPE_WEBHOOK_SECRET")
+
 async function getStripeEvent(req: NextApiRequest) {
   const sig = req.headers["stripe-signature"]
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_LIVE ?? process.env.STRIPE_WEBHOOK_SECRET
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
   if (!sig) throw new Error("request missing stripe-signature")
   if (!webhookSecret) throw new Error("missing webhook secret")
 

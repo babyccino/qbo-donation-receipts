@@ -2,6 +2,9 @@ import Stripe from "stripe"
 import { user } from "./db"
 import { User } from "@/types/db"
 
+if (!process.env.STRIPE_PRIVATE_KEY)
+  throw new Error("missing vital env variable: process.env.STRIPE_PRIVATE_KEY")
+
 export const stripe = new Stripe(process.env.STRIPE_PRIVATE_KEY ?? "", { apiVersion: "2022-11-15" })
 
 function getDate(timeStamp: number): Date

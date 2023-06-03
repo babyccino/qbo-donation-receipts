@@ -12,6 +12,9 @@ export const parser = z.object({
 })
 export type DataType = Partial<z.infer<typeof parser>>
 
+if (!process.env.STRIPE_SUBSCRIBE_PRICE_ID)
+  throw new Error("missing vital env variable: STRIPE_SUBSCRIBE_PRICE_ID")
+
 const handler: AuthorisedHanlder = async ({ body }, res, session) => {
   const data = parseRequestBody(parser, body)
   const { metadata, redirect } = data

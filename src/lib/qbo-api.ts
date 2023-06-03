@@ -384,7 +384,11 @@ const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
     ? getCustomerSalesSectionRowData(row)
     : getCustomerSalesRowData(row)
 
-export const SANDBOX_BASE_API_ROUTE = "https://sandbox-quickbooks.api.intuit.com/v3/company"
+const baseApiRoute =
+  process.env.NODE_ENV === "test"
+    ? "test"
+    : process.env.QBO_SANDBOX_BASE_API_ROUTE || process.env.QBO_BASE_API_ROUTE || ""
+if (baseApiRoute === "") throw new Error("missing either QBO base api route env variable")
 
 /**
  * Constructs a query URL for a given realm ID and query string.
@@ -393,7 +397,7 @@ export const SANDBOX_BASE_API_ROUTE = "https://sandbox-quickbooks.api.intuit.com
  * @returns {string} The complete query URL.
  */
 export const makeQueryUrl = (realmId: string, query: string) =>
-  `${SANDBOX_BASE_API_ROUTE}/${realmId}/query?query=${query}`
+  `${baseApiRoute}/${realmId}/query?query=${query}`
 
 /**
  * Extracts start and end date values from a query object.
@@ -424,7 +428,7 @@ export async function getCustomerSalesReport(
 ) {
   const [startDate, endDate] = await getDates(dbUser, query)
 
-  const url = `${SANDBOX_BASE_API_ROUTE}/${session.realmId}/reports/CustomerSales?\
+  const url = `${baseApiRoute}/${session.realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
 
   return fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(url, session.accessToken)

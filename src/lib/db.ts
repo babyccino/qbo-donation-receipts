@@ -16,6 +16,10 @@ const {
   FIREBASE_STORAGE_EMULATOR_PORT,
 } = process.env
 
+if (!FIREBASE_PROJECT_ID) throw new Error("missing vital env variable: FIREBASE_PROJECT_ID")
+if (!FIREBASE_CLIENT_EMAIL) throw new Error("missing vital env variable: FIREBASE_CLIENT_EMAIL")
+if (!FIREBASE_PRIVATE_KEY) throw new Error("missing vital env variable: FIREBASE_PRIVATE_KEY")
+
 // Firebase config for web api (not needed for firebase-admin)
 // const firebaseConfig = {
 //   apiKey: FIREBASE_API_KEY,
