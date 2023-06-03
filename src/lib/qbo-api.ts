@@ -1,9 +1,9 @@
 import { Session } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
 
-import { fetchJsonData } from "./app-api"
-import { DbUser } from "./db"
-import { formatDateHtmlReverse } from "./util"
+import { formatDateHtmlReverse } from "./util/date"
+import { fetchJsonData } from "./util/request"
+import { User } from "@/types/db"
 
 export type QBOProfile = {
   sub: string
@@ -401,7 +401,7 @@ export const makeQueryUrl = (realmId: string, query: string) =>
  * @returns {[string, string]} An array containing the start and end dates as strings.
  * @throws {Error} If the date data is malformed.
  */
-async function getDates(dbUser: DbUser, query: ParsedUrlQuery): Promise<[string, string]> {
+async function getDates(dbUser: User, query: ParsedUrlQuery): Promise<[string, string]> {
   const { startDate, endDate } = query
   if (startDate && startDate !== "" && endDate && endDate !== "")
     return [startDate as string, endDate as string]
@@ -420,7 +420,7 @@ async function getDates(dbUser: DbUser, query: ParsedUrlQuery): Promise<[string,
 export async function getCustomerSalesReport(
   session: Session,
   query: ParsedUrlQuery,
-  dbUser: DbUser
+  dbUser: User
 ) {
   const [startDate, endDate] = await getDates(dbUser, query)
 

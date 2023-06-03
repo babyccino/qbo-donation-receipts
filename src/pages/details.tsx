@@ -8,7 +8,9 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { DoneeInfo } from "@/components/receipt"
-import { alreadyFilledIn, postJsonData, base64EncodeFile } from "@/lib/app-api"
+import { alreadyFilledIn } from "@/lib/app-api"
+import { base64EncodeFile, postJsonData } from "@/lib/util/request"
+import { DataType as DetailsApiDataType } from "@/pages/api/details"
 
 type Props = {
   doneeInfo: Partial<DoneeInfo>
@@ -39,15 +41,15 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
       country,
       registrationNumber,
       signatoryName,
-      signature: await base64EncodeFile(signature),
-      smallLogo: await base64EncodeFile(smallLogo),
+      signature: signature.name !== "" ? await base64EncodeFile(signature) : undefined,
+      smallLogo: smallLogo.name !== "" ? await base64EncodeFile(smallLogo) : undefined,
     }
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const formData = await getFormData()
+    const formData: DetailsApiDataType = await getFormData()
     const apiResponse = postJsonData("/api/details", formData)
 
     if (itemsFilledIn)
@@ -71,7 +73,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
   )
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4">
+    <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4 p-4">
       <Form.Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
         <Form.Legend className="sm:col-span-2">Organisation</Form.Legend>
         <Form.TextInput
@@ -122,7 +124,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           required={!Boolean(doneeInfo.smallLogo)}
         />
         <input
-          className={buttonStyling + " cursor-pointer block mr-auto text-l"}
+          className={buttonStyling + " text-l mr-auto block cursor-pointer"}
           type="submit"
           value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
         />

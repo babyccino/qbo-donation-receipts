@@ -1,4 +1,4 @@
-import { formatDate, formatDateHtml, formatDateHtmlReverse, multipleClasses } from "@/lib/util"
+import { formatDate, formatDateHtml, formatDateHtmlReverse } from "@/lib/util/date"
 
 describe("formatDate", () => {
   it("formats a date as dd/mm/yyyy", () => {
@@ -18,12 +18,5 @@ describe("formatDateHtmlReverse", () => {
   it("formats a date as yyyy-mm-dd", () => {
     expect(formatDateHtmlReverse(new Date("2023/04/20"))).toEqual("2023-04-20")
     expect(formatDateHtmlReverse(new Date("1995/10/05"))).toEqual("1995-10-05")
-  })
-})
-
-describe("multipleClasses", () => {
-  it("combines multiple class names into a single string", () => {
-    expect(multipleClasses("foo", "bar", undefined, "", "baz")).toEqual("foo bar baz")
-    expect(multipleClasses(undefined, "bar", "", "baz")).toEqual("bar baz")
   })
 })

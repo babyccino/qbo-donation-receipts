@@ -1,6 +1,6 @@
 import admin from "firebase-admin"
 
-import { DoneeInfo } from "@/components/receipt"
+import { Price, Product, User } from "src/types/db"
 
 // set env variable FIRESTORE_EMULATOR_HOST to use firebase emulator
 
@@ -41,34 +41,50 @@ if (!admin.apps.length) {
   }
 }
 
-export type DbUser = {
-  email: string
-  id: string
-  name: string
-  realmId: string
-  items?: number[]
-  date?: {
-    startDate: Date
-    endDate: Date
-  }
-  donee?: DoneeInfo
-}
-
 export const firestore = admin.firestore()
+// this function will throw if it is called more than once (ex: when hot-reloading)
+try {
+  firestore.settings({ ignoreUndefinedProperties: true })
+} catch {}
 
-const converter = {
-  toFirestore: (data: DbUser) => data,
+const userConverter = {
+  toFirestore: (data: User) => data,
   fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => {
     const data = snap.data()
-    const date = data.date
+    const rawDate = data.date
+    const date = rawDate
       ? {
-          startDate: data.date.startDate.toDate(),
-          endDate: data.date.endDate.toDate(),
+          startDate: rawDate.startDate.toDate(),
+          endDate: rawDate.endDate.toDate(),
         }
       : undefined
-    return { ...data, date } as DbUser
+    const rawSubscription = data.subscription
+    const subscription = rawSubscription
+      ? {
+          ...rawSubscription,
+          created: rawSubscription.created.toDate(),
+          currentPeriodStart: rawSubscription.currentPeriodStart.toDate(),
+          currentPeriodEnd: rawSubscription.currentPeriodEnd.toDate(),
+          endedAt: rawSubscription.endedAt?.toDate(),
+          cancelAt: rawSubscription.cancelAt?.toDate(),
+          canceledAt: rawSubscription.canceledAt?.toDate(),
+        }
+      : undefined
+    return { ...data, date, subscription } as User
   },
 }
 
-export const user = firestore.collection("user").withConverter(converter)
+const productConverter = {
+  toFirestore: (data: Product) => data,
+  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as Product,
+}
+const priceConverter = {
+  toFirestore: (data: Price) => data,
+  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as Price,
+}
+
+export const user = firestore.collection("user").withConverter(userConverter)
+export const product = firestore.collection("product").withConverter(productConverter)
+export const price = (id: string) =>
+  product.doc(id).collection("price").withConverter(priceConverter)
 export const storageBucket = admin.storage().bucket(`${FIREBASE_PROJECT_ID}.appspot.com`)

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, ReactNode } from "react"
 import { GetServerSidePropsContext } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
@@ -15,10 +15,14 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
-import { Alert, Button, Svg, buttonStyling } from "@/components/ui"
+import { Alert, Button, Card, Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { DbUser, user } from "@/lib/db"
-import { getThisYear } from "@/lib/util"
+import { user } from "@/lib/db"
+import { multipleClasses } from "@/lib/util/etc"
+import { getThisYear } from "@/lib/util/date"
+import { User } from "@/types/db"
+import { subscribe } from "@/lib/util/request"
+import { isUserSubscribed } from "@/lib/stripe"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -32,12 +36,180 @@ function DownloadAllFiles() {
   }
 
   return (
-    <div className="mx-auto mb-4 p-6 flex flex-row gap-6 items-baseline bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700">
+    <div className="mx-auto mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
       <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
     </div>
   )
 }
+
+const ErrorComponent = () => (
+  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
+    <span className="col-span-full font-medium text-gray-900 dark:text-white">
+      We were not able to gather your Quickbooks Online data.
+    </span>
+  </div>
+)
+
+const MissingData = ({ filledIn }: { filledIn: { items: boolean; details: boolean } }) => (
+  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
+    <span className="col-span-full font-medium text-gray-900 dark:text-white">
+      Some information necessary to generate your receipts is missing
+    </span>
+    <div className="flex justify-evenly gap-3">
+      {!filledIn.items && (
+        <Link className={buttonStyling} href="services">
+          Fill in Qualifying Items
+        </Link>
+      )}
+      {!filledIn.details && (
+        <Link className={buttonStyling} href="details">
+          Fill in Donee Details
+        </Link>
+      )}
+    </div>
+  </div>
+)
+
+const ReceiptLimitCard = () => (
+  <Card className="absolute max-w-sm sm:left-1/2 sm:top-6 sm:-translate-x-1/2">
+    <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+      You{"'"}ve hit your free receipt limit
+    </h5>
+    <p className="font-normal text-gray-700 dark:text-gray-400">
+      To save and send all of your organisation{"'"}s receipts click the link below to go pro
+    </p>
+    <div className="">
+      <Button onClick={() => subscribe("/generate-receipts")}>Click here to go pro!</Button>
+    </div>
+  </Card>
+)
+
+const receiptInner = (
+  <>
+    <span className="hidden sm:inline">Show Receipt</span>
+    <span className="inline-block h-5 w-5 sm:ml-2">
+      <Svg.Plus />
+    </span>
+  </>
+)
+function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
+  const [show, setShow] = useState(false)
+  const containerClassName =
+    (show ? "flex" : "hidden") +
+    " fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
+
+  return (
+    <>
+      <Button onClick={() => setShow(true)}>{receiptInner}</Button>
+      <div className={containerClassName} onClick={() => setShow(false)}>
+        <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
+          <Receipt />
+        </PDFViewer>
+        <button
+          className="fixed right-4 top-4 z-40 h-14 w-14 rounded-lg bg-blue-700 text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+          onClick={() => setShow(false)}
+        >
+          <Svg.CircledPlus />
+        </button>
+      </div>
+    </>
+  )
+}
+const FakeShowReceipt = () => <div className={buttonStyling + " inline-block"}>{receiptInner}</div>
+
+const downloadReceiptInner = (
+  <>
+    <span className="hidden sm:inline">Download</span>
+    <span className="-mb-1 inline-block h-5 w-5 sm:ml-2">
+      <Svg.Download />
+    </span>
+  </>
+)
+const DownloadReceipt = ({
+  Receipt,
+  fileName,
+}: {
+  Receipt: () => JSX.Element
+  fileName: string
+}) => (
+  <PDFDownloadLink document={<Receipt />} fileName={fileName} className={buttonStyling}>
+    {({ loading }) => (loading ? "Loading document..." : downloadReceiptInner)}
+  </PDFDownloadLink>
+)
+const FakeDownloadReceipt = () => (
+  <div className={buttonStyling + " inline-block"}>{downloadReceiptInner}</div>
+)
+
+const rand = (min: number, max: number) => Math.random() * (max - min) + min
+const { round } = Math
+const names = [
+  "Gus",
+  "Stephanie",
+  "Matthew",
+  "Ryan",
+  "Nicholas",
+  "Spencer",
+  "Papadopoulos",
+  "Macdonald",
+]
+const getRandomIndex = () => round(rand(-0.5, names.length - 0.0001))
+const getRandomName = () => `${names[getRandomIndex()]} ${names[getRandomIndex()]}`
+const getRandomBalance = () => `$${round(rand(100, 100000))}.00`
+
+const TableRow = ({
+  cols,
+  className,
+  blur,
+  hover,
+}: {
+  cols: [ReactNode, ReactNode, ReactNode, ReactNode]
+  className?: string
+  blur?: boolean
+  hover?: ReactNode
+}) => (
+  <tr
+    className={multipleClasses(
+      "relative border-b bg-white dark:border-gray-700 dark:bg-gray-800",
+      className
+    )}
+  >
+    <th
+      scope="row"
+      className="whitespace-nowrap px-6 py-2 font-medium text-gray-900 dark:text-white"
+    >
+      {cols[0]}
+    </th>
+    <td className="px-6 py-2">{cols[1]}</td>
+    <td className="px-6 py-2">{cols[2]}</td>
+    <td className="px-6 py-2">{cols[3]}</td>
+    {(blur || hover) && (
+      <div
+        className={
+          "absolute left-0 z-40 h-full w-full" + (blur ? " top-[2px] backdrop-blur-sm" : "")
+        }
+      >
+        {hover}
+      </div>
+    )}
+  </tr>
+)
+const BlurredRows = () => (
+  <>
+    {new Array(10).fill(0).map((_, idx) => (
+      <TableRow
+        key={idx}
+        cols={[
+          getRandomName(),
+          getRandomBalance(),
+          <FakeShowReceipt key="2" />,
+          <FakeDownloadReceipt key="3" />,
+        ]}
+        blur
+      />
+    ))}
+  </>
+)
 
 type Props =
   | {
@@ -45,6 +217,7 @@ type Props =
       customerData: Donation[]
       doneeInfo: DoneeInfo
       session: Session
+      subscribed: boolean
     }
   | {
       status: "missing data"
@@ -52,39 +225,13 @@ type Props =
     }
   | { status: "error"; error: string }
 
+// ----- PAGE ----- //
 export default function IndexPage(props: Props) {
-  if (props.status === "error")
-    return (
-      <div className="flex flex-col gap-4 text-center bg-white rounded-lg shadow dark:border md:mt-8 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 mx-auto">
-        <span className="col-span-full font-medium text-gray-900 dark:text-white">
-          We were not able to gather your Quickbooks Online data.
-        </span>
-      </div>
-    )
-
-  if (props.status === "missing data")
-    return (
-      <div className="flex flex-col gap-4 text-center bg-white rounded-lg shadow dark:border md:mt-8 sm:max-w-md p-6 pt-5 dark:bg-gray-800 dark:border-gray-700 mx-auto">
-        <span className="col-span-full font-medium text-gray-900 dark:text-white">
-          Some information necessary to generate your receipts is missing
-        </span>
-        <div className="flex justify-evenly gap-3">
-          {!props.filledIn.items && (
-            <Link className={buttonStyling} href="services">
-              Fill in Qualifying Items
-            </Link>
-          )}
-          {!props.filledIn.details && (
-            <Link className={buttonStyling} href="details">
-              Fill in Donee Details
-            </Link>
-          )}
-        </div>
-      </div>
-    )
+  if (props.status === "error") return <ErrorComponent />
+  if (props.status === "missing data") return <MissingData {...props} />
 
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
-  const { customerData, doneeInfo } = props
+  const { customerData, doneeInfo, subscribed } = props
 
   const currentYear = getThisYear()
   const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
@@ -101,55 +248,36 @@ export default function IndexPage(props: Props) {
     )
 
     return (
-      <tr key={entry.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-        <th
-          scope="row"
-          className="px-6 py-2 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-        >
-          {entry.name}
-        </th>
-        <td className="px-6 py-2">{formatter.format(entry.total)}</td>
-        <td className="px-6 py-2">
-          <ShowReceipt Receipt={Receipt} />
-        </td>
-        <td className="px-6 py-2">
-          <PDFDownloadLink document={<Receipt />} fileName={fileName} className={buttonStyling}>
-            {({ loading }) =>
-              loading ? (
-                "Loading document..."
-              ) : (
-                <>
-                  <span className="hidden sm:inline">Download</span>
-                  <span className="inline-block sm:ml-2 h-5 w-5 -mb-1">
-                    <Svg.Download />
-                  </span>
-                </>
-              )
-            }
-          </PDFDownloadLink>
-        </td>
-      </tr>
+      <TableRow
+        key={entry.id}
+        cols={[
+          entry.name,
+          formatter.format(entry.total),
+          <ShowReceipt key="2" Receipt={Receipt} />,
+          <DownloadReceipt key="3" Receipt={Receipt} fileName={fileName} />,
+        ]}
+      />
     )
   }
 
   // TODO add sort by total donation/name
   return (
-    <>
-      <DownloadAllFiles />
+    <section className="flex h-full w-full flex-col p-8">
+      {subscribed && <DownloadAllFiles />}
       <Alert
         color="info"
         className="mb-4 sm:hidden"
         icon={() => (
-          <div className="h-6 w-6 mr-2">
+          <div className="mr-2 h-6 w-6">
             <Svg.RightArrow />
           </div>
         )}
       >
         Scroll right to view/download individual receipts
       </Alert>
-      <div className="w-full overflow-x-auto sm:rounded-lg">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      <div className="w-full overflow-x-auto overflow-y-hidden sm:rounded-lg">
+        <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+          <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
               <th scope="col" className="px-6 py-3">
                 Donor Name
@@ -165,45 +293,34 @@ export default function IndexPage(props: Props) {
               </th>
             </tr>
           </thead>
-          <tbody>{customerData.map(mapCustomerToTableRow)}</tbody>
+          <tbody>
+            {customerData.map(mapCustomerToTableRow)}
+            {!subscribed && (
+              <>
+                <TableRow
+                  className="z-50"
+                  cols={[
+                    getRandomName(),
+                    getRandomBalance(),
+                    <FakeShowReceipt key="2" />,
+                    <FakeDownloadReceipt key="3" />,
+                  ]}
+                  blur
+                  hover={<ReceiptLimitCard />}
+                />
+                <BlurredRows />
+              </>
+            )}
+          </tbody>
         </table>
       </div>
-    </>
-  )
-}
-
-function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
-  const [show, setShow] = useState(false)
-  const containerClassName =
-    (show ? "flex" : "hidden") +
-    " fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
-
-  return (
-    <>
-      <Button onClick={() => setShow(true)}>
-        <span className="hidden sm:inline">Show receipt</span>
-        <span className="inline-block sm:ml-2 h-5 w-5">
-          <Svg.Plus />
-        </span>
-      </Button>
-      <div className={containerClassName} onClick={() => setShow(false)}>
-        <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
-          <Receipt />
-        </PDFViewer>
-        <button
-          className="fixed right-4 top-4 h-14 w-14 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 rounded-lg dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800 z-40"
-          onClick={() => setShow(false)}
-        >
-          <Svg.Cross />
-        </button>
-      </div>
-    </>
+    </section>
   )
 }
 
 // --- server-side props ---
 
-function getProducts({ items }: ParsedUrlQuery, dbUser: DbUser): Set<number> {
+function getProducts({ items }: ParsedUrlQuery, dbUser: User): Set<number> {
   if (items)
     return typeof items == "string"
       ? new Set(items.split("+").map(str => parseInt(str)))
@@ -241,7 +358,7 @@ function combineQueryWithDb(query: ParsedUrlQuery, donee: DoneeInfo): DoneeInfo 
   return donee
 }
 
-function getDoneeInfo(query: ParsedUrlQuery, dbUser: DbUser): DoneeInfo {
+function getDoneeInfo(query: ParsedUrlQuery, dbUser: User): DoneeInfo {
   if (doesQueryHaveAllFields(query)) {
     return {
       companyName: query.companyName as string,
@@ -301,13 +418,15 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
     donationDataWithoutAddresses,
     customerQueryResult
   )
+  const subscribed = isUserSubscribed(dbUser)
 
   return {
     props: {
       status: "success",
       session,
-      customerData,
+      customerData: subscribed ? customerData : customerData.slice(0, 3),
       doneeInfo,
+      subscribed,
     },
   }
 }

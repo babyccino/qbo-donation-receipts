@@ -1,10 +1,8 @@
-import { NextApiRequest, NextApiResponse } from "next"
-import { getServerSession } from "next-auth"
 import { z } from "zod"
 
 import { storageBucket, user } from "@/lib/db"
-import { authOptions } from "./auth/[...nextauth]"
-import { isJpegOrPngDataURL, parseRequestBody } from "@/lib/app-api"
+import { AuthorisedHanlder, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
+import { isJpegOrPngDataURL } from "@/lib/util/request"
 
 async function uploadImage(dataUrl: string, path: string): Promise<string> {
   const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
@@ -16,37 +14,33 @@ async function uploadImage(dataUrl: string, path: string): Promise<string> {
   return file.publicUrl()
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).end()
+const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
 
-  const session = await getServerSession(req, res, authOptions)
-  if (!session) return res.status(401).end()
+export const parser = z.object({
+  companyName: z.string(),
+  companyAddress: z.string(),
+  country: z.string(),
+  registrationNumber: z.string(),
+  signatoryName: z.string(),
+  signature: z.string().optional().refine(dataUrlRefiner),
+  smallLogo: z.string().optional().refine(dataUrlRefiner),
+})
+export type DataType = z.infer<typeof parser>
+
+const handler: AuthorisedHanlder = async (req, res, session) => {
   const id = session.user.id
 
-  try {
-    const data = parseRequestBody(
-      {
-        companyName: z.string(),
-        companyAddress: z.string(),
-        country: z.string(),
-        registrationNumber: z.string(),
-        signatoryName: z.string(),
-        signature: z.string().refine(isJpegOrPngDataURL),
-        smallLogo: z.string().refine(isJpegOrPngDataURL),
-      },
-      req.body
-    )
+  const data = parseRequestBody(parser, req.body)
 
-    const [signatureUrl, smallLogoUrl] = await Promise.all([
-      uploadImage(data.signature, `${id}/signature`),
-      uploadImage(data.smallLogo, `${id}/smallLogo`),
-    ])
-    const newData = { donee: { ...req.body, signature: signatureUrl, smallLogo: smallLogoUrl } }
-    await user.doc(id).update(newData)
+  const [signatureUrl, smallLogoUrl] = await Promise.all([
+    data.signature ? uploadImage(data.signature, `${id}/signature`) : undefined,
+    data.smallLogo ? uploadImage(data.smallLogo, `${id}/smallLogo`) : undefined,
+  ])
 
-    res.status(200).json(newData)
-  } catch (error) {
-    console.error(error)
-    return res.status(400).json(error)
-  }
+  const newData = { donee: { ...data, signature: signatureUrl, smallLogo: smallLogoUrl } }
+  await user.doc(id).set(newData, { merge: true })
+
+  res.status(200).json(newData)
 }
+
+export default createAuthorisedHandler(handler, ["POST"])

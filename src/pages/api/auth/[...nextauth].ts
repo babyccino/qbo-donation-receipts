@@ -4,7 +4,9 @@ import { OAuthConfig } from "next-auth/providers"
 
 import { user } from "@/lib/db"
 import { QBOProfile } from "@/lib/qbo-api"
-import { base64EncodeString, fetchJsonData } from "@/lib/app-api"
+import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
+
+const MS_IN_HOUR = 3600000
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
@@ -47,7 +49,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   return {
     ...token,
     accessToken: refreshedTokens.access_token,
-    accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+    accessTokenExpires: Date.now() + MS_IN_HOUR,
     refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
   }
 }
@@ -82,7 +84,7 @@ export const authOptions: NextAuthOptions = {
 
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
-        token.accessTokenExpires = Date.now() + 3600000
+        token.accessTokenExpires = Date.now() + MS_IN_HOUR
         token.id = account.providerAccountId
         token.realmId = profile.realmid
 

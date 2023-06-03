@@ -19,7 +19,8 @@ next-env.d.ts
 .vercel
 .env*.local
 
-pages/pdf-example.tsx
+src/pages/pdf-example.tsx
+src/pages/api/test-api.ts
 
 coverage
 

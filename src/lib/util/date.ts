@@ -24,15 +24,9 @@ export enum DateRangeType {
   Custom = "Custom",
 }
 
-export const multipleClasses = (...args: (string | undefined)[]) =>
-  args.reduce<string>((prev, curr): string => {
-    if (curr === undefined || curr === "") return prev
-    if (prev === "") return curr
-    return `${prev} ${curr}`
-  }, "")
-
-export type DeepPartial<T> = T extends object
-  ? {
-      [P in keyof T]?: DeepPartial<T[P]>
-    }
-  : T
+const MS_IN_DAY = 1000 * 60 * 60 * 24
+export function getDaysBetweenDates(date1: Date, date2: Date) {
+  const timeDiffMs = Math.abs(date2.getTime() - date1.getTime())
+  const days = Math.ceil(timeDiffMs / MS_IN_DAY)
+  return days
+}
