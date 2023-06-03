@@ -1,9 +1,10 @@
 import { z } from "zod"
 import { ApiError } from "next/dist/server/api-utils"
 
-import { stripe } from "@/lib/stripe"
+import { isUserSubscribed, stripe } from "@/lib/stripe"
 import { getBaseUrl } from "@/lib/util/request"
 import { AuthorisedHanlder, parseRequestBody, createAuthorisedHandler } from "@/lib/app-api"
+import { user } from "@/lib/db"
 
 export const parser = z.object({
   redirect: z.string().optional(),
@@ -16,23 +17,30 @@ const handler: AuthorisedHanlder = async ({ body }, res, session) => {
   const { metadata, redirect } = data
   const priceId = process.env.STRIPE_SUBSCRIBE_PRICE_ID
 
-  const stripeSession = await stripe.checkout.sessions.create({
-    payment_method_types: ["card"],
-    billing_address_collection: "required",
-    customer_email: session.user.email,
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
+  const [dbSnap, stripeSession] = await Promise.all([
+    user.doc(session.user.id).get(),
+    stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      billing_address_collection: "required",
+      customer_email: session.user.email,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      subscription_data: {
+        metadata: { ...metadata, clientId: session.user.id },
       },
-    ],
-    mode: "subscription",
-    subscription_data: {
-      metadata: { ...metadata, clientId: session.user.id },
-    },
-    success_url: `${getBaseUrl()}/${redirect || ""}`,
-    cancel_url: `${getBaseUrl()}/`,
-  })
+      success_url: `${getBaseUrl()}/${redirect || ""}`,
+      cancel_url: `${getBaseUrl()}/`,
+    }),
+  ])
+
+  const dbUser = dbSnap.data()
+  if (!dbUser) throw new ApiError(500, "user record was not found in db")
+  if (isUserSubscribed(dbUser)) throw new ApiError(400, "user already subscribed")
 
   if (!stripeSession.url) throw new ApiError(502, "stripe did not send a redirect url")
 
