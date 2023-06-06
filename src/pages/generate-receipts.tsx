@@ -1,5 +1,5 @@
 import { useState, ReactNode } from "react"
-import { GetServerSidePropsContext } from "next"
+import { GetServerSideProps, GetServerSidePropsContext } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ParsedUrlQuery } from "querystring"
 import Link from "next/link"
@@ -17,7 +17,7 @@ import {
 import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
 import { Alert, Button, Card, Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { user } from "@/lib/db"
+import { Bucket, storageBucket, user } from "@/lib/db"
 import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
 import { User } from "@/types/db"
@@ -51,7 +51,7 @@ const ErrorComponent = () => (
   </div>
 )
 
-const MissingData = ({ filledIn }: { filledIn: { items: boolean; details: boolean } }) => (
+const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
       Some information necessary to generate your receipts is missing
@@ -62,7 +62,7 @@ const MissingData = ({ filledIn }: { filledIn: { items: boolean; details: boolea
           Fill in Qualifying Items
         </Link>
       )}
-      {!filledIn.details && (
+      {!filledIn.doneeDetails && (
         <Link className={buttonStyling} href="details">
           Fill in Donee Details
         </Link>
@@ -221,7 +221,7 @@ type Props =
     }
   | {
       status: "missing data"
-      filledIn: { items: boolean; details: boolean }
+      filledIn: { items: boolean; doneeDetails: boolean }
     }
   | { status: "error"; error: string }
 
@@ -375,7 +375,16 @@ function getDoneeInfo(query: ParsedUrlQuery, dbUser: User): DoneeInfo {
   return combineQueryWithDb(query, dbUser.donee)
 }
 
-export const getServerSideProps = async ({ req, res, query }: GetServerSidePropsContext) => {
+async function getImageAsDataUrl(bucket: Bucket, url: string) {
+  const file = await bucket.file(url).download()
+  const fileString = file[0].toString("base64")
+  const match = url.match(/[^.]+$/)
+  if (!match) throw new Error("")
+  const extension = match[0]
+  return `data:image/${extension};base64,${fileString}`
+}
+
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
 
   if (!session) throw new Error("Couldn't find session")
@@ -420,12 +429,15 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
   )
   const subscribed = isUserSubscribed(dbUser)
 
+  const signatureDataUrl = await getImageAsDataUrl(storageBucket, doneeInfo.signature)
+  const smallLogoDataUrl = await getImageAsDataUrl(storageBucket, doneeInfo.smallLogo)
+
   return {
     props: {
       status: "success",
       session,
       customerData: subscribed ? customerData : customerData.slice(0, 3),
-      doneeInfo,
+      doneeInfo: { ...doneeInfo, signature: signatureDataUrl, smallLogo: smallLogoDataUrl },
       subscribed,
     },
   }

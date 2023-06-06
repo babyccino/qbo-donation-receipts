@@ -92,3 +92,4 @@ export const product = firestore.collection("product").withConverter(productConv
 export const price = (id: string) =>
   product.doc(id).collection("price").withConverter(priceConverter)
 export const storageBucket = admin.storage().bucket(`${FIREBASE_PROJECT_ID}.appspot.com`)
+export type Bucket = typeof storageBucket
