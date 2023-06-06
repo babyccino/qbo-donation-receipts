@@ -44,18 +44,12 @@ async function getResponseContent(response: Response) {
 }
 
 export async function fetchJsonData<T = any>(url: string, accessToken?: string): Promise<T> {
-  const response = await (accessToken
-    ? fetch(url, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      })
-    : fetch(url, {
-        headers: {
-          Accept: "application/json",
-        },
-      }))
+  const response = await fetch(url, {
+    headers: {
+      Authorization: accessToken ?? `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  })
 
   const responseContent = await getResponseContent(response)
   if (!response.ok) {
