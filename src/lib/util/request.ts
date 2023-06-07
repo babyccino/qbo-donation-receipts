@@ -44,16 +44,17 @@ async function getResponseContent(response: Response) {
 }
 
 export async function fetchJsonData<T = any>(url: string, accessToken?: string): Promise<T> {
+  const headers: HeadersInit = {
+    Accept: "application/json",
+  }
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
   const response = await fetch(url, {
-    headers: {
-      Authorization: accessToken ?? `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
+    headers,
   })
 
   const responseContent = await getResponseContent(response)
   if (!response.ok) {
-    throw new Error(`GET request to url: ${url} failed, error: ${responseContent}}`)
+    throw new Error(`GET request to url: ${url} failed, error: ${JSON.stringify(responseContent)}}`)
   }
 
   return responseContent as T
