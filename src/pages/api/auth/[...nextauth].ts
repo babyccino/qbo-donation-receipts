@@ -7,21 +7,38 @@ import { QBOProfile } from "@/lib/qbo-api"
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 
 const MS_IN_HOUR = 3600000
+const {
+  NEXTAUTH_JWT_SECRET,
+  QBO_CLIENT_ID,
+  QBO_CLIENT_SECRET,
+  QBO_WELL_KNOWN,
+  QBO_SANDBOX_WELL_KNOWN,
+  QBO_OAUTH_ROUTE,
+  QBO_ACCOUNTS_BASE_ROUTE,
+  QBO_SANDBOX_ACCOUNTS_BASE_ROUTE,
+} = process.env
 
-if (!process.env.QBO_CLIENT_ID) throw new Error("missing vital env variable: QBO_CLIENT_ID")
-if (!process.env.QBO_CLIENT_SECRET) throw new Error("missing vital env variable: QBO_CLIENT_SECRET")
-if (!process.env.QBO_WELL_KNOWN) throw new Error("missing vital env variable: QBO_WELL_KNOWN")
-if (!process.env.NEXTAUTH_JWT_SECRET)
-  throw new Error("missing vital env variable: NEXTAUTH_JWT_SECRET")
+if (!NEXTAUTH_JWT_SECRET) throw new Error("missing vital env variable: NEXTAUTH_JWT_SECRET")
+if (!QBO_CLIENT_ID) throw new Error("missing vital env variable: QBO_CLIENT_ID")
+if (!QBO_CLIENT_SECRET) throw new Error("missing vital env variable: QBO_CLIENT_SECRET")
+const wellKnown = QBO_SANDBOX_WELL_KNOWN || QBO_WELL_KNOWN
+if (!wellKnown)
+  throw new Error("missing vital env variable: QBO_WELL_KNOWN or QBO_SANDBOX_WELL_KNOWN")
+if (!QBO_OAUTH_ROUTE) throw new Error("missing vital env variable: QBO_OAUTH_ROUTE")
+const accountsBaseRoute = QBO_SANDBOX_ACCOUNTS_BASE_ROUTE || QBO_ACCOUNTS_BASE_ROUTE
+if (!accountsBaseRoute)
+  throw new Error(
+    "missing vital env variable: QBO_ACCOUNTS_BASE_ROUTE or QBO_SANDBOX_ACCOUNTS_BASE_ROUTE"
+  )
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
   name: "QBO",
-  clientId: process.env.QBO_CLIENT_ID,
-  clientSecret: process.env.QBO_CLIENT_SECRET,
+  clientId: QBO_CLIENT_ID,
+  clientSecret: QBO_CLIENT_SECRET,
   type: "oauth",
   version: "2.0",
-  wellKnown: process.env.QBO_WELL_KNOWN,
+  wellKnown,
   authorization: {
     params: { scope: "com.intuit.quickbooks.accounting openid profile address email phone" },
   },
@@ -35,11 +52,9 @@ const customProvider: OAuthConfig<QBOProfile> = {
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   console.log("refreshing access token")
 
-  const url = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
+  const url = `${QBO_OAUTH_ROUTE}/tokens/bearer`
 
-  const encoded = base64EncodeString(
-    process.env.QBO_CLIENT_ID + ":" + process.env.QBO_CLIENT_SECRET
-  )
+  const encoded = base64EncodeString(`${QBO_CLIENT_ID}:${QBO_CLIENT_SECRET}`)
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -71,7 +86,7 @@ export const authOptions: NextAuthOptions = {
     colorScheme: "dark",
   },
   jwt: {
-    secret: process.env.NEXTAUTH_JWT_SECRET,
+    secret: NEXTAUTH_JWT_SECRET,
   },
   callbacks: {
     session: async ({ session, token }) => ({
@@ -97,7 +112,7 @@ export const authOptions: NextAuthOptions = {
         token.realmId = profile.realmid
 
         const userInfo = await fetchJsonData<{ email: string; givenName: string }>(
-          "https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo",
+          `${accountsBaseRoute}/openid_connect/userinfo`,
           token.accessToken as string
         )
 

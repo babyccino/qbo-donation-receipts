@@ -384,11 +384,15 @@ const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
     ? getCustomerSalesSectionRowData(row)
     : getCustomerSalesRowData(row)
 
-const baseApiRoute =
-  process.env.NODE_ENV === "test"
-    ? "test"
-    : process.env.QBO_SANDBOX_BASE_API_ROUTE || process.env.QBO_BASE_API_ROUTE || ""
-if (baseApiRoute === "") throw new Error("missing either QBO base api route env variable")
+function getBaseApiRoute() {
+  if (process.env.NODE_ENV === "test") return "test"
+
+  const baseApiRoute = process.env.QBO_SANDBOX_BASE_API_ROUTE || process.env.QBO_BASE_API_ROUTE
+  if (!baseApiRoute) throw new Error("No API route found in env variables")
+
+  return `${baseApiRoute}/company`
+}
+const baseApiRoute = getBaseApiRoute()
 
 /**
  * Constructs a query URL for a given realm ID and query string.
