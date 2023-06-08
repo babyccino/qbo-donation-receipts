@@ -13,6 +13,7 @@ import {
   Label as FlowbiteLabel,
   Select as FlowbiteSelect,
   TextInput as FlowbiteTextInput,
+  Checkbox as FlowbiteCheckbox,
 } from "flowbite-react"
 
 export { Button, Alert, Card, Modal, Accordion } from "flowbite-react"
@@ -469,6 +470,7 @@ export namespace Svg {
 export namespace Form {
   export const Select = FlowbiteSelect
   export const Label = FlowbiteLabel
+  export const Checkbox = FlowbiteCheckbox
 
   type ToggleProps = {
     className?: string
