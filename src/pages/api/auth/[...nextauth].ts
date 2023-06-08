@@ -81,6 +81,9 @@ const addUser = (id: string, name: string, email: string, realmId: string) =>
   user.doc(id).set({ id, name, email, realmId }, { merge: true })
 
 export const authOptions: NextAuthOptions = {
+  pages: {
+    signIn: "/auth/signin",
+  },
   providers: [customProvider],
   theme: {
     colorScheme: "dark",
