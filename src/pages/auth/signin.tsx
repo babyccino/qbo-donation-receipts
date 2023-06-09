@@ -4,8 +4,9 @@ import { signIn } from "next-auth/react"
 import { Button, Form } from "@/components/ui"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
-import { authOptions } from "../api/auth/[...nextauth]"
 import Image from "next/image"
+
+import { authOptions } from "../api/auth/[...nextauth]"
 
 export default function SignIn() {
   const [checked, setChecked] = useState(false)
@@ -18,16 +19,16 @@ export default function SignIn() {
   return (
     <div className="flex h-full flex-col justify-center gap-8 align-middle">
       <div className="flex justify-center gap-4 align-middle">
-        <Image src="/favicon-32x32.png" alt="logo" width={32} height={32} />
+        <Image src="/android-chrome-192x192.png" alt="logo" width={32} height={32} />
         <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl">
           DonationReceipt.Online
         </h1>
       </div>
-      <form className="flex w-full max-w-md flex-col gap-4 space-y-4 rounded-lg bg-white p-6 shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md sm:p-8 md:mt-0 md:space-y-6">
+      <form className="flex w-full max-w-md flex-col items-center rounded-lg bg-white p-6 shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md sm:p-8 md:mt-0">
         <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl">
           Sign in to your account
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="mt-8 flex items-center gap-2">
           <Form.Checkbox id="agree" onChange={e => setChecked(e.currentTarget.checked)} />
           <Form.Label className="flex" htmlFor="agree">
             I agree with the&nbsp;
@@ -36,9 +37,12 @@ export default function SignIn() {
             </a>
           </Form.Label>
         </div>
-        <Button type="submit" onClick={handler} disabled={!checked}>
-          Sign-in with Quickbooks Online
-        </Button>
+        <div className="mt-2 flex flex-row">
+          <Image src="/qb-logo-horizontal-reversed.svg" width={200} height={50} alt="qbo-logo" />
+          <Button type="submit" onClick={handler} disabled={!checked} className="mt-2">
+            Sign in with Intuit
+          </Button>
+        </div>
       </form>
     </div>
   )
