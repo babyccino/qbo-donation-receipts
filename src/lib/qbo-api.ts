@@ -4,6 +4,7 @@ import { ParsedUrlQuery } from "querystring"
 import { formatDateHtmlReverse } from "./util/date"
 import { fetchJsonData } from "./util/request"
 import { User } from "@/types/db"
+import { config } from "./util/config"
 
 export type QBOProfile = {
   sub: string
@@ -384,15 +385,8 @@ const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
     ? getCustomerSalesSectionRowData(row)
     : getCustomerSalesRowData(row)
 
-function getBaseApiRoute() {
-  if (process.env.NODE_ENV === "test") return "test"
-
-  const baseApiRoute = process.env.QBO_SANDBOX_BASE_API_ROUTE || process.env.QBO_BASE_API_ROUTE
-  if (!baseApiRoute) throw new Error("No API route found in env variables")
-
-  return `${baseApiRoute}/company`
-}
-const baseApiRoute = getBaseApiRoute()
+const { nodeEnv, qboBaseApiRoute } = config
+const baseApiRoute = nodeEnv && nodeEnv === "test" ? "test" : `${qboBaseApiRoute}/company`
 
 /**
  * Constructs a query URL for a given realm ID and query string.

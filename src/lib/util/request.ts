@@ -1,4 +1,5 @@
 import { DataType as CheckoutSessionDataType } from "@/pages/api/stripe/create-checkout-session"
+import { config } from "@/lib/util/config"
 
 export async function subscribe(redirect?: string) {
   const data: CheckoutSessionDataType = { redirect }
@@ -10,7 +11,7 @@ export async function subscribe(redirect?: string) {
 }
 
 export const getBaseUrl = () => {
-  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+  const vercelUrl = config.nextPublicVercelUrl
   const url = vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000/"
   if (url.at(-1) === "/") return url
   else return `${url}/`

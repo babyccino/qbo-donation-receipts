@@ -5,6 +5,7 @@ import { isUserSubscribed, stripe } from "@/lib/stripe"
 import { getBaseUrl } from "@/lib/util/request"
 import { AuthorisedHanlder, parseRequestBody, createAuthorisedHandler } from "@/lib/app-api"
 import { user } from "@/lib/db"
+import { config } from "@/lib/util/config"
 
 export const parser = z.object({
   redirect: z.string().optional(),
@@ -12,13 +13,9 @@ export const parser = z.object({
 })
 export type DataType = Partial<z.infer<typeof parser>>
 
-if (!process.env.STRIPE_SUBSCRIBE_PRICE_ID)
-  throw new Error("missing vital env variable: STRIPE_SUBSCRIBE_PRICE_ID")
-
 const handler: AuthorisedHanlder = async ({ body }, res, session) => {
   const data = parseRequestBody(parser, body)
   const { metadata, redirect } = data
-  const priceId = process.env.STRIPE_SUBSCRIBE_PRICE_ID
 
   const [dbSnap, stripeSession] = await Promise.all([
     user.doc(session.user.id).get(),
@@ -28,7 +25,7 @@ const handler: AuthorisedHanlder = async ({ body }, res, session) => {
       customer_email: session.user.email,
       line_items: [
         {
-          price: priceId,
+          price: config.stripeSubscribePriceId,
           quantity: 1,
         },
       ],

@@ -6,40 +6,26 @@ import { Session } from "next-auth"
 import { user as firestoreUser } from "@/lib/db"
 import { QBOProfile, getCompanyInfo } from "@/lib/qbo-api"
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
+import { config } from "@/lib/util/config"
 
-const MS_IN_HOUR = 3600000
 const {
-  NEXTAUTH_JWT_SECRET,
-  QBO_CLIENT_ID,
-  QBO_CLIENT_SECRET,
-  QBO_WELL_KNOWN,
-  QBO_SANDBOX_WELL_KNOWN,
-  QBO_OAUTH_ROUTE,
-  QBO_ACCOUNTS_BASE_ROUTE,
-  QBO_SANDBOX_ACCOUNTS_BASE_ROUTE,
-} = process.env
-
-if (!NEXTAUTH_JWT_SECRET) throw new Error("missing vital env variable: NEXTAUTH_JWT_SECRET")
-if (!QBO_CLIENT_ID) throw new Error("missing vital env variable: QBO_CLIENT_ID")
-if (!QBO_CLIENT_SECRET) throw new Error("missing vital env variable: QBO_CLIENT_SECRET")
-const wellKnown = QBO_SANDBOX_WELL_KNOWN || QBO_WELL_KNOWN
-if (!wellKnown)
-  throw new Error("missing vital env variable: QBO_WELL_KNOWN or QBO_SANDBOX_WELL_KNOWN")
-if (!QBO_OAUTH_ROUTE) throw new Error("missing vital env variable: QBO_OAUTH_ROUTE")
-const accountsBaseRoute = QBO_SANDBOX_ACCOUNTS_BASE_ROUTE || QBO_ACCOUNTS_BASE_ROUTE
-if (!accountsBaseRoute)
-  throw new Error(
-    "missing vital env variable: QBO_ACCOUNTS_BASE_ROUTE or QBO_SANDBOX_ACCOUNTS_BASE_ROUTE"
-  )
+  qboClientId,
+  qboClientSecret,
+  qboWellKnown,
+  qboOauthRoute,
+  qboAccountsBaseRoute,
+  nextAuthJwtSecret,
+} = config
+const MS_IN_HOUR = 3600000
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
   name: "QBO",
-  clientId: QBO_CLIENT_ID,
-  clientSecret: QBO_CLIENT_SECRET,
+  clientId: qboClientId,
+  clientSecret: qboClientSecret,
   type: "oauth",
   version: "2.0",
-  wellKnown,
+  wellKnown: qboWellKnown,
   authorization: {
     params: { scope: "com.intuit.quickbooks.accounting openid profile address email phone" },
   },
@@ -53,8 +39,8 @@ const customProvider: OAuthConfig<QBOProfile> = {
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   console.log("refreshing access token")
 
-  const url = `${QBO_OAUTH_ROUTE}/tokens/bearer`
-  const encoded = base64EncodeString(`${QBO_CLIENT_ID}:${QBO_CLIENT_SECRET}`)
+  const url = `${qboOauthRoute}/tokens/bearer`
+  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -86,7 +72,7 @@ export const authOptions: NextAuthOptions = {
     colorScheme: "dark",
   },
   jwt: {
-    secret: NEXTAUTH_JWT_SECRET,
+    secret: nextAuthJwtSecret,
   },
   callbacks: {
     async signIn({ user, account, profile }) {
@@ -101,7 +87,7 @@ export const authOptions: NextAuthOptions = {
       // is passed down through the user/account/profile/token/session/etc.
       const [userInfo, companyInfo, dbUser] = await Promise.all([
         fetchJsonData<{ email: string; givenName: string }>(
-          `${accountsBaseRoute}/openid_connect/userinfo`,
+          `${qboAccountsBaseRoute}/openid_connect/userinfo`,
           accessToken as string
         ),
         getCompanyInfo({ realmId, accessToken } as Session),
