@@ -7,18 +7,18 @@ import { getCompanyInfo } from "@/lib/qbo-api"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Form, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
-import { DoneeInfo } from "@/components/receipt"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
+import { DoneeInfo } from "@/types/db"
 
 type Props = {
-  doneeInfo: Partial<DoneeInfo>
+  doneeInfo: DoneeInfo
   session: Session
   itemsFilledIn: boolean
 }
 
-export default function Services({ doneeInfo, itemsFilledIn }: Props) {
+export default function Details({ doneeInfo, itemsFilledIn }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -50,12 +50,11 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
     event.preventDefault()
 
     const formData: DetailsApiDataType = await getFormData()
-    const apiResponse = postJsonData("/api/details", formData)
+    const apiResponse = await postJsonData("/api/details", formData)
 
     if (itemsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: { ...formData, signature: true, smallLogo: true },
       })
     else
       router.push({
@@ -139,17 +138,17 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
   if (!session) throw new Error("Couldn't find session")
 
-  const qboCompanyInfo = getCompanyInfo(session)
   const doc = await user.doc(session.user.id).get()
-  const dbUserData = doc.data()
+  const dbUser = doc.data()
+  if (!dbUser) throw new Error("User has no corresponding db entry")
 
-  const itemsFilledIn = Boolean(context.query.items) || alreadyFilledIn(doc).items
+  const itemsFilledIn = Boolean(context.query.items) || alreadyFilledIn(dbUser).items
 
   // if donee data is already in db use that to prefill form otherwise use data from quickbooks
   return {
     props: {
       session,
-      doneeInfo: dbUserData?.donee || (await qboCompanyInfo),
+      doneeInfo: dbUser.donee,
       itemsFilledIn,
     },
   }

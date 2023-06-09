@@ -399,16 +399,12 @@ export const makeQueryUrl = (realmId: string, query: string) =>
 
 /**
  * Extracts start and end date values from a query object.
- * @param {ParsedUrlQuery} query - The query object to extract dates from.
+ * @param {User} dbUser - The user object from the db.
  * @returns {[string, string]} An array containing the start and end dates as strings.
  * @throws {Error} If the date data is malformed.
  */
-async function getDates(dbUser: User, query: ParsedUrlQuery): Promise<[string, string]> {
-  const { startDate, endDate } = query
-  if (startDate && startDate !== "" && endDate && endDate !== "")
-    return [startDate as string, endDate as string]
-
-  if (!dbUser || !dbUser.date) throw new Error("Date data not found in query nor database")
+async function getDates(dbUser: User): Promise<[string, string]> {
+  if (!dbUser.date) throw new Error("Date data not found in database")
 
   return [formatDateHtmlReverse(dbUser.date.startDate), formatDateHtmlReverse(dbUser.date.endDate)]
 }
@@ -416,15 +412,11 @@ async function getDates(dbUser: User, query: ParsedUrlQuery): Promise<[string, s
 /**
  * Fetches a customer sales report for a given session and server-side context.
  * @param {Session} session - The session object representing the user's authorization.
- * @param {GetServerSidePropsContext} context - The server-side context object.
+ * @param {User} dbUser - The user object from the db.
  * @returns {Promise<CustomerSalesReport>} A promise resolving to the customer sales report.
  */
-export async function getCustomerSalesReport(
-  session: Session,
-  query: ParsedUrlQuery,
-  dbUser: User
-) {
-  const [startDate, endDate] = await getDates(dbUser, query)
+export async function getCustomerSalesReport(session: Session, dbUser: User) {
+  const [startDate, endDate] = await getDates(dbUser)
 
   const url = `${baseApiRoute}/${session.realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`

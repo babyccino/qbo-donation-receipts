@@ -95,20 +95,13 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
     const items = getItems()
     const postData: ServicesApiDataType = { items, date: customDateState }
-    const apiResponse = postJsonData("/api/services", postData)
+    const apiResponse = await postJsonData("/api/services", postData)
 
     console.log({ formData: items })
 
-    // the selected items will be in the query in case the db has not been updated by...
-    // the time the user has reached the generate-receipts pages
     if (detailsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: {
-          items: items.join("+"),
-          startDate: formatDateHtmlReverse(customDateState.startDate),
-          endDate: formatDateHtmlReverse(customDateState.endDate),
-        },
       })
     else
       router.push({
@@ -188,12 +181,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   if (!session) throw new Error("Couldn't find session")
 
   const [doc, items] = await Promise.all([user.doc(session.user.id).get(), getItems(session)])
-  const data = doc.data()
-  if (!data) throw new Error("User has no corresponding db entry")
+  const dbUser = doc.data()
+  if (!dbUser) throw new Error("User has no corresponding db entry")
 
   // TODO not showing correctly
-  const selectedItems = data.items || null
-  const detailsFilledIn = Boolean(context.query.details) || alreadyFilledIn(doc).doneeDetails
+  const selectedItems = dbUser.items || null
+  const detailsFilledIn = Boolean(context.query.details) || alreadyFilledIn(dbUser).doneeDetails
 
   return {
     props: {

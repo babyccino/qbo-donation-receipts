@@ -123,8 +123,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     }
 
   const doc = await user.doc(session.user.id).get()
+  const dbUser = doc.data()
 
-  const filledIn = alreadyFilledIn(doc)
+  const filledIn = alreadyFilledIn(dbUser)
 
   return {
     props: {
