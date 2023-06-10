@@ -1,7 +1,6 @@
 import { useState, ReactNode } from "react"
-import { GetServerSideProps, GetServerSidePropsContext } from "next"
+import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
-import { ParsedUrlQuery } from "querystring"
 import Link from "next/link"
 import download from "downloadjs"
 
@@ -319,7 +318,6 @@ export default function IndexPage(props: Props) {
 }
 
 // --- server-side props ---
-
 function getProducts(dbUser: User): Set<number> {
   if (!dbUser.items) throw new Error("items data not found in query nor database")
   return new Set(dbUser.items)
