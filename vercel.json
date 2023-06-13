@@ -2,7 +2,7 @@
   "installCommand": "npm install && npm run patch",
   "headers": [
     {
-      "source": "/*",
+      "source": "/:path*",
       "headers": [
         {
           "key": "Cache-Control",
