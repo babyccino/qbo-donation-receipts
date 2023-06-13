@@ -6,7 +6,7 @@ function getVitalEnvironmentVariable(environmentVariable: string): string {
 
   const unvalidatedEnvironmentVariable = process.env[environmentVariable]
   if (!unvalidatedEnvironmentVariable) {
-    console.log("process.env: ", process.env)
+    console.error("process.env: ", process.env)
     throw new Error(`Couldn't find vital environment variable: ${environmentVariable}`)
   } else {
     return unvalidatedEnvironmentVariable

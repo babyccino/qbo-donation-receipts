@@ -97,8 +97,6 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
     const postData: ServicesApiDataType = { items, date: customDateState }
     const apiResponse = await postJsonData("/api/services", postData)
 
-    console.log({ formData: items })
-
     if (detailsFilledIn)
       router.push({
         pathname: "generate-receipts",
