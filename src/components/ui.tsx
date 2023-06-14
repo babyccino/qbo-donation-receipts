@@ -14,6 +14,7 @@ import {
   Select as FlowbiteSelect,
   TextInput as FlowbiteTextInput,
   Checkbox as FlowbiteCheckbox,
+  Textarea as FlowbiteTextArea,
 } from "flowbite-react"
 
 export { Button, Alert, Card, Modal, Accordion } from "flowbite-react"
@@ -507,15 +508,17 @@ export namespace Form {
 
   export const TextInput = ({
     id,
-    defaultValue,
-    minLength,
     label,
+    defaultValue,
+    placeholder,
+    minLength,
     className,
     required,
   }: {
     id: string
     label: string
     defaultValue?: string
+    placeholder?: string
     minLength?: number
     className?: string
     required?: boolean
@@ -529,6 +532,42 @@ export namespace Form {
         id={id}
         minLength={minLength}
         defaultValue={defaultValue}
+        placeholder={placeholder}
+        required={required}
+      />
+    </p>
+  )
+
+  export const TextArea = ({
+    id,
+    label,
+    rows,
+    defaultValue,
+    placeholder,
+    minLength,
+    className,
+    required,
+  }: {
+    id: string
+    label: string
+    rows?: number
+    defaultValue?: string
+    placeholder?: string
+    minLength?: number
+    className?: string
+    required?: boolean
+  }) => (
+    <p className={className}>
+      <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
+        {label}
+      </FlowbiteLabel>
+      <FlowbiteTextArea
+        name={id}
+        id={id}
+        minLength={minLength}
+        rows={rows}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
         required={required}
       />
     </p>
