@@ -1,12 +1,13 @@
 import { MouseEventHandler, useState } from "react"
 import { signIn } from "next-auth/react"
 
-import { Button, Form } from "@/components/ui"
+import { Button } from "@/components/ui"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import Image from "next/image"
 
 import { authOptions } from "../api/auth/[...nextauth]"
+import { Checkbox, Label } from "@/components/form"
 
 export default function SignIn() {
   const [checked, setChecked] = useState(false)
@@ -29,13 +30,13 @@ export default function SignIn() {
           Sign in to your account
         </h1>
         <div className="mt-8 flex items-center gap-2">
-          <Form.Checkbox id="agree" onChange={e => setChecked(e.currentTarget.checked)} />
-          <Form.Label className="flex" htmlFor="agree">
+          <Checkbox id="agree" onChange={e => setChecked(e.currentTarget.checked)} />
+          <Label className="flex" htmlFor="agree">
             I agree with the&nbsp;
             <a className="text-primary-600 hover:underline dark:text-primary-500" href="/forms">
               terms and conditions
             </a>
-          </Form.Label>
+          </Label>
         </div>
         <div className="mt-2 flex flex-row">
           <Image src="/qb-logo-horizontal-reversed.svg" width={200} height={50} alt="qbo-logo" />

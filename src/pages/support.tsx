@@ -1,4 +1,5 @@
-import { Button, Form } from "@/components/ui"
+import { TextArea, TextInput } from "@/components/form"
+import { Button } from "@/components/ui"
 
 const Support = () => (
   <section className="bg-white dark:bg-gray-900">
@@ -10,14 +11,14 @@ const Support = () => (
         Got a technical issue? Want to send feedback? Let us know.
       </p>
       <form action="#" className="space-y-8">
-        <Form.TextInput id="email" label="Your email" placeholder="name@email.com" required />
-        <Form.TextInput
+        <TextInput id="email" label="Your email" placeholder="name@email.com" required />
+        <TextInput
           id="subject"
           label="Subject"
           placeholder="Let us know how we can help you"
           required
         />
-        <Form.TextArea
+        <TextArea
           id="message"
           label="Leave a comment"
           placeholder="Leave a comment..."

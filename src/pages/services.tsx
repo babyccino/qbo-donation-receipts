@@ -4,13 +4,12 @@ import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
 import Datepicker from "react-tailwindcss-datepicker"
 
-import { Form, buttonStyling, Button, Alert, Svg } from "@/components/ui"
+import { buttonStyling, Button, Alert, Svg } from "@/components/ui"
 import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
   endOfPreviousYear,
   endOfThisYear,
-  formatDateHtmlReverse,
   startOfPreviousYear,
   startOfThisYear,
 } from "@/lib/util/date"
@@ -19,6 +18,7 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
+import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 
 type Props = {
   items: Item[]
@@ -110,8 +110,8 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="m-auto w-full max-w-lg space-y-4 p-4">
-      <Form.Fieldset>
-        <Form.Legend className="mb-3">Selected items</Form.Legend>
+      <Fieldset>
+        <Legend className="mb-3">Selected items</Legend>
         <Alert
           color="info"
           className="mb-4"
@@ -124,7 +124,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           Make sure to only choose your Quickbooks sales items which qualify as donations
         </Alert>
         {items.map(({ id, name }) => (
-          <Form.Toggle
+          <Toggle
             key={id}
             defaultChecked={selectedItems ? selectedItems.includes(id) : true}
             id={id}
@@ -136,13 +136,13 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           <Button onClick={checkAll}>Check All</Button>
           <Button onClick={unCheckAll}>Uncheck All</Button>
         </div>
-      </Form.Fieldset>
-      <Form.Fieldset>
-        <Form.Legend className="mb-4">Date range</Form.Legend>
-        <Form.Label className="mb-2 inline-block" htmlFor="dateRangeType">
+      </Fieldset>
+      <Fieldset>
+        <Legend className="mb-4">Date range</Legend>
+        <Label className="mb-2 inline-block" htmlFor="dateRangeType">
           Range
-        </Form.Label>
-        <Form.Select
+        </Label>
+        <Select
           onChange={handleSelectChange}
           name="dateRangeType"
           id="dateRangeType"
@@ -152,16 +152,16 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           <option value={DateRangeType.ThisYear}>This year</option>
           <option value={DateRangeType.Ytd}>This year to date</option>
           <option value={DateRangeType.Custom}>Custom range</option>
-        </Form.Select>
+        </Select>
         <p className="mt-2 space-y-1">
-          <Form.Label className="mb-2 inline-block">Date Range</Form.Label>
+          <Label className="mb-2 inline-block">Date Range</Label>
           <Datepicker
             value={customDateState}
             onChange={onDateChange}
             disabled={!dateRangeIsCustom}
           />
         </p>
-      </Form.Fieldset>
+      </Fieldset>
       <input
         className={buttonStyling + " text-l mx-auto block cursor-pointer"}
         type="submit"
