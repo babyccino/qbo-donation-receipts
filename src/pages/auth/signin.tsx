@@ -1,10 +1,9 @@
 import { MouseEventHandler, useState } from "react"
-import { signIn } from "next-auth/react"
-
-import { Button } from "@/components/ui"
 import { GetServerSideProps } from "next"
+import { signIn } from "next-auth/react"
 import { getServerSession } from "next-auth"
 import Image from "next/image"
+import { Button } from "flowbite-react"
 
 import { authOptions } from "../api/auth/[...nextauth]"
 import { Checkbox, Label } from "@/components/form"

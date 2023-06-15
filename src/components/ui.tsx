@@ -1,6 +1,3 @@
-export { Button, Alert, Card, Modal, Accordion } from "flowbite-react"
-
-// components from flowbite.com
 // svg from heroicons.dev
 // hand drawn arrows from svgrepo.com
 

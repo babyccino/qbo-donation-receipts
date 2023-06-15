@@ -1,6 +1,6 @@
 import { ReactNode } from "react"
 
-import { Accordion } from "./ui"
+import { Accordion } from "flowbite-react"
 const { Panel, Title, Content } = Accordion
 
 export const P = ({ children }: { children: ReactNode }) => (

@@ -1,8 +1,8 @@
 import { ReactNode } from "react"
+import { Accordion, Alert } from "flowbite-react"
 
-import { Accordion, Alert } from "@/components/ui"
-import { H1, H2, H3, Q, Ul, P, InterpretationDefinitions } from "@/components/agreements"
-import { companyName, url, email } from "@/components/agreements"
+import { H1, H3, Q, Ul, P, InterpretationDefinitions } from "@/components/agreements"
+import { companyName, email } from "@/components/agreements"
 
 const { Panel, Title, Content } = Accordion
 

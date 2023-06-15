@@ -3,6 +3,7 @@ import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
 import Link from "next/link"
 import download from "downloadjs"
+import { Alert, Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
@@ -14,7 +15,7 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { Alert, Button, Card, Svg, buttonStyling } from "@/components/ui"
+import { Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { Bucket, storageBucket, user } from "@/lib/db"
 import { multipleClasses } from "@/lib/util/etc"

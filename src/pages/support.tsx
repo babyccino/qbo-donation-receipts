@@ -1,5 +1,5 @@
 import { TextArea, TextInput } from "@/components/form"
-import { Button } from "@/components/ui"
+import { Button } from "flowbite-react"
 import { FormEventHandler, useRef } from "react"
 
 import { DataType as ContactDataType } from "./api/support"

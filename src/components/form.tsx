@@ -8,7 +8,6 @@ import {
   ForwardedRef,
   HTMLInputTypeAttribute,
 } from "react"
-import { multipleClasses } from "@/lib/util/etc"
 import {
   FileInput,
   Label as FlowbiteLabel,
@@ -17,6 +16,8 @@ import {
   Checkbox as FlowbiteCheckbox,
   Textarea as FlowbiteTextArea,
 } from "flowbite-react"
+
+import { multipleClasses } from "@/lib/util/etc"
 
 // components from flowbite.com
 // svg from heroicons.dev
