@@ -25,3 +25,4 @@ src/pages/api/test-api.ts
 coverage
 
 serviceAccountKey.json
+credentials.csv

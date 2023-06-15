@@ -70,7 +70,7 @@ export const createAuthorisedHandler =
     if (!session) return res.status(401).end()
 
     try {
-      handler(req, res, session)
+      await handler(req, res, session)
     } catch (error) {
       console.error(error)
       if (!(error instanceof ApiError)) return res.status(404).json({ message: "server error" })

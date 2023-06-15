@@ -6,6 +6,7 @@ import {
   useState,
   forwardRef,
   ForwardedRef,
+  HTMLInputTypeAttribute,
 } from "react"
 import { multipleClasses } from "@/lib/util/etc"
 import {
@@ -66,6 +67,7 @@ export const TextInput = ({
   minLength,
   className,
   required,
+  type,
 }: {
   id: string
   label: string
@@ -74,6 +76,7 @@ export const TextInput = ({
   minLength?: number
   className?: string
   required?: boolean
+  type?: HTMLInputTypeAttribute
 }) => (
   <p className={className}>
     <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
@@ -86,6 +89,7 @@ export const TextInput = ({
       defaultValue={defaultValue}
       placeholder={placeholder}
       required={required}
+      type={type}
     />
   </p>
 )
