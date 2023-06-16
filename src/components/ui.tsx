@@ -478,6 +478,7 @@ export namespace Svg {
   )
   export const QBOSignInDefault = () => (
     <svg
+      aria-hidden
       width="161"
       height="36"
       viewBox="0 0 161 36"
@@ -497,6 +498,7 @@ export namespace Svg {
 
   export const QBOSignInHover = () => (
     <svg
+      aria-hidden
       width="161"
       height="36"
       viewBox="0 0 161 36"
