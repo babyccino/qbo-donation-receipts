@@ -1,4 +1,4 @@
-import { Accordion } from "@/components/ui"
+import { Accordion } from "flowbite-react"
 import { H1, H3, Q, Ol, P, InterpretationDefinitions } from "@/components/agreements"
 import { companyName, url } from "@/components/agreements"
 
