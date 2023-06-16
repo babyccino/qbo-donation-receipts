@@ -65,10 +65,12 @@ export default function Layout({ children }: { children: ReactNode }) {
             ) : (
               <NavLink link="api/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
             )}
+
             <hr
               style={{ margin: "1rem 0" }}
               className="border-t border-gray-200 dark:border-gray-700"
             />
+
             <NavAnchor
               href="#"
               onClick={e => {
@@ -80,6 +82,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             />
             <NavLink link="terms" logo={<Svg.Help />} label="Terms and Conditions" />
             <NavLink link="privacy" logo={<Svg.Documentation />} label="Privacy Policy" />
+            <NavLink link="support" logo={<Svg.Inbox2 />} label="Support" />
           </ul>
         </nav>
       </header>
