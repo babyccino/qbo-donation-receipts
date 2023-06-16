@@ -7,6 +7,7 @@ import { Button } from "flowbite-react"
 
 import { authOptions } from "../api/auth/[...nextauth]"
 import { Checkbox, Label } from "@/components/form"
+import { Svg } from "@/components/ui"
 
 export default function SignIn() {
   const [checked, setChecked] = useState(false)
@@ -39,9 +40,12 @@ export default function SignIn() {
         </div>
         <div className="mt-2 flex flex-row">
           <Image src="/qb-logo-horizontal-reversed.svg" width={200} height={50} alt="qbo-logo" />
-          <Button type="submit" onClick={handler} disabled={!checked} className="mt-2">
-            Sign in with Intuit
-          </Button>
+          <button type="submit" onClick={handler} disabled={!checked} className="group relative">
+            <div className="absolute z-10 group-hover:hidden">
+              <Svg.QBOSignInDefault />
+            </div>
+            <Svg.QBOSignInHover />
+          </button>
         </div>
       </form>
     </div>
