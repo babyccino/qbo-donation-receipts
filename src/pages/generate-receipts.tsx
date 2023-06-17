@@ -46,7 +46,7 @@ function DownloadAllFiles() {
 const ErrorComponent = () => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
-      We were not able to gather your Quickbooks Online data.
+      We were not able to gather your QuickBooks Online data.
     </span>
   </div>
 )

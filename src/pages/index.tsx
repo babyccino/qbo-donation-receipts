@@ -68,7 +68,7 @@ const IndexPage = ({ filledIn }: Props) => (
       <Card
         href="/api/auth/signin"
         title="Link your account"
-        body="Sign in with your Quickbooks Online account and authorise our application"
+        body="Sign in with your QuickBooks Online account and authorise our application"
         completed={filledIn !== false}
       />
       <div className="mt-3 h-10 w-10 rotate-180 text-slate-400">

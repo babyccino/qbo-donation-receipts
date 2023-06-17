@@ -122,7 +122,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
             </div>
           )}
         >
-          Make sure to only choose your Quickbooks sales items which qualify as donations
+          Make sure to only choose your QuickBooks sales items which qualify as donations
         </Alert>
         {items.map(({ id, name }) => (
           <Toggle
