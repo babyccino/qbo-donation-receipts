@@ -58,7 +58,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 logo={<Svg.SignIn />}
                 onClick={e => {
                   e.preventDefault()
-                  signOut()
+                  signOut({ callbackUrl: "/disconnected" })
                 }}
                 label="Sign Out"
               />

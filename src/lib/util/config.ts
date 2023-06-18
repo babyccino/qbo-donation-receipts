@@ -24,6 +24,7 @@ export const config = {
   qboBaseApiRoute: getVitalEnvironmentVariable("QBO_BASE_API_ROUTE"),
   qboOauthRoute: getVitalEnvironmentVariable("QBO_OAUTH_ROUTE"),
   qboAccountsBaseRoute: getVitalEnvironmentVariable("QBO_ACCOUNTS_BASE_ROUTE"),
+  qboOauthRevocationEndpoint: getVitalEnvironmentVariable("QBO_OAUTH_REVOCATION_ENDPOINT"),
 
   stripePublicKey: getVitalEnvironmentVariable("STRIPE_PUBLIC_KEY"),
   stripePrivateKey: getVitalEnvironmentVariable("STRIPE_PRIVATE_KEY"),

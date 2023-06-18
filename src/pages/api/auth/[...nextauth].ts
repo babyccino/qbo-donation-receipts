@@ -5,7 +5,7 @@ import { Session } from "next-auth"
 
 import { user as firestoreUser } from "@/lib/db"
 import { QBOProfile, getCompanyInfo } from "@/lib/qbo-api"
-import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
+import { fetchJsonData, base64EncodeString, getResponseContent } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 
 const {
@@ -14,6 +14,7 @@ const {
   qboWellKnown,
   qboOauthRoute,
   qboAccountsBaseRoute,
+  qboOauthRevocationEndpoint,
   nextAuthJwtSecret,
 } = config
 const MS_IN_HOUR = 3600000
@@ -60,6 +61,29 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
     accessToken: refreshedTokens.access_token,
     accessTokenExpires: Date.now() + MS_IN_HOUR,
     refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+  }
+}
+
+async function revokeAccessToken(token: JWT): Promise<void> {
+  console.log("revoking access token")
+
+  const { refreshToken } = token
+  if (typeof refreshToken !== "string") throw new Error("jwt token missing refresh token")
+
+  const url = qboOauthRevocationEndpoint
+  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${encoded}`,
+      "Content-Type": "application/json",
+    },
+    body: `{"token":"${refreshToken}"}`,
+  })
+
+  if (!response.ok) {
+    throw new Error(`access token could not be revoked: ${getResponseContent(response)}`)
   }
 }
 
@@ -153,6 +177,9 @@ export const authOptions: NextAuthOptions = {
         },
       }
     },
+  },
+  events: {
+    signOut: ({ token }) => revokeAccessToken(token),
   },
 }
 
