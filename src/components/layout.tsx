@@ -1,9 +1,9 @@
 import { MouseEventHandler, ReactNode, useState, useEffect } from "react"
 import Link from "next/link"
 import { signOut, useSession } from "next-auth/react"
+import { useRouter } from "next/router"
 
 import { Svg } from "@/components/ui"
-import { useRouter } from "next/router"
 import { subscribe } from "@/lib/util/request"
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -58,17 +58,19 @@ export default function Layout({ children }: { children: ReactNode }) {
                 logo={<Svg.SignIn />}
                 onClick={e => {
                   e.preventDefault()
-                  signOut()
+                  signOut({ callbackUrl: "/disconnected" })
                 }}
                 label="Sign Out"
               />
             ) : (
               <NavLink link="api/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
             )}
+
             <hr
               style={{ margin: "1rem 0" }}
               className="border-t border-gray-200 dark:border-gray-700"
             />
+
             <NavAnchor
               href="#"
               onClick={e => {
@@ -78,8 +80,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               logo={<Svg.Upgrade />}
               label="Upgrade To Pro"
             />
-            <NavLink link="" logo={<Svg.Documentation />} label="Documentation" />
-            <NavLink link="" logo={<Svg.Help />} label="Help" />
+            <NavLink link="terms" logo={<Svg.Help />} label="Terms and Conditions" />
+            <NavLink link="privacy" logo={<Svg.Documentation />} label="Privacy Policy" />
+            <NavLink link="support" logo={<Svg.Inbox2 />} label="Support" />
           </ul>
         </nav>
       </header>

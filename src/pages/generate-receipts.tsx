@@ -1,9 +1,9 @@
 import { useState, ReactNode } from "react"
-import { GetServerSidePropsContext } from "next"
+import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
-import { ParsedUrlQuery } from "querystring"
 import Link from "next/link"
 import download from "downloadjs"
+import { Alert, Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
@@ -14,13 +14,13 @@ import {
   getCustomerData,
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
-import { DoneeInfo, ReceiptPdfDocument } from "@/components/receipt"
-import { Alert, Button, Card, Svg, buttonStyling } from "@/components/ui"
+import { ReceiptPdfDocument } from "@/components/receipt"
+import { Svg, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { user } from "@/lib/db"
+import { Bucket, storageBucket, user } from "@/lib/db"
 import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
-import { User } from "@/types/db"
+import { DoneeInfo, User } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 
@@ -46,12 +46,12 @@ function DownloadAllFiles() {
 const ErrorComponent = () => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
-      We were not able to gather your Quickbooks Online data.
+      We were not able to gather your QuickBooks Online data.
     </span>
   </div>
 )
 
-const MissingData = ({ filledIn }: { filledIn: { items: boolean; details: boolean } }) => (
+const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
       Some information necessary to generate your receipts is missing
@@ -62,7 +62,7 @@ const MissingData = ({ filledIn }: { filledIn: { items: boolean; details: boolea
           Fill in Qualifying Items
         </Link>
       )}
-      {!filledIn.details && (
+      {!filledIn.doneeDetails && (
         <Link className={buttonStyling} href="details">
           Fill in Donee Details
         </Link>
@@ -221,7 +221,7 @@ type Props =
     }
   | {
       status: "missing data"
-      filledIn: { items: boolean; details: boolean }
+      filledIn: { items: boolean; doneeDetails: boolean }
     }
   | { status: "error"; error: string }
 
@@ -319,74 +319,30 @@ export default function IndexPage(props: Props) {
 }
 
 // --- server-side props ---
-
-function getProducts({ items }: ParsedUrlQuery, dbUser: User): Set<number> {
-  if (items)
-    return typeof items == "string"
-      ? new Set(items.split("+").map(str => parseInt(str)))
-      : new Set(items.map(id => parseInt(id)))
-
-  if (!dbUser || !dbUser.items) throw new Error("items data not found in query nor database")
-
+function getProducts(dbUser: User): Set<number> {
+  if (!dbUser.items) throw new Error("items data not found in query nor database")
   return new Set(dbUser.items)
 }
 
-const doneeInfoKeys: (keyof DoneeInfo)[] = [
-  "companyAddress",
-  "companyName",
-  "country",
-  "registrationNumber",
-  "signatoryName",
-  "signature",
-  "smallLogo",
-]
-
-function doesQueryHaveAllFields(query: ParsedUrlQuery): boolean {
-  for (const key of doneeInfoKeys) {
-    if (!query[key] || query[key] == "") return false
-  }
-  return true
+async function getImageAsDataUrl(bucket: Bucket, url: string) {
+  const file = await bucket.file(url).download()
+  const fileString = file[0].toString("base64")
+  const match = url.match(/[^.]+$/)
+  if (!match) throw new Error("")
+  const extension = match[0]
+  return `data:image/${extension};base64,${fileString}`
 }
 
-function combineQueryWithDb(query: ParsedUrlQuery, donee: DoneeInfo): DoneeInfo {
-  for (const key of doneeInfoKeys) {
-    if (!query[key] && !donee[key]) throw new Error(`${key} wasn't found in query nor in the db`)
-
-    donee[key] = (query[key] as string) || (donee[key] as string)
-  }
-
-  return donee
-}
-
-function getDoneeInfo(query: ParsedUrlQuery, dbUser: User): DoneeInfo {
-  if (doesQueryHaveAllFields(query)) {
-    return {
-      companyName: query.companyName as string,
-      companyAddress: query.companyAddress as string,
-      country: query.country as string,
-      registrationNumber: query.registrationNumber as string,
-      signatoryName: query.signatoryName as string,
-      signature: query.signature as string,
-      smallLogo: query.smallLogo as string,
-    }
-  }
-
-  if (!dbUser || !dbUser.donee) throw new Error("donee data not found in query nor database")
-  return combineQueryWithDb(query, dbUser.donee)
-}
-
-export const getServerSideProps = async ({ req, res, query }: GetServerSidePropsContext) => {
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
 
   if (!session) throw new Error("Couldn't find session")
 
   const doc = await user.doc(session.user.id).get()
-  // if items/date and donee details have to be in the query or in the db
-  // if they aren't, a page should be rendered directing the user to fill in those forms
-  const inDatabase = alreadyFilledIn(doc)
-  const itemsInQueryOrDb = query.items || inDatabase.items
-  const doneeDetailsInQueryOrDb = query.companyName || inDatabase.doneeDetails
-  if (!(itemsInQueryOrDb && doneeDetailsInQueryOrDb))
+  const dbUser = doc.data()
+
+  const inDatabase = alreadyFilledIn(dbUser)
+  if (!(inDatabase.items && inDatabase.doneeDetails))
     return {
       props: {
         status: "missing data",
@@ -394,15 +350,17 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
       },
     }
 
-  const dbUser = doc.data()
   if (!dbUser) throw new Error("No user data found in database")
 
-  const [salesReport, customerQueryResult] = await Promise.all([
-    getCustomerSalesReport(session, query, dbUser),
+  const doneeInfo = dbUser.donee as DoneeInfo
+  if (!(doneeInfo.signature && doneeInfo.smallLogo))
+    throw new Error("Either the donor's signature or logo image has not been set")
+  const [salesReport, customerQueryResult, signatureDataUrl, smallLogoDataUrl] = await Promise.all([
+    getCustomerSalesReport(session, dbUser),
     getCustomerData(session),
+    getImageAsDataUrl(storageBucket, doneeInfo.signature),
+    getImageAsDataUrl(storageBucket, doneeInfo.smallLogo),
   ])
-
-  const doneeInfo = getDoneeInfo(query, dbUser)
 
   if (salesReport.Fault)
     return {
@@ -412,7 +370,7 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
       },
     }
 
-  const products = getProducts(query, dbUser)
+  const products = getProducts(dbUser)
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(
     donationDataWithoutAddresses,
@@ -425,7 +383,7 @@ export const getServerSideProps = async ({ req, res, query }: GetServerSideProps
       status: "success",
       session,
       customerData: subscribed ? customerData : customerData.slice(0, 3),
-      doneeInfo,
+      doneeInfo: { ...doneeInfo, signature: signatureDataUrl, smallLogo: smallLogoDataUrl },
       subscribed,
     },
   }

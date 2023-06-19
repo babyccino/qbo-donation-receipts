@@ -1,6 +1,13 @@
+import { CompanyInfo } from "@/lib/qbo-api"
 import Stripe from "stripe"
 
-import { DoneeInfo } from "@/components/receipt"
+export type DoneeInfo = CompanyInfo & {
+  registrationNumber?: string
+  signatoryName?: string
+  signature?: string
+  smallLogo?: string
+  largeLogo?: string
+}
 
 export type User = {
   email: string
@@ -12,7 +19,7 @@ export type User = {
     startDate: Date
     endDate: Date
   }
-  donee?: DoneeInfo
+  donee: DoneeInfo
   subscription?: Subscription
   billingAddress?: BillingAddress
 }

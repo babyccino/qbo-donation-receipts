@@ -14,7 +14,8 @@ import {
 
 import { multipleClasses } from "@/lib/util/etc"
 import { formatDate } from "@/lib/util/date"
-import { CompanyInfo, Donation } from "@/lib/qbo-api"
+import { Donation } from "@/lib/qbo-api"
+import { DoneeInfo } from "@/types/db"
 
 export function HtmlReceipt({
   donation,
@@ -235,14 +236,6 @@ const pdfStyles = StyleSheet.create({
     borderBottom: "1px solid black",
   },
 })
-
-export type DoneeInfo = CompanyInfo & {
-  registrationNumber: string
-  signatoryName: string
-  signature: string
-  smallLogo: string
-  largeLogo?: string
-}
 
 // Create Document Component
 export function ReceiptPdfDocument({

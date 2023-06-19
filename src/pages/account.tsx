@@ -1,10 +1,11 @@
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
+import { Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
 import { Subscription } from "@/types/db"
-import { Button, Card, Svg } from "@/components/ui"
+import { Svg } from "@/components/ui"
 import { MouseEventHandler, ReactNode } from "react"
 import { putJsonData, subscribe } from "@/lib/util/request"
 import Image from "next/image"

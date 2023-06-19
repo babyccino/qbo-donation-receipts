@@ -23,7 +23,7 @@ const handler: AuthorisedHanlder = async (req, res, session) => {
   if (!dbUser.donee || !dbUser.donee) throw new ApiError(401, "User data incomplete")
 
   const [salesReport, customerQueryResult] = await Promise.all([
-    getCustomerSalesReport(session, {}, dbUser),
+    getCustomerSalesReport(session, dbUser),
     getCustomerData(session),
   ])
 

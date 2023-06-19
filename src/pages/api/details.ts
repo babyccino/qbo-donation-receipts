@@ -8,10 +8,9 @@ async function uploadImage(dataUrl: string, path: string): Promise<string> {
   const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
   const base64String = dataUrl.slice(dataUrl.indexOf(",") + 1)
   const buffer = Buffer.from(base64String, "base64")
-  const file = storageBucket.file(`${path}.${extension}`)
-  await file.save(buffer, { contentType: "image" })
-  file.makePublic()
-  return file.publicUrl()
+  const fullPath = `${path}.${extension}`
+  await storageBucket.file(fullPath).save(buffer, { contentType: "image" })
+  return fullPath
 }
 
 const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)

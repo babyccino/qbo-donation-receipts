@@ -4,6 +4,7 @@ import { Readable } from "node:stream"
 
 import { stripe, manageSubscriptionStatusChange } from "@/lib/stripe"
 import { price, product, user } from "@/lib/db"
+import { config as envConfig } from "@/lib/util/config"
 
 export const config = {
   api: {
@@ -21,7 +22,7 @@ async function buffer(readable: Readable) {
 
 async function getStripeEvent(req: NextApiRequest) {
   const sig = req.headers["stripe-signature"]
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET_LIVE ?? process.env.STRIPE_WEBHOOK_SECRET
+  const webhookSecret = envConfig.stripeWebhookSecret
   if (!sig) throw new Error("request missing stripe-signature")
   if (!webhookSecret) throw new Error("missing webhook secret")
 

@@ -1,21 +1,32 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
+import { Session } from "next-auth"
 
-import { user } from "@/lib/db"
-import { QBOProfile } from "@/lib/qbo-api"
-import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
+import { user as firestoreUser } from "@/lib/db"
+import { QBOProfile, getCompanyInfo } from "@/lib/qbo-api"
+import { fetchJsonData, base64EncodeString, getResponseContent } from "@/lib/util/request"
+import { config } from "@/lib/util/config"
 
+const {
+  qboClientId,
+  qboClientSecret,
+  qboWellKnown,
+  qboOauthRoute,
+  qboAccountsBaseRoute,
+  qboOauthRevocationEndpoint,
+  nextAuthJwtSecret,
+} = config
 const MS_IN_HOUR = 3600000
 
 const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
   name: "QBO",
-  clientId: process.env.CLIENT_ID,
-  clientSecret: process.env.CLIENT_SECRET,
+  clientId: qboClientId,
+  clientSecret: qboClientSecret,
   type: "oauth",
   version: "2.0",
-  wellKnown: process.env.WELL_KNOWN,
+  wellKnown: qboWellKnown,
   authorization: {
     params: { scope: "com.intuit.quickbooks.accounting openid profile address email phone" },
   },
@@ -29,9 +40,8 @@ const customProvider: OAuthConfig<QBOProfile> = {
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   console.log("refreshing access token")
 
-  const url = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
-
-  const encoded = base64EncodeString(process.env.CLIENT_ID + ":" + process.env.CLIENT_SECRET)
+  const url = `${qboOauthRoute}/tokens/bearer`
+  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -54,57 +64,123 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   }
 }
 
-const addUser = (id: string, name: string, email: string, realmId: string) =>
-  user.doc(id).set({ id, name, email, realmId }, { merge: true })
+async function revokeAccessToken(token: JWT): Promise<void> {
+  console.log("revoking access token")
+
+  const { refreshToken } = token
+  if (typeof refreshToken !== "string") throw new Error("jwt token missing refresh token")
+
+  const url = qboOauthRevocationEndpoint
+  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${encoded}`,
+      "Content-Type": "application/json",
+    },
+    body: `{"token":"${refreshToken}"}`,
+  })
+
+  if (!response.ok) {
+    throw new Error(`access token could not be revoked: ${getResponseContent(response)}`)
+  }
+}
 
 export const authOptions: NextAuthOptions = {
+  pages: {
+    signIn: "/auth/signin",
+  },
   providers: [customProvider],
   theme: {
     colorScheme: "dark",
   },
   jwt: {
-    secret: process.env.JWT_SECRET,
+    secret: nextAuthJwtSecret,
   },
   callbacks: {
-    session: async ({ session, token }) => ({
-      ...session,
-      accessToken: token.accessToken as string,
-      realmId: token.realmId as string,
-      user: {
-        id: token.id as string,
-        name: token.name as string,
-        image: token.image as string,
-        email: token.email as string,
-      },
-    }),
-    async jwt({ token, account, profile }) {
+    async signIn({ user, account, profile }) {
+      if (!account || !profile) return "/404"
+
+      const { access_token: accessToken, providerAccountId: id } = account
+      const { realmid: realmId } = profile
+      const doc = firestoreUser.doc(id)
+
+      // all the fetch/database requests are done at the same time for performance
+      // then all the necessary information for the other steps of the sign in process
+      // is passed down through the user/account/profile/token/session/etc.
+      const [userInfo, companyInfo, dbUser] = await Promise.all([
+        fetchJsonData<{ email: string; givenName: string }>(
+          `${qboAccountsBaseRoute}/openid_connect/userinfo`,
+          accessToken as string
+        ),
+        getCompanyInfo({ realmId, accessToken } as Session),
+        doc.get(),
+      ])
+
+      if (companyInfo.country !== "CA") return "/terms"
+
+      const { email, givenName: name } = userInfo
+      user.email = email
+      user.name = name
+
+      const dbUserData = dbUser.data()
+      if (!dbUserData) doc.set({ id, name, email, realmId, donee: companyInfo }, { merge: true })
+
+      return true
+    },
+    async jwt({ token, account, profile, user, trigger, session }) {
       if (account && profile) {
-        if (!account.access_token || !account.refresh_token || account.expires_at === undefined)
+        const {
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+          providerAccountId: id,
+        } = account
+        if (!accessToken || !refreshToken || expiresAt === undefined)
           throw new Error("Account is missing important data\naccount:" + JSON.stringify(account))
 
-        token.accessToken = account.access_token
-        token.refreshToken = account.refresh_token
-        token.accessTokenExpires = Date.now() + MS_IN_HOUR
-        token.id = account.providerAccountId
-        token.realmId = profile.realmid
+        const accessTokenExpires = Date.now() + MS_IN_HOUR
+        const { realmid: realmId } = profile
 
-        const userInfo = await fetchJsonData<{ email: string; givenName: string }>(
-          "https://sandbox-accounts.platform.intuit.com/v1/openid_connect/userinfo",
-          token.accessToken as string
-        )
+        token = {
+          ...token,
+          accessToken,
+          refreshToken,
+          accessTokenExpires,
+          id,
+          realmId,
+          name: user.name as string,
+          email: user.email as string,
+        }
+      }
 
-        token.email = userInfo.email || "No email associated with account"
-        token.name = userInfo.givenName || "No name associated with account"
-        // TODO fetch profile image URL
-        token.image = ""
-
-        addUser(account.providerAccountId, token.name, token.email, profile.realmid)
+      if (trigger === "update") {
+        token = { ...token, ...session }
       }
 
       if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
       else return token
     },
+    // async redirect({ url, baseUrl }) {
+    //   return baseUrl
+    // },
+    session: async ({ session, token }) => {
+      return {
+        ...session,
+        accessToken: token.accessToken as string,
+        realmId: token.realmId as string,
+        user: {
+          id: token.id as string,
+          name: token.name as string,
+          email: token.email as string,
+        },
+      }
+    },
+  },
+  events: {
+    signOut: ({ token }) => revokeAccessToken(token),
   },
 }
 
-export default NextAuth(authOptions as any)
+export default NextAuth(authOptions)

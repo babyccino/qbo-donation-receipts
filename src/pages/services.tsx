@@ -3,14 +3,14 @@ import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
 import Datepicker from "react-tailwindcss-datepicker"
+import { Alert, Button } from "flowbite-react"
 
-import { Form, buttonStyling, Button, Alert, Svg } from "@/components/ui"
+import { buttonStyling, Svg } from "@/components/ui"
 import { Item, getItems } from "@/lib/qbo-api"
 import {
   DateRangeType,
   endOfPreviousYear,
   endOfThisYear,
-  formatDateHtmlReverse,
   startOfPreviousYear,
   startOfThisYear,
 } from "@/lib/util/date"
@@ -19,6 +19,7 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
+import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 
 type Props = {
   items: Item[]
@@ -95,20 +96,11 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
     const items = getItems()
     const postData: ServicesApiDataType = { items, date: customDateState }
-    const apiResponse = postJsonData("/api/services", postData)
+    const apiResponse = await postJsonData("/api/services", postData)
 
-    console.log({ formData: items })
-
-    // the selected items will be in the query in case the db has not been updated by...
-    // the time the user has reached the generate-receipts pages
     if (detailsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: {
-          items: items.join("+"),
-          startDate: formatDateHtmlReverse(customDateState.startDate),
-          endDate: formatDateHtmlReverse(customDateState.endDate),
-        },
       })
     else
       router.push({
@@ -119,8 +111,8 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="m-auto w-full max-w-lg space-y-4 p-4">
-      <Form.Fieldset>
-        <Form.Legend className="mb-3">Selected items</Form.Legend>
+      <Fieldset>
+        <Legend className="mb-3">Selected items</Legend>
         <Alert
           color="info"
           className="mb-4"
@@ -130,10 +122,10 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
             </div>
           )}
         >
-          Make sure to only choose your Quickbooks sales items which qualify as donations
+          Make sure to only choose your QuickBooks sales items which qualify as donations
         </Alert>
         {items.map(({ id, name }) => (
-          <Form.Toggle
+          <Toggle
             key={id}
             defaultChecked={selectedItems ? selectedItems.includes(id) : true}
             id={id}
@@ -145,13 +137,13 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           <Button onClick={checkAll}>Check All</Button>
           <Button onClick={unCheckAll}>Uncheck All</Button>
         </div>
-      </Form.Fieldset>
-      <Form.Fieldset>
-        <Form.Legend className="mb-4">Date range</Form.Legend>
-        <Form.Label className="mb-2 inline-block" htmlFor="dateRangeType">
+      </Fieldset>
+      <Fieldset>
+        <Legend className="mb-4">Date range</Legend>
+        <Label className="mb-2 inline-block" htmlFor="dateRangeType">
           Range
-        </Form.Label>
-        <Form.Select
+        </Label>
+        <Select
           onChange={handleSelectChange}
           name="dateRangeType"
           id="dateRangeType"
@@ -161,16 +153,16 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           <option value={DateRangeType.ThisYear}>This year</option>
           <option value={DateRangeType.Ytd}>This year to date</option>
           <option value={DateRangeType.Custom}>Custom range</option>
-        </Form.Select>
+        </Select>
         <p className="mt-2 space-y-1">
-          <Form.Label className="mb-2 inline-block">Date Range</Form.Label>
+          <Label className="mb-2 inline-block">Date Range</Label>
           <Datepicker
             value={customDateState}
             onChange={onDateChange}
             disabled={!dateRangeIsCustom}
           />
         </p>
-      </Form.Fieldset>
+      </Fieldset>
       <input
         className={buttonStyling + " text-l mx-auto block cursor-pointer"}
         type="submit"
@@ -188,12 +180,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   if (!session) throw new Error("Couldn't find session")
 
   const [doc, items] = await Promise.all([user.doc(session.user.id).get(), getItems(session)])
-  const data = doc.data()
-  if (!data) throw new Error("User has no corresponding db entry")
+  const dbUser = doc.data()
+  if (!dbUser) throw new Error("User has no corresponding db entry")
 
   // TODO not showing correctly
-  const selectedItems = data.items || null
-  const detailsFilledIn = Boolean(context.query.details) || alreadyFilledIn(doc).doneeDetails
+  const selectedItems = dbUser.items || null
+  const detailsFilledIn = Boolean(context.query.details) || alreadyFilledIn(dbUser).doneeDetails
 
   return {
     props: {

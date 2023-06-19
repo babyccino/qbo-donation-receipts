@@ -6,15 +6,13 @@ import { ApiError } from "next/dist/server/api-utils"
 import { authOptions } from "src/pages/api/auth/[...nextauth]"
 import { User } from "@/types/db"
 
-export function alreadyFilledIn(doc: FirebaseFirestore.DocumentSnapshot<User>): {
+export function alreadyFilledIn(user: User | undefined): {
   items: boolean
   doneeDetails: boolean
 } {
-  const dbData = doc.data()
+  if (!user) return { items: false, doneeDetails: false }
 
-  if (!dbData) return { items: false, doneeDetails: false }
-
-  const { items, donee, date } = dbData
+  const { items, donee, date } = user
   const {
     companyAddress,
     companyName,
@@ -72,7 +70,7 @@ export const createAuthorisedHandler =
     if (!session) return res.status(401).end()
 
     try {
-      handler(req, res, session)
+      await handler(req, res, session)
     } catch (error) {
       console.error(error)
       if (!(error instanceof ApiError)) return res.status(404).json({ message: "server error" })

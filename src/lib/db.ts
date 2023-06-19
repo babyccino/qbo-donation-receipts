@@ -1,20 +1,10 @@
 import admin from "firebase-admin"
 
-import { Price, Product, User } from "src/types/db"
+import { Price, Product, User } from "@/types/db"
+import { config } from "@/lib/util/config"
+const { firebaseProjectId, firebaseClientEmail, firebasePrivateKey } = config
 
 // set env variable FIRESTORE_EMULATOR_HOST to use firebase emulator
-
-const {
-  FIREBASE_PROJECT_ID,
-  FIREBASE_CLIENT_EMAIL,
-  FIREBASE_PRIVATE_KEY,
-  FIREBASE_API_KEY,
-  FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_APP_ID,
-  FIREBASE_MEASUREMENT_ID,
-  FIREBASE_STORAGE_EMULATOR_HOST,
-  FIREBASE_STORAGE_EMULATOR_PORT,
-} = process.env
 
 // Firebase config for web api (not needed for firebase-admin)
 // const firebaseConfig = {
@@ -31,9 +21,9 @@ if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: FIREBASE_PROJECT_ID,
-        clientEmail: FIREBASE_CLIENT_EMAIL,
-        privateKey: FIREBASE_PRIVATE_KEY,
+        projectId: firebaseProjectId,
+        clientEmail: firebaseClientEmail,
+        privateKey: firebasePrivateKey,
       }),
     })
   } catch (error) {
@@ -87,4 +77,5 @@ export const user = firestore.collection("user").withConverter(userConverter)
 export const product = firestore.collection("product").withConverter(productConverter)
 export const price = (id: string) =>
   product.doc(id).collection("price").withConverter(priceConverter)
-export const storageBucket = admin.storage().bucket(`${FIREBASE_PROJECT_ID}.appspot.com`)
+export const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
+export type Bucket = typeof storageBucket

@@ -17,7 +17,7 @@ next-env.d.ts
 
 .next
 .vercel
-.env*.local
+.env*
 
 src/pages/pdf-example.tsx
 src/pages/api/test-api.ts
@@ -25,3 +25,4 @@ src/pages/api/test-api.ts
 coverage
 
 serviceAccountKey.json
+credentials.csv

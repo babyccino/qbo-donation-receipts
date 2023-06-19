@@ -1,4 +1,5 @@
 import { DataType as CheckoutSessionDataType } from "@/pages/api/stripe/create-checkout-session"
+import { config } from "@/lib/util/config"
 
 export async function subscribe(redirect?: string) {
   const data: CheckoutSessionDataType = { redirect }
@@ -10,7 +11,7 @@ export async function subscribe(redirect?: string) {
 }
 
 export const getBaseUrl = () => {
-  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL
+  const vercelUrl = config.nextPublicVercelUrl
   const url = vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000/"
   if (url.at(-1) === "/") return url
   else return `${url}/`
@@ -34,7 +35,7 @@ export const base64EncodeFile = (file: File) =>
     reader.onerror = reject
   })
 
-async function getResponseContent(response: Response) {
+export async function getResponseContent(response: Response) {
   const contentType = response.headers.get("content-type")
   if (contentType && contentType.includes("application/json")) {
     return response.json()
@@ -44,22 +45,17 @@ async function getResponseContent(response: Response) {
 }
 
 export async function fetchJsonData<T = any>(url: string, accessToken?: string): Promise<T> {
-  const response = await (accessToken
-    ? fetch(url, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      })
-    : fetch(url, {
-        headers: {
-          Accept: "application/json",
-        },
-      }))
+  const headers: HeadersInit = {
+    Accept: "application/json",
+  }
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+  const response = await fetch(url, {
+    headers,
+  })
 
   const responseContent = await getResponseContent(response)
   if (!response.ok) {
-    throw new Error(`GET request to url: ${url} failed, error: ${responseContent}}`)
+    throw new Error(`GET request to url: ${url} failed, error: ${JSON.stringify(responseContent)}}`)
   }
 
   return responseContent as T

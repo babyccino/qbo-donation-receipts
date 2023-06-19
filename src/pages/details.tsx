@@ -3,22 +3,22 @@ import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
 
-import { getCompanyInfo } from "@/lib/qbo-api"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Form, buttonStyling } from "@/components/ui"
+import { buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
-import { DoneeInfo } from "@/components/receipt"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
+import { DoneeInfo } from "@/types/db"
+import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
 
 type Props = {
-  doneeInfo: Partial<DoneeInfo>
+  doneeInfo: DoneeInfo
   session: Session
   itemsFilledIn: boolean
 }
 
-export default function Services({ doneeInfo, itemsFilledIn }: Props) {
+export default function Details({ doneeInfo, itemsFilledIn }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -50,12 +50,11 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
     event.preventDefault()
 
     const formData: DetailsApiDataType = await getFormData()
-    const apiResponse = postJsonData("/api/details", formData)
+    const apiResponse = await postJsonData("/api/details", formData)
 
     if (itemsFilledIn)
       router.push({
         pathname: "generate-receipts",
-        query: { ...formData, signature: true, smallLogo: true },
       })
     else
       router.push({
@@ -74,9 +73,9 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4 p-4">
-      <Form.Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
-        <Form.Legend className="sm:col-span-2">Organisation</Form.Legend>
-        <Form.TextInput
+      <Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
+        <Legend className="sm:col-span-2">Organisation</Legend>
+        <TextInput
           id="companyAddress"
           minLength={10}
           defaultValue={doneeInfo.companyAddress}
@@ -84,40 +83,40 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           className="sm:col-span-2"
           required
         />
-        <Form.TextInput
+        <TextInput
           id="companyName"
           defaultValue={doneeInfo.companyName}
           label="Legal name"
           required
         />
-        <Form.TextInput
+        <TextInput
           id="country"
           minLength={2}
           defaultValue={doneeInfo.country}
           label="Country"
           required
         />
-        <Form.TextInput
+        <TextInput
           id="registrationNumber"
           minLength={15}
           defaultValue={doneeInfo.registrationNumber}
           label="Charity registration number"
           required
         />
-        <Form.TextInput
+        <TextInput
           id="signatoryName"
           minLength={5}
           label="Signatory's name"
           defaultValue={doneeInfo.signatoryName}
           required
         />
-        <Form.ImageInput
+        <ImageInput
           id="signature"
           label="Image of signatory's signature"
           helper={doneeInfo.signatoryName ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.signatoryName)}
         />
-        <Form.ImageInput
+        <ImageInput
           id="smallLogo"
           label="Small image of organisation's logo"
           helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
@@ -128,7 +127,7 @@ export default function Services({ doneeInfo, itemsFilledIn }: Props) {
           type="submit"
           value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
         />
-      </Form.Fieldset>
+      </Fieldset>
     </form>
   )
 }
@@ -139,17 +138,17 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
   if (!session) throw new Error("Couldn't find session")
 
-  const qboCompanyInfo = getCompanyInfo(session)
   const doc = await user.doc(session.user.id).get()
-  const dbUserData = doc.data()
+  const dbUser = doc.data()
+  if (!dbUser) throw new Error("User has no corresponding db entry")
 
-  const itemsFilledIn = Boolean(context.query.items) || alreadyFilledIn(doc).items
+  const itemsFilledIn = Boolean(context.query.items) || alreadyFilledIn(dbUser).items
 
   // if donee data is already in db use that to prefill form otherwise use data from quickbooks
   return {
     props: {
       session,
-      doneeInfo: dbUserData?.donee || (await qboCompanyInfo),
+      doneeInfo: dbUser.donee,
       itemsFilledIn,
     },
   }
