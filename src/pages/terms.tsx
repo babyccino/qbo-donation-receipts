@@ -1,4 +1,5 @@
 import { Accordion } from "flowbite-react"
+
 import { H1, H3, Q, Ol, P, InterpretationDefinitions } from "@/components/agreements"
 import { companyName, url } from "@/components/agreements"
 
@@ -15,16 +16,6 @@ const Terms = () => (
     <P>The Site and appertaining products and services are provided by {companyName} Inc.</P>
     <Accordion flush collapseAll>
       {InterpretationDefinitions}
-      {/* <p>
-      <strong>Services.</strong>
-    </p>
-    <p>
-      offers solutions and business accounting software development to small and
-      medium businesses (collectively, the <Q><strong>Service(s)</strong></Q>). You can choose from
-      our products or develop with us your own, customized to your specific requirements (the <Q>
-      <strong>Products</strong></Q>). We are ready to help you to effectively manage your
-      business online, as the result you can focus on issues that are more important.
-    </p> */}
       <Panel>
         <Title>Acceptance</Title>
         <Content>
