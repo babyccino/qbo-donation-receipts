@@ -19,6 +19,7 @@ next-env.d.ts
 .next
 .vercel
 .env*
+.swc
 
 src/pages/pdf-example.tsx
 src/pages/api/test-api.ts
