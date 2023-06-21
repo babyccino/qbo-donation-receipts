@@ -1,28 +1,29 @@
-import { useState, ReactNode } from "react"
+import { ReactNode, useState } from "react"
 import { GetServerSideProps } from "next"
-import { Session, getServerSession } from "next-auth"
+import { getServerSession, Session } from "next-auth"
 import Link from "next/link"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
+import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import {
-  Donation,
   addBillingAddressesToDonations,
   createDonationsFromSalesReport,
+  Donation,
   getCustomerData,
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { Svg, buttonStyling } from "@/components/ui"
+import { buttonStyling, Svg } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { Bucket, storageBucket, user } from "@/lib/db"
+import { user } from "@/lib/db"
 import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
 import { DoneeInfo, User } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
+import { downloadImagesForDonee } from "@/lib/db-helper"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -58,12 +59,12 @@ const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: b
     </span>
     <div className="flex justify-evenly gap-3">
       {!filledIn.items && (
-        <Link className={buttonStyling} href="services">
+        <Link className={buttonStyling} href="/services">
           Fill in Qualifying Items
         </Link>
       )}
       {!filledIn.doneeDetails && (
-        <Link className={buttonStyling} href="details">
+        <Link className={buttonStyling} href="/details">
           Fill in Donee Details
         </Link>
       )}
@@ -324,15 +325,6 @@ function getProducts(dbUser: User): Set<number> {
   return new Set(dbUser.items)
 }
 
-async function getImageAsDataUrl(bucket: Bucket, url: string) {
-  const file = await bucket.file(url).download()
-  const fileString = file[0].toString("base64")
-  const match = url.match(/[^.]+$/)
-  if (!match) throw new Error("")
-  const extension = match[0]
-  return `data:image/${extension};base64,${fileString}`
-}
-
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
 
@@ -355,11 +347,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   const doneeInfo = dbUser.donee as DoneeInfo
   if (!(doneeInfo.signature && doneeInfo.smallLogo))
     throw new Error("Either the donor's signature or logo image has not been set")
-  const [salesReport, customerQueryResult, signatureDataUrl, smallLogoDataUrl] = await Promise.all([
+
+  const [salesReport, customerQueryResult, donee] = await Promise.all([
     getCustomerSalesReport(session, dbUser),
     getCustomerData(session),
-    getImageAsDataUrl(storageBucket, doneeInfo.signature),
-    getImageAsDataUrl(storageBucket, doneeInfo.smallLogo),
+    downloadImagesForDonee(dbUser.donee),
   ])
 
   if (salesReport.Fault)
@@ -383,7 +375,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       status: "success",
       session,
       customerData: subscribed ? customerData : customerData.slice(0, 3),
-      doneeInfo: { ...doneeInfo, signature: signatureDataUrl, smallLogo: smallLogoDataUrl },
+      doneeInfo: donee,
       subscribed,
     },
   }
