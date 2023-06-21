@@ -23,7 +23,6 @@
     "incremental": true
   },
   "include": [
-    "process.d.ts",
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
