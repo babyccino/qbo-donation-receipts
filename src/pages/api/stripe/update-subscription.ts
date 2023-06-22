@@ -2,7 +2,7 @@ import { z } from "zod"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { manageSubscriptionStatusChange, stripe } from "@/lib/stripe"
-import { AuthorisedHanlder, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
+import { AuthorisedHandler, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
 import { user } from "@/lib/db"
 
 export const parser = z.object({
@@ -10,7 +10,7 @@ export const parser = z.object({
 })
 export type DataType = z.infer<typeof parser>
 
-const handler: AuthorisedHanlder = async ({ body }, res, session) => {
+const handler: AuthorisedHandler = async ({ body }, res, session) => {
   const data = parseRequestBody(parser, body)
   const doc = user.doc(session.user.id)
   const dbUser = (await doc.get()).data()

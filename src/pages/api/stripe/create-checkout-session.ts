@@ -3,7 +3,7 @@ import { ApiError } from "next/dist/server/api-utils"
 
 import { isUserSubscribed, stripe } from "@/lib/stripe"
 import { getBaseUrl } from "@/lib/util/request"
-import { AuthorisedHanlder, parseRequestBody, createAuthorisedHandler } from "@/lib/app-api"
+import { AuthorisedHandler, parseRequestBody, createAuthorisedHandler } from "@/lib/app-api"
 import { user } from "@/lib/db"
 import { config } from "@/lib/util/config"
 
@@ -13,7 +13,7 @@ export const parser = z.object({
 })
 export type DataType = Partial<z.infer<typeof parser>>
 
-const handler: AuthorisedHanlder = async ({ body }, res, session) => {
+const handler: AuthorisedHandler = async ({ body }, res, session) => {
   const data = parseRequestBody(parser, body)
   const { metadata, redirect } = data
 

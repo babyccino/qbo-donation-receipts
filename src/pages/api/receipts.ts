@@ -10,11 +10,11 @@ import {
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { getThisYear } from "@/lib/util/date"
-import { AuthorisedHanlder, createAuthorisedHandler } from "@/lib/app-api"
+import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/app-api"
 import { ApiError } from "next/dist/server/api-utils"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 
-const handler: AuthorisedHanlder = async (req, res, session) => {
+const handler: AuthorisedHandler = async (req, res, session) => {
   const doc = await user.doc(session.user.id).get()
 
   const dbUser = doc.data()

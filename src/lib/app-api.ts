@@ -1,4 +1,4 @@
-import { TypeOf, ZodObject, ZodRawShape, z } from "zod"
+import { TypeOf, ZodObject, ZodRawShape } from "zod"
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
@@ -52,14 +52,14 @@ export function parseRequestBody<T extends ZodRawShape>(
   return response.data
 }
 
-export type AuthorisedHanlder = (
+export type AuthorisedHandler = (
   req: NextApiRequest,
   res: NextApiResponse,
   session: Session
 ) => Promise<void>
 type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
 export const createAuthorisedHandler =
-  (handler: AuthorisedHanlder, methods: HttpVerb[]): NextApiHandler =>
+  (handler: AuthorisedHandler, methods: HttpVerb[]): NextApiHandler =>
   async (req, res) => {
     console.log(`${req.method} request made to ${req.url}`)
     if (!req.method || !methods.includes(req.method as HttpVerb)) {
