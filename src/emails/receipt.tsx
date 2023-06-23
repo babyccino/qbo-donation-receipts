@@ -192,6 +192,7 @@ const emailProps: EmailProps = {
       },
     ],
     address: "123 Main St, City, Country",
+    email: "test@test.com",
   },
   receiptNo: 98765,
   donee: {

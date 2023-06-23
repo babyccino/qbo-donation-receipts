@@ -45,5 +45,7 @@ export const config = {
 
   nextPublicVercelUrl: getNonVitalEnvironmentVariable("NEXT_PUBLIC_VERCEL_URL"),
 
+  testEmail: getNonVitalEnvironmentVariable("TEST_EMAIL"),
+
   nodeEnv: getNonVitalEnvironmentVariable("NODE_ENV"),
 }
