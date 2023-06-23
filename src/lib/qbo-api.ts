@@ -187,8 +187,9 @@ export type Donation = {
   total: number
   products: { name: string; id: number; total: number }[]
   address: string
+  email: string | null
 }
-export type DonationWithoutAddress = Omit<Donation, "address">
+export type DonationWithoutAddress = Omit<Donation, "address" | "email">
 
 export type Item = { name: string; id: number }
 
@@ -243,20 +244,38 @@ export type CompanyInfo = {
   country: string
 }
 
+const padIfExists = (str: string | null | undefined) => (str ? ` ${str}` : "")
 /**
  * Returns a concatenated string representing the billing address object.
  *
  * @param {Address} address - The billing address object.
  * @returns {string} - The concatenated string representing the billing address.
  */
-export const getAddress = (address: Address): string =>
+export const getAddressString = (address: Address): string =>
   address.Line1 +
-  (address.Line2 ? " " + address.Line2 : "") +
-  (address.Line3 ? " " + address.Line3 : "") +
+  padIfExists(address.Line2) +
+  padIfExists(address.Line3) +
   (address.City || address.PostalCode || address.CountrySubDivisionCode ? "," : "") +
-  (address.City ? " " + address.City : "") +
-  (address.PostalCode ? " " + address.PostalCode : "") +
-  (address.CountrySubDivisionCode ? " " + address.CountrySubDivisionCode : "")
+  padIfExists(address.City) +
+  padIfExists(address.PostalCode) +
+  padIfExists(address.CountrySubDivisionCode)
+
+export function getAddressArray({
+  Line1,
+  Line2,
+  Line3,
+  City,
+  CountrySubDivisionCode,
+  PostalCode,
+}: Address) {
+  const ret = [Line1]
+  if (Line2) ret.push(Line2)
+  if (Line3) ret.push(Line3)
+  if (!(City || PostalCode || CountrySubDivisionCode)) return ret
+  const line4 = padIfExists(City) + padIfExists(PostalCode) + padIfExists(CountrySubDivisionCode)
+  ret.push(line4)
+  return ret
+}
 
 /**
  * Combines the customer queries from multiple sources into a single query.
@@ -281,20 +300,21 @@ export function combineCustomerQueries(...queries: CustomerQueryResult[]): Custo
  * @param {CustomerQueryResponse} customers - A customer query response object containing customer data.
  * @returns {Donation[]} - An array of donation objects with billing addresses.
  */
-export function addBillingAddressesToDonations(
+export const addBillingAddressesToDonations = (
   donations: DonationWithoutAddress[],
   customers: CustomerQueryResult
-): Donation[] {
-  return donations.map<Donation>(donation => {
+) =>
+  donations.map<Donation>(donation => {
     const customer = customers.QueryResponse.Customer.find(el => parseInt(el.Id) === donation.id)
 
-    const address = customer?.BillAddr
-      ? getAddress(customer.BillAddr)
+    if (!customer) throw new Error(`Customer not found for donation with id: ${donation.id}`)
+
+    const address = customer.BillAddr
+      ? getAddressString(customer.BillAddr)
       : "No billing address on file"
 
-    return { ...donation, address }
+    return { ...donation, address, email: customer.PrimaryEmailAddr?.Address ?? null }
   })
-}
 
 /**
  * Creates a list of donations from a customer sales report.
@@ -328,21 +348,22 @@ function createDonationFromRow(
 
   const products = data
     .map((total, index) => ({ total, ...allItems[index] }))
-    .filter(product => product.total > 0 && selectedItemIds.has(product.id))
+    .filter(({ total, id }) => total > 0 && selectedItemIds.has(id))
 
-  const total = products.reduce((sum, product) => sum + product.total, 0)
+  const total = products.reduce((sum, { total }) => sum + total, 0)
 
   return { name, id, total, products }
 }
 
-function parseItemsFromReport(report: CustomerSalesReport): Item[] {
-  const columns = report.Columns.Column.slice(1, -1)
-  return columns.map((column, i) => {
+function skipFirst<T>(arr: T[]): T[] {
+  return arr.slice(1, -1)
+}
+const parseItemsFromReport = (report: CustomerSalesReport) =>
+  skipFirst(report.Columns.Column).map((column, i) => {
     if (!column.MetaData) throw new Error(`Column ${i} is missing 'MetaData'`)
     const id = parseInt(column.MetaData[0].Value)
     return { name: column.ColTitle, id }
   })
-}
 
 function parseColData(col: ColData): number {
   const parsedNum = parseFloat(col.value)
@@ -360,7 +381,7 @@ function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
   const id = parseInt(customer.id as string)
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
-  const data: number[] = rawData.slice(1, -1).map<number>(parseColData)
+  const data: number[] = skipFirst(rawData).map<number>(parseColData)
 
   return { data, id, total, name }
 }
@@ -375,7 +396,7 @@ function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
   const id = parseInt(customer.id)
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
-  const data: number[] = rawData.slice(1, -1).map<number>(parseColData)
+  const data = skipFirst(rawData).map<number>(parseColData)
 
   return { data, id, total, name }
 }
@@ -465,8 +486,8 @@ function getValidAddress(
   legalAddress: Address | undefined,
   companyAddress: Address | undefined
 ): string {
-  if (legalAddress) return getAddress(legalAddress)
-  if (companyAddress) return getAddress(companyAddress)
+  if (legalAddress) return getAddressString(legalAddress)
+  if (companyAddress) return getAddressString(companyAddress)
   return "No address on file"
 }
 

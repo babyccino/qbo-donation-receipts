@@ -1,6 +1,6 @@
 import {
   combineCustomerQueries,
-  getAddress,
+  getAddressString,
   Donation,
   CustomerSalesReport,
   createDonationsFromSalesReport,
@@ -99,7 +99,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: Omit<Donation, "address">[] = [
+    const expected: DonationWithoutAddress[] = [
       {
         name: "John",
         id: 123,
@@ -217,7 +217,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: Omit<Donation, "address">[] = [
+    const expected: DonationWithoutAddress[] = [
       {
         name: "Jeff",
         id: 22,
@@ -381,7 +381,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: Omit<Donation, "address">[] = [
+    const expected: DonationWithoutAddress[] = [
       {
         name: "Customer A",
         id: 1,
@@ -414,7 +414,7 @@ describe("processCustomerData", () => {
     const result = createDonationsFromSalesReport(report, new Set([1001, 1002, 1003]))
     expect(result).toEqual(expected)
 
-    const expected2: Omit<Donation, "address">[] = [
+    const expected2: DonationWithoutAddress[] = [
       {
         name: "Customer A",
         id: 1,
@@ -455,7 +455,7 @@ describe("getAddress", () => {
       Lat: "37.78688",
       Long: "-122.399",
     }
-    const result = getAddress(address)
+    const result = getAddressString(address)
     expect(result).toEqual("123 Main St Suite 456, San Francisco 94105 CA")
   })
 
@@ -467,7 +467,7 @@ describe("getAddress", () => {
       PostalCode: "94105",
       CountrySubDivisionCode: "CA",
     }
-    const result = getAddress(address)
+    const result = getAddressString(address)
     expect(result).toEqual("123 Main St, San Francisco 94105 CA")
   })
 })
