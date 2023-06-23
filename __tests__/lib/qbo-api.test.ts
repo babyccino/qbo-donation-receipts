@@ -1,7 +1,6 @@
 import {
   combineCustomerQueries,
   getAddressString,
-  Donation,
   CustomerSalesReport,
   createDonationsFromSalesReport,
   addBillingAddressesToDonations,

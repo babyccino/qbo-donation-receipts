@@ -1,5 +1,4 @@
 import { Session } from "next-auth"
-import { ParsedUrlQuery } from "querystring"
 
 import { formatDateHtmlReverse } from "./util/date"
 import { fetchJsonData } from "./util/request"
@@ -280,8 +279,8 @@ export function getAddressArray({
 /**
  * Combines the customer queries from multiple sources into a single query.
  *
- * @param {...CustomerQueryResponse} queries - The customer query responses to be combined.
- * @returns {CustomerQueryResponse} - A combined customer query response object.
+ * @param {...CustomerQueryResult} queries - The customer query responses to be combined.
+ * @returns {CustomerQueryResult} - A combined customer query response object.
  */
 export function combineCustomerQueries(...queries: CustomerQueryResult[]): CustomerQueryResult {
   const customers = queries.flatMap(({ QueryResponse: { Customer } }) => Customer)
@@ -297,7 +296,7 @@ export function combineCustomerQueries(...queries: CustomerQueryResult[]): Custo
  * Adds billing addresses to an array of donation objects by querying the customer data.
  *
  * @param {DonationWithoutAddress[]} donations - An array of donation objects without billing addresses.
- * @param {CustomerQueryResponse} customers - A customer query response object containing customer data.
+ * @param {CustomerQueryResult} customers - A customer query response object containing customer data.
  * @returns {Donation[]} - An array of donation objects with billing addresses.
  */
 export const addBillingAddressesToDonations = (
