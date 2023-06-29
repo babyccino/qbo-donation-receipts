@@ -1,11 +1,13 @@
-import * as aws from "@aws-sdk/client-ses"
-import nodemailer from "nodemailer"
-
-import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/app-api"
-import { render } from "@react-email/render"
-import { DonationReceiptEmail } from "../../emails/receipt"
-import { user } from "@/lib/db"
 import { ApiError } from "next/dist/server/api-utils"
+import * as aws from "@aws-sdk/client-ses"
+import { render } from "@react-email/render"
+import nodemailer from "nodemailer"
+import { renderToBuffer } from "@react-pdf/renderer"
+import { z } from "zod"
+
+import { AuthorisedHandler, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
+import { WithBody } from "@/emails/receipt"
+import { user } from "@/lib/db"
 import {
   addBillingAddressesToDonations,
   createDonationsFromSalesReport,
@@ -14,7 +16,6 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { getThisYear } from "@/lib/util/date"
-import { renderToBuffer } from "@react-pdf/renderer"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { config } from "@/lib/util/config"
@@ -24,16 +25,16 @@ const { testEmail } = config
 const sesClient = new aws.SESClient({ apiVersion: "2010-12-01", region: "us-east-2" })
 const transporter = nodemailer.createTransport({ SES: { ses: sesClient, aws } })
 
-// export const parser = z.object({
-//     from: z.string().email(),
-//     subject: z.string().min(5),
-//     body: z.string().min(5),
-// })
-// export type DataType = z.infer<typeof parser>
-
+export const parser = z.object({
+  emailBody: z.string().min(5),
+})
+export type DataType = z.infer<typeof parser>
 const getFileNameFromImagePath = (str: string) => str.split("/")[1]
 
 const handler: AuthorisedHandler = async (req, res, session) => {
+  const data = parseRequestBody(parser, req.body)
+  const { emailBody } = data
+
   const doc = await user.doc(session.user.id).get()
 
   const dbUser = doc.data()
@@ -59,8 +60,8 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   let counter = getThisYear()
   const { companyName } = donee
   const sendReceipt = async (entry: Donation) => {
-    const donorEmail = entry.email
-    if (!donorEmail) return
+    const recipient = testEmail ?? entry.email
+    if (!recipient) return
 
     const props = {
       currency: "CAD",
@@ -90,15 +91,16 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       smallLogo: `cid:${logoCid}`,
     }
     const html = render(
-      DonationReceiptEmail({
+      WithBody({
         ...props,
         donee: doneeWithCidImages,
+        body: emailBody,
       })
     )
 
     await transporter.sendMail({
       from: { address: dbUser.email, name: companyName },
-      to: testEmail ?? donorEmail,
+      to: recipient,
       subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
       attachments: [
         {
@@ -114,6 +116,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   }
 
   if (testEmail) {
+    console.log(`sending test email to ${testEmail}`)
     await sendReceipt(customerData[0])
     return res.status(200).json({ ok: true })
   }
