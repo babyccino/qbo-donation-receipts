@@ -1,7 +1,6 @@
 import { ReactNode, useState } from "react"
 import { GetServerSideProps } from "next"
 import { getServerSession, Session } from "next-auth"
-import Link from "next/link"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
@@ -15,12 +14,12 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { buttonStyling, Svg } from "@/components/ui"
+import { buttonStyling, MissingData, Svg } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { user } from "@/lib/db"
 import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
-import { DoneeInfo, User } from "@/types/db"
+import { DoneeInfo } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
@@ -49,26 +48,6 @@ const ErrorComponent = () => (
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
       We were not able to gather your QuickBooks Online data.
     </span>
-  </div>
-)
-
-const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
-  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
-    <span className="col-span-full font-medium text-gray-900 dark:text-white">
-      Some information necessary to generate your receipts is missing
-    </span>
-    <div className="flex justify-evenly gap-3">
-      {!filledIn.items && (
-        <Link className={buttonStyling} href="/services">
-          Fill in Qualifying Items
-        </Link>
-      )}
-      {!filledIn.doneeDetails && (
-        <Link className={buttonStyling} href="/details">
-          Fill in Donee Details
-        </Link>
-      )}
-    </div>
   </div>
 )
 
@@ -320,11 +299,6 @@ export default function IndexPage(props: Props) {
 }
 
 // --- server-side props ---
-function getProducts(dbUser: User): Set<number> {
-  if (!dbUser.items) throw new Error("items data not found in query nor database")
-  return new Set(dbUser.items)
-}
-
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
 
@@ -362,7 +336,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const products = getProducts(dbUser)
+  const products = new Set(dbUser.items as number[])
+
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(
     donationDataWithoutAddresses,
