@@ -37,6 +37,12 @@ export type ItemQueryResponseItem = {
     CreateTime: string
     LastUpdatedTime: string
   }
+  SubItem?: boolean
+  ParentRef?: {
+    value: string
+    name: string
+  }
+  Level?: number
 }
 
 export type ItemQueryResponse = {
@@ -354,11 +360,11 @@ function createDonationFromRow(
   return { name, id, total, products }
 }
 
-function skipFirst<T>(arr: T[]): T[] {
+function skipFirstAndLast<T>(arr: T[]): T[] {
   return arr.slice(1, -1)
 }
 const parseItemsFromReport = (report: CustomerSalesReport) =>
-  skipFirst(report.Columns.Column).map((column, i) => {
+  skipFirstAndLast(report.Columns.Column).map((column, i) => {
     if (!column.MetaData) throw new Error(`Column ${i} is missing 'MetaData'`)
     const id = parseInt(column.MetaData[0].Value)
     return { name: column.ColTitle, id }
@@ -380,7 +386,7 @@ function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
   const id = parseInt(customer.id as string)
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
-  const data: number[] = skipFirst(rawData).map<number>(parseColData)
+  const data: number[] = skipFirstAndLast(rawData).map<number>(parseColData)
 
   return { data, id, total, name }
 }
@@ -395,7 +401,7 @@ function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
   const id = parseInt(customer.id)
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
-  const data = skipFirst(rawData).map<number>(parseColData)
+  const data = skipFirstAndLast(rawData).map<number>(parseColData)
 
   return { data, id, total, name }
 }
@@ -453,7 +459,6 @@ export function getCustomerData(session: Session) {
   const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
 
   // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
-  // TODO this should be stored on the server so we don't have to fetch constantly
 
   return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
 }
@@ -467,7 +472,10 @@ export async function getItems(session: Session) {
   const url = makeQueryUrl(session.realmId, "select * from Item")
   const itemQueryResponse = await fetchJsonData<ItemQueryResponse>(url, session.accessToken)
   const items = itemQueryResponse.QueryResponse.Item
-  return items.map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
+  // TODO handle subitems
+  return items
+    .filter(item => !item.SubItem)
+    .map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
 }
 
 /**
