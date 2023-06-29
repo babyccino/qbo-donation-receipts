@@ -11,11 +11,10 @@ import {
 import {
   FileInput,
   Label as FlowbiteLabel,
-  Select as FlowbiteSelect,
   TextInput as FlowbiteTextInput,
-  Checkbox as FlowbiteCheckbox,
   Textarea as FlowbiteTextArea,
 } from "flowbite-react"
+export { Select, Checkbox } from "flowbite-react"
 
 import { multipleClasses } from "@/lib/util/etc"
 
@@ -23,9 +22,7 @@ import { multipleClasses } from "@/lib/util/etc"
 // svg from heroicons.dev
 // hand drawn arrows from svgrepo.com
 
-export const Select = FlowbiteSelect
 export const Label = FlowbiteLabel
-export const Checkbox = FlowbiteCheckbox
 
 type ToggleProps = {
   className?: string
@@ -104,6 +101,7 @@ export const TextArea = ({
   minLength,
   className,
   required,
+  onChange,
 }: {
   id: string
   label: string
@@ -113,6 +111,7 @@ export const TextArea = ({
   minLength?: number
   className?: string
   required?: boolean
+  onChange?: ChangeEventHandler<HTMLTextAreaElement>
 }) => (
   <p className={className}>
     <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
@@ -126,6 +125,7 @@ export const TextArea = ({
       defaultValue={defaultValue}
       placeholder={placeholder}
       required={required}
+      onChange={onChange}
     />
   </p>
 )
