@@ -22,6 +22,7 @@ next-env.d.ts
 .swc
 
 src/pages/pdf-example.tsx
+src/pages/test-page.tsx
 src/pages/api/test-api.ts
 
 coverage
