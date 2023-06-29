@@ -25,7 +25,7 @@ const Header = Object.freeze({
   Option: [],
 })
 
-describe("processCustomerData", () => {
+describe("createDonationsFromSalesReport", () => {
   it("should convert a report with one customer and one product correctly", () => {
     const report: CustomerSalesReport = {
       Fault: undefined,
@@ -705,9 +705,10 @@ describe("addAddressesToCustomerData", () => {
             PostalCode: "94105",
             CountrySubDivisionCode: "CA",
           },
+          PrimaryEmailAddr: { Address: "john@gmail.com" },
         },
         {
-          Id: "789",
+          Id: "456",
         },
       ],
       startPosition: 1,
@@ -728,6 +729,7 @@ describe("addAddressesToCustomerData", () => {
           { name: "Product 2", id: 2, total: 50 },
         ],
         address: "123 Main St, San Francisco 94105 CA",
+        email: "john@gmail.com",
       },
       {
         name: "Jane",
@@ -735,6 +737,7 @@ describe("addAddressesToCustomerData", () => {
         total: 200,
         products: [{ name: "Product 3", id: 3, total: 200 }],
         address: "No billing address on file",
+        email: null,
       },
     ])
   })
@@ -861,9 +864,7 @@ describe("parseCompanyInfo", () => {
       "No company info found"
     )
   })
-})
 
-describe("parseCompanyInfo", () => {
   it("should parse the company info object correctly when LegalAddr is defined", () => {
     const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
       QueryResponse: {
