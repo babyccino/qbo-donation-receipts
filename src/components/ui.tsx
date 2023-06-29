@@ -1,3 +1,7 @@
+import Link from "next/link"
+import { Card } from "flowbite-react"
+import { ReactNode } from "react"
+
 // svg from heroicons.dev
 // hand drawn arrows from svgrepo.com
 
@@ -518,5 +522,91 @@ export namespace Svg {
         fill="white"
       />
     </svg>
+  )
+}
+export const MissingData = ({
+  filledIn,
+}: {
+  filledIn: { items: boolean; doneeDetails: boolean }
+}) => (
+  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
+    <span className="col-span-full font-medium text-gray-900 dark:text-white">
+      Some information necessary to generate your receipts is missing
+    </span>
+    <div className="flex justify-evenly gap-3">
+      {!filledIn.items && (
+        <Link className={buttonStyling} href="/services">
+          Fill in Qualifying Items
+        </Link>
+      )}
+      {!filledIn.doneeDetails && (
+        <Link className={buttonStyling} href="/details">
+          Fill in Donee Details
+        </Link>
+      )}
+    </div>
+  </div>
+)
+
+const freeFeatures = ["Individual configuration", "No setup, or hidden fees", "3 free receipts"]
+const freeNonFeatures = ["Unlimited receipts", "Automatic emailing"]
+
+const paidFeatures = [
+  "Individual configuration",
+  "No setup, or hidden fees",
+  "Unlimited receipts",
+  "Automatic emailing",
+]
+
+export const PricingCard = ({
+  plan,
+  title: propsTitle,
+  button,
+}: {
+  plan: "pro" | "free"
+  title?: string
+  button?: ReactNode
+}) => {
+  const isPro = plan === "pro"
+  const features = isPro ? paidFeatures : freeFeatures
+  const price = isPro ? 20 : 0
+
+  const title = propsTitle ?? (isPro ? "Pro Plan" : "Free Plan")
+
+  return (
+    <Card>
+      <h5 className="mb-4 text-xl font-medium text-gray-500 dark:text-gray-400">{title}</h5>
+      <div className="flex items-baseline text-gray-900 dark:text-white">
+        <span className="text-3xl font-semibold">CAD</span>
+        <span className="text-5xl font-extrabold tracking-tight">{price}</span>
+        <span className="ml-1 text-xl font-normal text-gray-500 dark:text-gray-400">/year</span>
+      </div>
+      <ul className="my-7 space-y-5">
+        {features.map((feature, idx) => (
+          <li
+            key={idx}
+            className="flex space-x-3 text-base font-normal leading-tight text-gray-500 dark:text-gray-400"
+          >
+            <div className="-mb-1 mr-4 inline-block w-5 text-green-300">
+              <Svg.Tick />
+            </div>
+            {feature}
+          </li>
+        ))}
+        {!isPro &&
+          freeNonFeatures.map((nonFeature, idx) => (
+            <li
+              key={idx}
+              className="flex space-x-3 text-base font-normal leading-tight text-gray-500 line-through decoration-gray-500"
+            >
+              <div className="-mb-1 mr-4 inline-block w-5 text-red-300">
+                <Svg.Cross />
+              </div>
+              {nonFeature}
+            </li>
+          ))}
+      </ul>
+      {button}
+    </Card>
   )
 }
