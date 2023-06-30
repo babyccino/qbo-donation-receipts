@@ -29,6 +29,7 @@ coverage
 
 serviceAccountKey.json
 credentials.csv
+rootkey.csv
 
 .react-email
 .idea
