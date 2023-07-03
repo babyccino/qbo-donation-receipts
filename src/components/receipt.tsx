@@ -121,20 +121,24 @@ export function HtmlReceipt({
         </div>
       </div>
       <table className={twMerge(styles.table, styles.alignCenter)}>
-        <tr className={styles.tableHeadings}>
-          <th className={styles.textAlignRight}>
-            <strong>Category</strong>
-          </th>
-          <th className={styles.textAlignLeft}>
-            <strong>Amount</strong>
-          </th>
-        </tr>
-        {donation.products.map(item => (
-          <tr key={item.id}>
-            <td className={styles.textAlignRight}>{item.name}</td>
-            <td className={styles.textAlignLeft}>{formatCurrency(item.total)}</td>
+        <thead>
+          <tr className={styles.tableHeadings}>
+            <th className={styles.textAlignRight}>
+              <strong>Category</strong>
+            </th>
+            <th className={styles.textAlignLeft}>
+              <strong>Amount</strong>
+            </th>
           </tr>
-        ))}
+        </thead>
+        <tbody>
+          {donation.products.map(item => (
+            <tr key={item.id}>
+              <td className={styles.textAlignRight}>{item.name}</td>
+              <td className={styles.textAlignLeft}>{formatCurrency(item.total)}</td>
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   )
