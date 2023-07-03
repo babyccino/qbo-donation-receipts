@@ -77,7 +77,7 @@ const IndexPage = ({ filledIn }: Props) => (
       <Card
         href="/services"
         title="Select your qualifying items"
-        body="Select which of your quickbooks sales constitute a gift"
+        body="Select which of your QuickBooks sales constitute a gift"
         completed={filledIn && filledIn.items}
       />
       <div className="mt-3 h-10 w-10 rotate-180 text-slate-400">
