@@ -16,6 +16,23 @@ export type QBOProfile = {
   iat: number
 }
 
+export type OpenIdUserInfo = {
+  sub: string
+  givenName: string
+  familyName: string
+  email: string
+  emailVerified: boolean
+  phoneNumber: string
+  phoneNumberVerified: boolean
+  address: {
+    streetAddress: string
+    locality: string
+    region: string
+    postalCode: string
+    country: string
+  }
+}
+
 export type ItemQueryResponseItem = {
   Name: string
   Description: string
