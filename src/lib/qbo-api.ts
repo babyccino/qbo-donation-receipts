@@ -1,5 +1,4 @@
 import { Session } from "next-auth"
-import { ParsedUrlQuery } from "querystring"
 
 import { formatDateHtmlReverse } from "./util/date"
 import { fetchJsonData } from "./util/request"
