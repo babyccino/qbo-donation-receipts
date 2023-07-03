@@ -12,6 +12,15 @@ import {
   Section,
   Text,
 } from "@react-email/components"
+import {
+  Document,
+  Page,
+  Text as PdfText,
+  View,
+  StyleSheet,
+  Link as PdfLink,
+  Image as PdfImage,
+} from "@react-pdf/renderer"
 
 import { Donation } from "@/lib/qbo-api"
 import { DoneeInfo } from "@/types/db"
@@ -289,7 +298,7 @@ namespace sharedStyle {
   export const informationTableColumn = {
     paddingLeft: "20px",
     paddingRight: "20px",
-    borderStyle: "solid",
+    borderStyle: "solid" as const,
     borderColor: "white",
     borderWidth: "0px 1px 1px 0px",
     height: "44px",
@@ -335,7 +344,7 @@ namespace sharedStyle {
     margin: "0",
     color: "rgb(102,102,102)",
     fontSize: "10px",
-    fontWeight: "600",
+    fontWeight: "600" as const,
     padding: "0px 30px 0px 0px",
     textAlign: "right" as const,
   }
@@ -349,7 +358,7 @@ namespace sharedStyle {
   export const productPriceLarge = {
     margin: "0px 20px 0px 0px",
     fontSize: "16px",
-    fontWeight: "600",
+    fontWeight: "600" as const,
     whiteSpace: "nowrap" as const,
     textAlign: "right" as const,
   }
@@ -381,4 +390,129 @@ namespace sharedStyle {
     fontSize: "12px",
     color: "rgb(102,102,102)",
   }
+}
+
+const styleSheet = StyleSheet.create(sharedStyle)
+
+const PdfField = ({
+  label,
+  content,
+  align,
+}: {
+  content: string
+  label?: string
+  align?: "center" | "right" | "left" | "justify" | "char"
+}) => (
+  <View style={sharedStyle.informationTableColumn}>
+    {label && <Text style={sharedStyle.informationTableLabel}>{label}</Text>}
+    <Text style={sharedStyle.informationTableValue}>{content}</Text>
+  </View>
+)
+
+export function PdfReceipt({ donation, receiptNo, donee, donationDate, currency }: EmailProps) {
+  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency })
+  const formatCurrency = formatter.format.bind(formatter)
+
+  if (!donee.registrationNumber) throw new Error("")
+  if (!donee.signatoryName) throw new Error("")
+
+  return (
+    <Document>
+      <Page size="A4" style={styleSheet.container}>
+        <View>
+          <Img src={donee.smallLogo} height={42} width={42} alt={`${donee.companyName} logo`} />
+
+          <PdfText style={styleSheet.heading}>Receipt {receiptNo}</PdfText>
+        </View>
+        <View style={styleSheet.informationTable}>
+          <View>
+            <PdfField label="Charitable Registration Number" content={donee.companyName} />
+            <PdfField
+              label="Charitable Registration Number"
+              content={donee.registrationNumber.toString()}
+            />
+          </View>
+          <PdfField label={"Address"} content={donee.companyAddress} />
+        </View>
+        <View style={styleSheet.informationTable}>
+          <View>
+            <View style={styleSheet.informationTableRow}>
+              <PdfField
+                label="Donations Received"
+                content={donationDate.getFullYear().toString()}
+              />
+            </View>
+            <View style={styleSheet.informationTableRow}>
+              <PdfField label="Location Issued" content={donee.country} />
+            </View>
+            <View style={styleSheet.informationTableRow}>
+              <PdfField label="Receipt Issued" content={formatDate(donationDate)} />
+            </View>
+          </View>
+          <View>
+            <View style={styleSheet.informationTableRow}>
+              <PdfField content={donee.signatoryName} align="right" />
+            </View>
+            <View style={styleSheet.informationTableRow}>
+              <Img
+                src={donee.signature}
+                height={100}
+                width={150}
+                alt={`${donee.signatoryName}'s signature`}
+              />
+            </View>
+          </View>
+        </View>
+        <View style={styleSheet.informationTable}>
+          <View style={styleSheet.informationTableRow}>
+            <PdfField label="Donor Name" content={donation.name} />
+            <PdfField label="Address" content={donation.address} />
+          </View>
+        </View>
+        <View style={styleSheet.productTitleTable}>
+          <PdfText style={styleSheet.productsTitle}>Donations</PdfText>
+        </View>
+        <View>
+          {donation.products.map(
+            ({ name, total, id }: { name: string; id: number; total: number }) => (
+              <View key={id}>
+                <View style={{ paddingLeft: "22px" }}>
+                  <PdfText style={styleSheet.productTitle}>{name}</PdfText>
+                  <PdfText style={styleSheet.productDescription}>{""}</PdfText>
+                </View>
+
+                <View style={styleSheet.productPriceWrapper}>
+                  <PdfText style={styleSheet.productPrice}>{formatCurrency(total)}</PdfText>
+                </View>
+              </View>
+            )
+          )}
+        </View>
+        <View style={styleSheet.productPriceLine} />
+        <View>
+          <View style={styleSheet.tableCell}>
+            <PdfText style={styleSheet.productPriceTotal}>Eligible Gift For Tax Purposes</PdfText>
+          </View>
+          <View style={styleSheet.productPriceVerticalLine}></View>
+          <View style={styleSheet.productPriceLargeWrapper}>
+            <PdfText style={styleSheet.productPriceLarge}>{formatCurrency(donation.total)}</PdfText>
+          </View>
+        </View>
+        <View style={styleSheet.productPriceLineBottom} />
+        <View>
+          <View style={styleSheet.block}>
+            <Img src={donee.smallLogo} width={42} height={42} alt={`${donee.companyName} logo`} />
+          </View>
+        </View>
+        <PdfText style={styleSheet.footerCopyright}>
+          Canada Revenue Agency:{" "}
+          <Link href="https://www.canada.ca/charities-giving">www.canada.ca/charities-giving</Link>
+        </PdfText>
+        <PdfText style={styleSheet.footerCopyright}>
+          Created with:{" "}
+          <Link href="https://donationreceipt.online/info">DonationReceipt.Online</Link>
+        </PdfText>
+      </Page>
+    </Document>
+  )
 }
