@@ -177,9 +177,6 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   },
-  events: {
-    signOut: ({ token }) => revokeAccessToken(token),
-  },
 }
 
 export default NextAuth(authOptions)
