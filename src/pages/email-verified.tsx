@@ -1,6 +1,4 @@
-import Link from "next/link"
-
-import { buttonStyling } from "@/components/ui"
+import { Link } from "@/components/ui"
 
 const EmailVerified = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">
@@ -12,12 +10,7 @@ const EmailVerified = () => (
         To use third party QuickBooks Online applications your email must be verified. Click the
         link below to get verified
       </p>
-      <Link
-        href="https://accounts.intuit.com/app/account-manager/security"
-        className={buttonStyling}
-      >
-        Verify your email
-      </Link>
+      <Link href="https://accounts.intuit.com/app/account-manager/security">Verify your email</Link>
     </div>
   </section>
 )

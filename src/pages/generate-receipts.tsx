@@ -1,7 +1,6 @@
 import { useState, ReactNode } from "react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
-import Link from "next/link"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
@@ -15,7 +14,7 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { Svg, buttonStyling } from "@/components/ui"
+import { Svg, Link, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { Bucket, storageBucket, user } from "@/lib/db"
 import { multipleClasses } from "@/lib/util/etc"
@@ -57,16 +56,8 @@ const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: b
       Some information necessary to generate your receipts is missing
     </span>
     <div className="flex justify-evenly gap-3">
-      {!filledIn.items && (
-        <Link className={buttonStyling} href="services">
-          Fill in Qualifying Items
-        </Link>
-      )}
-      {!filledIn.doneeDetails && (
-        <Link className={buttonStyling} href="details">
-          Fill in Donee Details
-        </Link>
-      )}
+      {!filledIn.items && <Link href="services">Fill in Qualifying Items</Link>}
+      {!filledIn.doneeDetails && <Link href="details">Fill in Donee Details</Link>}
     </div>
   </div>
 )

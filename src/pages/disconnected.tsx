@@ -1,6 +1,4 @@
-import Link from "next/link"
-
-import { buttonStyling } from "@/components/ui"
+import { Link } from "@/components/ui"
 
 const Disconnected = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">
@@ -12,9 +10,7 @@ const Disconnected = () => (
         Your QuickBooks integration has been disconnected. If you{"'"}d like to re-connect sign in
         here:
       </p>
-      <Link href="/auth/signin" className={buttonStyling}>
-        Reconnect
-      </Link>
+      <Link href="/auth/signin">Reconnect</Link>
     </div>
   </section>
 )
