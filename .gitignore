@@ -19,10 +19,13 @@ next-env.d.ts
 .vercel
 .env*
 
-src/pages/pdf-example.tsx
+src/pages/test-page.tsx
 src/pages/api/test-api.ts
 
 coverage
 
 serviceAccountKey.json
 credentials.csv
+rootkey.csv
+
+.idea
