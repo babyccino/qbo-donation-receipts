@@ -1,10 +1,3 @@
-export const multipleClasses = (...args: (string | undefined)[]) =>
-  args.reduce<string>((prev, curr): string => {
-    if (curr === undefined || curr === "") return prev
-    if (prev === "") return curr
-    return `${prev} ${curr}`
-  }, "")
-
 export type DeepPartial<T> = T extends object
   ? {
       [P in keyof T]?: DeepPartial<T[P]>

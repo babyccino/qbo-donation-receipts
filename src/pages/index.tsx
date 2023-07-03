@@ -4,9 +4,9 @@ import { getServerSession, Session } from "next-auth"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Link, Svg } from "@/components/ui"
-import { multipleClasses } from "@/lib/util/etc"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"
+import { twMerge } from "tailwind-merge"
 
 const Card = ({
   title,
@@ -25,7 +25,7 @@ const Card = ({
 }) => (
   <Link
     href={href}
-    className={multipleClasses(
+    className={twMerge(
       "relative max-w-sm rounded-lg border border-gray-200 bg-white p-6 shadow hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700",
       className
     )}

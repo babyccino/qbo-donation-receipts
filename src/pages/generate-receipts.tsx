@@ -17,11 +17,11 @@ import { ReceiptPdfDocument } from "@/components/receipt"
 import { Svg, Link, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { Bucket, storageBucket, user } from "@/lib/db"
-import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
 import { DoneeInfo, User } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
+import { twMerge } from "tailwind-merge"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -160,7 +160,7 @@ const TableRow = ({
   hover?: ReactNode
 }) => (
   <tr
-    className={multipleClasses(
+    className={twMerge(
       "relative border-b bg-white dark:border-gray-700 dark:bg-gray-800",
       className
     )}
