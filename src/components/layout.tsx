@@ -1,8 +1,9 @@
 import { MouseEventHandler, ReactNode, useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/router"
+import Link from "next/link"
 
-import { Svg, Link } from "@/components/ui"
+import { Svg } from "@/components/ui"
 import { subscribe } from "@/lib/util/request"
 
 export default function Layout({ children }: { children: ReactNode }) {
