@@ -41,11 +41,6 @@ export const serverSignIn = async (
   res: NextApiResponse,
   redirect: boolean
 ) => {
-  const token = await getToken({
-    req,
-    secret: nextAuthSecret,
-  })
-
   const { csrfToken, csrfTokenHash } = await getCsrfTokenAndHash(
     req.cookies["next-auth.csrf-token"]
   )
