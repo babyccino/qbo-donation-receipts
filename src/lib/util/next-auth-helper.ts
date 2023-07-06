@@ -1,6 +1,5 @@
 import { NextApiResponse, NextApiRequest } from "next"
 import { getCsrfToken } from "next-auth/react"
-import { getToken } from "next-auth/jwt"
 
 import { getBaseUrl } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
