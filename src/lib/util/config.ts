@@ -40,6 +40,8 @@ export const config = {
   firebaseAppId: getNonVitalEnvironmentVariable("FIREBASE_APP_ID"),
   firebaseMeasurementId: getNonVitalEnvironmentVariable("FIREBASE_MEASUREMENT_ID"),
 
+  firebaseStorageEmulatorHost: getNonVitalEnvironmentVariable("FIREBASE_STORAGE_EMULATOR_HOST"),
+
   awsAccessKeyId: getVitalEnvironmentVariable("AWS_ACCESS_KEY_ID"),
   awsSecretAccessKey: getVitalEnvironmentVariable("AWS_SECRET_ACCESS_KEY"),
 
