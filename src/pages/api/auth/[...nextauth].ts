@@ -5,7 +5,7 @@ import { Session, CallbacksOptions } from "next-auth"
 
 import { user as firestoreUser } from "@/lib/db"
 import { QBOProfile, getCompanyInfo, OpenIdUserInfo } from "@/lib/qbo-api"
-import { fetchJsonData, base64EncodeString, getResponseContent } from "@/lib/util/request"
+import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 
 const { qboClientId, qboClientSecret, qboWellKnown, qboOauthRoute, qboAccountsBaseRoute } = config
@@ -147,6 +147,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   },
+  session: { maxAge: 60 * 30 },
   secret: config.nextAuthSecret,
 }
 
