@@ -1,4 +1,5 @@
 import { Link } from "@/components/ui"
+import { SignIn } from "@/components/qbo"
 
 const Disconnected = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">
@@ -10,7 +11,7 @@ const Disconnected = () => (
         Your QuickBooks integration has been disconnected. If you{"'"}d like to re-connect sign in
         here:
       </p>
-      <Link href="/auth/signin">Reconnect</Link>
+      <SignIn />
     </div>
   </section>
 )
