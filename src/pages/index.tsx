@@ -1,12 +1,13 @@
 import { ReactNode } from "react"
 import { GetServerSideProps } from "next"
 import { getServerSession, Session } from "next-auth"
+import { twMerge } from "tailwind-merge"
+import Link from "next/link"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Link, Svg } from "@/components/ui"
+import { Svg } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"
-import { twMerge } from "tailwind-merge"
 
 const Card = ({
   title,
