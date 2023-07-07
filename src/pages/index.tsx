@@ -5,7 +5,7 @@ import { twMerge } from "tailwind-merge"
 import Link from "next/link"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { Svg } from "@/components/ui"
+import { Svg, Link as StyledLink } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn } from "@/lib/app-api"
 
@@ -56,12 +56,12 @@ const IndexPage = ({ filledIn }: Props) => (
         In just a few easy steps we can create and send your client{"'"}s donation receipts
       </p>
       {(!filledIn || (!filledIn.items && !filledIn.doneeDetails)) && (
-        <Link href="/services" className="px-5 py-3 text-lg">
+        <StyledLink href="/services" className="px-5 py-3 text-lg">
           Get started
           <div className="-mb-1 ml-2 inline-block h-5 w-5">
             <Svg.RightArrow />
           </div>
-        </Link>
+        </StyledLink>
       )}
     </div>
     <div className="flex w-full flex-col items-center">
