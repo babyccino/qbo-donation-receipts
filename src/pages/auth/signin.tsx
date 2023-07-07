@@ -34,9 +34,9 @@ export default function SignInPage() {
             </a>
           </Label>
         </div>
-        <div className="mt-4 flex flex-row">
-          <SignIn />
-        </div>
+        <button className="mx-auto mt-4 inline-block" onClick={handler}>
+          <SignIn disabled={!checked} />
+        </button>
       </form>
     </div>
   )
