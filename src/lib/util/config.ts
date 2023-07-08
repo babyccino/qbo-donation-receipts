@@ -1,6 +1,7 @@
-const getNonVitalEnvironmentVariable = (environmentVariable: string) =>
-  process.env[environmentVariable]
-function getVitalEnvironmentVariable(environmentVariable: string): string {
+import { snakeToCamel, SnakeToCamelCase } from "@/lib/util/etc"
+
+const getNonVitalEnvVariable = (environmentVariable: string) => process.env[environmentVariable]
+function getVitalEnvVariable(environmentVariable: string): string {
   // NextJs code splitting is hot garb
   if (typeof window !== "undefined") return ""
 
@@ -13,39 +14,59 @@ function getVitalEnvironmentVariable(environmentVariable: string): string {
   }
 }
 
-export const config = {
-  nextAuthJwtSecret: getVitalEnvironmentVariable("NEXTAUTH_JWT_SECRET"),
-  nextAuthSecret: getVitalEnvironmentVariable("NEXTAUTH_SECRET"),
-  nextauthQboAuthProviderId: getVitalEnvironmentVariable("NEXTAUTH_QBO_AUTH_PROVIDER_ID"),
-
-  qboClientId: getVitalEnvironmentVariable("QBO_CLIENT_ID"),
-  qboClientSecret: getVitalEnvironmentVariable("QBO_CLIENT_SECRET"),
-  qboWellKnown: getVitalEnvironmentVariable("QBO_WELL_KNOWN"),
-  qboBaseApiRoute: getVitalEnvironmentVariable("QBO_BASE_API_ROUTE"),
-  qboOauthRoute: getVitalEnvironmentVariable("QBO_OAUTH_ROUTE"),
-  qboAccountsBaseRoute: getVitalEnvironmentVariable("QBO_ACCOUNTS_BASE_ROUTE"),
-  qboOauthRevocationEndpoint: getVitalEnvironmentVariable("QBO_OAUTH_REVOCATION_ENDPOINT"),
-
-  stripePublicKey: getVitalEnvironmentVariable("STRIPE_PUBLIC_KEY"),
-  stripePrivateKey: getVitalEnvironmentVariable("STRIPE_PRIVATE_KEY"),
-  stripeWebhookSecret: getVitalEnvironmentVariable("STRIPE_WEBHOOK_SECRET"),
-  stripeSubscribePriceId: getVitalEnvironmentVariable("STRIPE_SUBSCRIBE_PRICE_ID"),
-
-  firebaseProjectId: getVitalEnvironmentVariable("FIREBASE_PROJECT_ID"),
-  firebaseClientEmail: getVitalEnvironmentVariable("FIREBASE_CLIENT_EMAIL"),
-  firebasePrivateKey: getVitalEnvironmentVariable("FIREBASE_PRIVATE_KEY"),
-
-  firebaseApiKey: getNonVitalEnvironmentVariable("FIREBASE_API_KEY"),
-  firebaseMessagingSenderId: getNonVitalEnvironmentVariable("FIREBASE_MESSAGING_SENDER_ID"),
-  firebaseAppId: getNonVitalEnvironmentVariable("FIREBASE_APP_ID"),
-  firebaseMeasurementId: getNonVitalEnvironmentVariable("FIREBASE_MEASUREMENT_ID"),
-
-  firebaseStorageEmulatorHost: getNonVitalEnvironmentVariable("FIREBASE_STORAGE_EMULATOR_HOST"),
-
-  awsAccessKeyId: getVitalEnvironmentVariable("AWS_ACCESS_KEY_ID"),
-  awsSecretAccessKey: getVitalEnvironmentVariable("AWS_SECRET_ACCESS_KEY"),
-
-  nextPublicVercelUrl: getNonVitalEnvironmentVariable("NEXT_PUBLIC_VERCEL_URL"),
-
-  nodeEnv: getNonVitalEnvironmentVariable("NODE_ENV"),
+type Config<T> = {
+  [K in keyof T as SnakeToCamelCase<K & string>]: T[K] extends true ? string : string | undefined
 }
+function getConfig<T extends Record<string, boolean>>(conf: T): Config<T> {
+  const keys = Object.keys(conf)
+  const ret = {} as any
+  for (const key of keys) {
+    const val = conf[key as keyof T]
+    const camelCaseKey = snakeToCamel(key)
+    ret[camelCaseKey] = val ? getVitalEnvVariable(key) : getNonVitalEnvVariable(key)
+  }
+  return ret
+}
+
+const vital = true as const
+const nonVital = false as const
+export const config = getConfig({
+  NEXTAUTH_JWT_SECRET: vital,
+  NEXTAUTH_SECRET: vital,
+  NEXTAUTH_QBO_AUTH_PROVIDER_ID: vital,
+
+  QBO_CLIENT_ID: vital,
+  QBO_CLIENT_SECRET: vital,
+  QBO_WELL_KNOWN: vital,
+  QBO_BASE_API_ROUTE: vital,
+  QBO_OAUTH_ROUTE: vital,
+  QBO_ACCOUNTS_BASE_ROUTE: vital,
+  QBO_OAUTH_REVOCATION_ENDPOINT: vital,
+
+  STRIPE_PUBLIC_KEY: vital,
+  STRIPE_PRIVATE_KEY: vital,
+  STRIPE_WEBHOOK_SECRET: vital,
+  STRIPE_SUBSCRIBE_PRICE_ID: vital,
+
+  FIREBASE_PROJECT_ID: vital,
+  FIREBASE_CLIENT_EMAIL: vital,
+  FIREBASE_PRIVATE_KEY: vital,
+
+  FIREBASE_API_KEY: nonVital,
+  FIREBASE_MESSAGING_SENDER_ID: nonVital,
+  FIREBASE_APP_ID: nonVital,
+  FIREBASE_MEASUREMENT_ID: nonVital,
+
+  FIREBASE_STORAGE_EMULATOR_HOST: nonVital,
+
+  AWS_ACCESS_KEY_ID: vital,
+  AWS_SECRET_ACCESS_KEY: vital,
+
+  VERCEL_ENV: nonVital,
+  VERCEL_URL: nonVital,
+  VERCEL_BRANCH_URL: nonVital,
+  NEXT_PUBLIC_VERCEL_URL: nonVital,
+  PRODUCTION_URL: nonVital,
+
+  NODE_ENV: nonVital,
+})

@@ -6,7 +6,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import crypto from "@/lib/crypto"
 import { config } from "@/lib/util/config"
 
-const { nextAuthSecret } = config
+const { nextauthSecret } = config
 
 export const serverSignOut = (res: NextApiResponse) =>
   res.setHeader("Set-Cookie", [
@@ -24,7 +24,7 @@ async function getCsrfTokenAndHash(
   }
 
   const csrfToken = (await getCsrfToken()) ?? ""
-  return { csrfToken, csrfTokenHash: await hash(csrfToken + nextAuthSecret) }
+  return { csrfToken, csrfTokenHash: await hash(csrfToken + nextauthSecret) }
 }
 
 async function hash(value: string) {

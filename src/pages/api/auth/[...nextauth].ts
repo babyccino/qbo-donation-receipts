@@ -8,7 +8,14 @@ import { QBOProfile, getCompanyInfo, OpenIdUserInfo } from "@/lib/qbo-api"
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 
-const { qboClientId, qboClientSecret, qboWellKnown, qboOauthRoute, qboAccountsBaseRoute } = config
+const {
+  qboClientId,
+  qboClientSecret,
+  qboWellKnown,
+  qboOauthRoute,
+  qboAccountsBaseRoute,
+  nextauthSecret,
+} = config
 const MS_IN_HOUR = 3600000
 
 export const customProvider: OAuthConfig<QBOProfile> = {
@@ -148,7 +155,7 @@ export const authOptions: NextAuthOptions = {
     }),
   },
   session: { maxAge: 60 * 30 },
-  secret: config.nextAuthSecret,
+  secret: nextauthSecret,
 }
 
 export default NextAuth(authOptions)

@@ -4,16 +4,18 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
-type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
+export type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
   ? `${Lowercase<T>}${Capitalize<SnakeToCamelCase<U>>}`
-  : S
+  : Lowercase<S>
 type SnakeToCamelCaseNested<T> = T extends object
   ? {
       [K in keyof T as SnakeToCamelCase<K & string>]: SnakeToCamelCaseNested<T[K]>
     }
   : T
 
-const snakeToCamel = (str: string) => str.replace(/([-_]\w)/g, match => match[1].toUpperCase())
+export const snakeToCamel = (str: string) =>
+  str.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+
 export function snakeKeysToCamel<T extends object>(obj: T) {
   const keys = Object.keys(obj) as (keyof T)[]
   return keys.reduce<any>((result, key) => {
