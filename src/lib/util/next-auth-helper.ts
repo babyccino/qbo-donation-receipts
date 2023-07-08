@@ -50,12 +50,12 @@ export async function serverSignIn(req: NextApiRequest, res: NextApiResponse, re
     },
     credentials: "include" as const,
     redirect: "follow" as const,
-    // body: new URLSearchParams({
-    //   csrfToken,
-    //   callbackUrl: "/",
-    //   json: "true",
-    // })
-    body: `csrfToken=${csrfToken}&callbackUrl=/&json=true`,
+    body: new URLSearchParams({
+      csrfToken,
+      callbackUrl: "/",
+      json: "true",
+    }),
+    // body: `csrfToken=${csrfToken}&callbackUrl=/&json=true`,
   }
   console.log({ opt, url })
   const response = await fetch(url, opt)
