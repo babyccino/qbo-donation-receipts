@@ -40,7 +40,7 @@ export async function serverSignIn(req: NextApiRequest, res: NextApiResponse, re
     req.cookies["next-auth.csrf-token"]
   )
   const cookie = `${csrfToken}|${csrfTokenHash}`
-  const url = `${getBaseUrl()}/api/auth/signin/${authOptions.providers[0].id}`
+  const url = `${getBaseUrl()}api/auth/signin/${authOptions.providers[0].id}`
   const opt = {
     method: "post",
     headers: {
