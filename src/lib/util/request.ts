@@ -55,6 +55,8 @@ export async function fetchJsonData<T = any>(url: string, accessToken?: string):
     headers,
   })
 
+  console.log({ url, response })
+
   const responseContent = await getResponseContent(response)
   if (!response.ok) {
     throw new Error(`GET request to url: ${url} failed, error: ${JSON.stringify(responseContent)}}`)
