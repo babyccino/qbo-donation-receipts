@@ -1,13 +1,13 @@
+import { MouseEventHandler, ReactNode } from "react"
 import { GetServerSideProps } from "next"
-import { Session, getServerSession } from "next-auth"
+import { getServerSession, Session } from "next-auth"
 import { Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { user } from "@/lib/db"
+import { getImageUrl, user } from "@/lib/db"
 import { Subscription } from "@/types/db"
 import { Svg } from "@/components/ui"
-import { MouseEventHandler, ReactNode } from "react"
-import { putJsonData, subscribe } from "@/lib/util/request"
+import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import Image from "next/image"
 import { useRouter } from "next/router"
 import { DataType } from "./api/stripe/update-subscription"
@@ -21,7 +21,7 @@ type PropsSubscription = {
   createdAt: number
 }
 type Props =
-  | { session: Session; subscribed: false }
+  | { session: Session; subscribed: false; account: Account }
   | {
       session: Session
       subscribed: true
@@ -92,15 +92,9 @@ function ProfileCard({
   subscription,
 }: {
   account: Account
-  subscription: PropsSubscription
+  subscription?: PropsSubscription
 }) {
   const router = useRouter()
-
-  const createdAt = new Date(subscription.createdAt)
-  const periodEnd = new Date(subscription.periodEnd)
-  const { cancelAtPeriodEnd } = subscription
-
-  const daysLeft = getDaysBetweenDates(new Date(), periodEnd)
 
   return (
     <Card className="w-72">
@@ -126,24 +120,44 @@ function ProfileCard({
           {country}
         </p>
       </div>
-      <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
-        Subscribed since:{" "}
-        <span className="text-gray-900 dark:text-white">{formatDate(createdAt)}</span>
-      </p>
-      <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
-        Your subscription will {cancelAtPeriodEnd ? "end" : "automatically renew"} in{" "}
-        <span className="text-gray-900 dark:text-white">{daysLeft}</span> days
-      </p>
+      {subscription && (
+        <>
+          <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
+            Subscribed since:{" "}
+            <span className="text-gray-900 dark:text-white">
+              {formatDate(new Date(subscription.createdAt))}
+            </span>
+          </p>
+          <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
+            Your subscription will {subscription.cancelAtPeriodEnd ? "end" : "automatically renew"}{" "}
+            in{" "}
+            <span className="text-gray-900 dark:text-white">
+              {getDaysBetweenDates(new Date(), new Date(subscription.periodEnd))}
+            </span>{" "}
+            days
+          </p>
+          <Button
+            color={subscription.cancelAtPeriodEnd ? undefined : "light"}
+            className="flex-shrink"
+            onClick={async e => {
+              e.preventDefault()
+              const data: DataType = { cancelAtPeriodEnd: !subscription.cancelAtPeriodEnd }
+              await putJsonData("/api/stripe/update-subscription", data)
+              router.push(router.asPath)
+            }}
+          >
+            {subscription.cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
+          </Button>
+        </>
+      )}
       <Button
-        color={cancelAtPeriodEnd ? undefined : "light"}
+        color="light"
         className="flex-shrink"
         onClick={async () => {
-          const data: DataType = { cancelAtPeriodEnd: !cancelAtPeriodEnd }
-          await putJsonData("/api/stripe/update-subscription", data)
-          router.push(router.asPath)
+          await postJsonData("/api/auth/disconnect")
         }}
       >
-        {cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
+        Disconnect
       </Button>
     </Card>
   )
@@ -167,26 +181,25 @@ export default function AccountPage(props: Props) {
           title="Your selected plan"
           features={subscribed ? paidFeatures : freeFeatures}
           nonFeatures={subscribed ? undefined : freeNonFeatures}
-          price={subscribed ? 20 : 0}
+          price={0}
+          button={
+            !subscribed
+              ? {
+                  inner: "Go pro",
+                  onClick: e => {
+                    e.preventDefault()
+                    void subscribe("/account")
+                  },
+                }
+              : undefined
+          }
         />
       </div>
       <div className="pt-8 text-white sm:p-14">
-        {subscribed ? (
-          <ProfileCard account={props.account} subscription={props.subscription} />
-        ) : (
-          <PricingCard
-            title="Pro plan"
-            features={paidFeatures}
-            price={20}
-            button={{
-              inner: "Choose plan",
-              onClick: e => {
-                e.preventDefault()
-                subscribe("/account")
-              },
-            }}
-          />
-        )}
+        <ProfileCard
+          account={props.account}
+          subscription={subscribed ? props.subscription : undefined}
+        />
       </div>
     </section>
   )
@@ -209,15 +222,22 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   if (!data) throw new Error("User signed in but was not found in db")
 
   const subscribed = isUserSubscribed(data)
+
+  const { billingAddress, donee } = data
+  const account = {
+    country: donee?.country as string,
+    companyName: donee?.companyName as string,
+    logo: getImageUrl(donee?.smallLogo as string),
+    name: billingAddress?.name as string,
+  }
   if (!subscribed)
     return {
       props: {
         session,
         subscribed,
+        account,
       },
     }
-
-  const { donee, billingAddress } = data
   // if isUserSubscribed returns true then subscription can not be undefined
   const subscription = data.subscription as Subscription
 
@@ -230,12 +250,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
         periodEnd: subscription.currentPeriodEnd.getTime(),
         createdAt: subscription.created.getTime(),
       },
-      account: {
-        country: donee?.country as string,
-        companyName: donee?.companyName as string,
-        logo: donee?.smallLogo as string,
-        name: billingAddress?.name as string,
-      },
+      account,
     },
   }
 }

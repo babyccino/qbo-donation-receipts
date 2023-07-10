@@ -1,5 +1,4 @@
 import { Session } from "next-auth"
-import { ParsedUrlQuery } from "querystring"
 
 import { formatDateHtmlReverse } from "./util/date"
 import { fetchJsonData } from "./util/request"
@@ -14,6 +13,23 @@ export type QBOProfile = {
   iss: string
   exp: number
   iat: number
+}
+
+export type OpenIdUserInfo = {
+  sub: string
+  givenName: string
+  familyName: string
+  email: string
+  emailVerified: boolean
+  phoneNumber: string
+  phoneNumberVerified: boolean
+  address: {
+    streetAddress: string
+    locality: string
+    region: string
+    postalCode: string
+    country: string
+  }
 }
 
 export type ItemQueryResponseItem = {

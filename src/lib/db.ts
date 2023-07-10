@@ -2,7 +2,8 @@ import admin from "firebase-admin"
 
 import { Price, Product, User } from "@/types/db"
 import { config } from "@/lib/util/config"
-const { firebaseProjectId, firebaseClientEmail, firebasePrivateKey } = config
+const { firebaseProjectId, firebaseClientEmail, firebasePrivateKey, firebaseStorageEmulatorHost } =
+  config
 
 // set env variable FIRESTORE_EMULATOR_HOST to use firebase emulator
 
@@ -79,3 +80,8 @@ export const price = (id: string) =>
   product.doc(id).collection("price").withConverter(priceConverter)
 export const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
 export type Bucket = typeof storageBucket
+
+export const getImageUrl = (path: string) =>
+  `http://${
+    firebaseStorageEmulatorHost ?? "https://firebasestorage.googleapis.com/v0/b"
+  }/${firebaseProjectId}.appspot.com/${path}`

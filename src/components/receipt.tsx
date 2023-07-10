@@ -12,10 +12,10 @@ import {
   Image as PdfImage,
 } from "@react-pdf/renderer"
 
-import { multipleClasses } from "@/lib/util/etc"
 import { formatDate } from "@/lib/util/date"
 import { Donation } from "@/lib/qbo-api"
 import { DoneeInfo } from "@/types/db"
+import { twMerge } from "tailwind-merge"
 
 export function HtmlReceipt({
   donation,
@@ -47,8 +47,8 @@ export function HtmlReceipt({
   const formatCurrency = formatter.format.bind(formatter)
 
   return (
-    <div className={multipleClasses(styles.container, className)} {...attributes}>
-      <div className={multipleClasses(styles.titles, styles.flexSpaceBetween)}>
+    <div className={twMerge(styles.container, className)} {...attributes}>
+      <div className={twMerge(styles.titles, styles.flexSpaceBetween)}>
         <h1>Official donation receipt for income tax purposes</h1>
         <h1>Receipt# {receiptNo}</h1>
       </div>
@@ -120,21 +120,25 @@ export function HtmlReceipt({
           <strong>Total:</strong> {formatCurrency(donation.total)}
         </div>
       </div>
-      <table className={multipleClasses(styles.table, styles.alignCenter)}>
-        <tr className={styles.tableHeadings}>
-          <th className={styles.textAlignRight}>
-            <strong>Category</strong>
-          </th>
-          <th className={styles.textAlignLeft}>
-            <strong>Amount</strong>
-          </th>
-        </tr>
-        {donation.products.map(item => (
-          <tr key={item.id}>
-            <td className={styles.textAlignRight}>{item.name}</td>
-            <td className={styles.textAlignLeft}>{formatCurrency(item.total)}</td>
+      <table className={twMerge(styles.table, styles.alignCenter)}>
+        <thead>
+          <tr className={styles.tableHeadings}>
+            <th className={styles.textAlignRight}>
+              <strong>Category</strong>
+            </th>
+            <th className={styles.textAlignLeft}>
+              <strong>Amount</strong>
+            </th>
           </tr>
-        ))}
+        </thead>
+        <tbody>
+          {donation.products.map(item => (
+            <tr key={item.id}>
+              <td className={styles.textAlignRight}>{item.name}</td>
+              <td className={styles.textAlignLeft}>{formatCurrency(item.total)}</td>
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   )

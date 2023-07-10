@@ -4,12 +4,14 @@ import { storageBucket, user } from "@/lib/db"
 import { AuthorisedHanlder, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
 import { isJpegOrPngDataURL } from "@/lib/util/request"
 
-async function uploadImage(dataUrl: string, path: string): Promise<string> {
+async function uploadImage(dataUrl: string, path: string, pub: boolean): Promise<string> {
   const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
   const base64String = dataUrl.slice(dataUrl.indexOf(",") + 1)
   const buffer = Buffer.from(base64String, "base64")
   const fullPath = `${path}.${extension}`
-  await storageBucket.file(fullPath).save(buffer, { contentType: "image" })
+  const file = storageBucket.file(fullPath)
+  void file.save(buffer, { contentType: "image" })
+  if (pub) file.makePublic()
   return fullPath
 }
 
@@ -32,8 +34,8 @@ const handler: AuthorisedHanlder = async (req, res, session) => {
   const data = parseRequestBody(parser, req.body)
 
   const [signatureUrl, smallLogoUrl] = await Promise.all([
-    data.signature ? uploadImage(data.signature, `${id}/signature`) : undefined,
-    data.smallLogo ? uploadImage(data.smallLogo, `${id}/smallLogo`) : undefined,
+    data.signature ? uploadImage(data.signature, `${id}/signature`, false) : undefined,
+    data.smallLogo ? uploadImage(data.smallLogo, `${id}/smallLogo`, true) : undefined,
   ])
 
   const newData = { donee: { ...data, signature: signatureUrl, smallLogo: smallLogoUrl } }
