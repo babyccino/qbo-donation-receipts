@@ -59,7 +59,7 @@ export type AuthorisedHanlder = (
 ) => Promise<void>
 type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
 export const createAuthorisedHandler =
-  (handler: AuthorisedHanlder, methods: HttpVerb[]): NextApiHandler =>
+  (handler: AuthorisedHanlder, methods: HttpVerb[], redirect?: string): NextApiHandler =>
   async (req, res) => {
     console.log(`${req.method} request made to ${req.url}`)
     if (!req.method || !methods.includes(req.method as HttpVerb)) {
@@ -67,7 +67,13 @@ export const createAuthorisedHandler =
     }
 
     const session = await getServerSession(req, res, authOptions)
-    if (!session) return res.status(401).end()
+    if (!session && redirect) {
+      return res.redirect(302, redirect)
+    }
+
+    if (!session) {
+      return res.status(401).end()
+    }
 
     try {
       await handler(req, res, session)

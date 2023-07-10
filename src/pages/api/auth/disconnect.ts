@@ -29,4 +29,4 @@ const handler: AuthorisedHanlder = async (req, res, session) => {
   serverSignOut(res)
   res.status(200).redirect("/disconnected")
 }
-export default createAuthorisedHandler(handler, ["POST", "GET"])
+export default createAuthorisedHandler(handler, ["POST", "GET"], "/")
