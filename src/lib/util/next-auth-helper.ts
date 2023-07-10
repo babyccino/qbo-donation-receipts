@@ -15,9 +15,8 @@ const csrfCookie = (vercelEnv ? "__Host-" : "") + "next-auth.csrf-token"
 
 export const serverSignOut = (res: NextApiResponse) =>
   res.setHeader("Set-Cookie", [
-    sessionCookie + "=deleted; maxAge=0; path=/; sameSite=Lax",
-    callbackCookie + "=deleted; maxAge=0; path=/; sameSite=Lax",
-    csrfCookie + "=deleted; maxAge=0; path=/; sameSite=Lax",
+    sessionCookie +
+      "=; expires=Thu, Jan 01 1970 00:00:00 UTC; path=/; HttpOnly; Secure; SameSite=Lax",
   ])
 
 async function hash(value: string) {

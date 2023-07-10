@@ -1,4 +1,4 @@
-import { TypeOf, ZodObject, ZodRawShape, z } from "zod"
+import { TypeOf, ZodObject, ZodRawShape } from "zod"
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
