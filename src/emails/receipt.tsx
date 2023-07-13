@@ -20,11 +20,13 @@ import {
   StyleSheet,
   Link as PdfLink,
   Image as PdfImage,
+  Font,
 } from "@react-pdf/renderer"
 
 import { Donation } from "@/lib/qbo-api"
 import { DoneeInfo } from "@/types/db"
 import { formatDate } from "@/lib/util/date"
+import informationTableLabel = sharedStyle.informationTableLabel
 
 const ColumnEntry = ({
   label,
@@ -182,6 +184,7 @@ export function DonationReceiptEmailInner({
     </Container>
   )
 }
+
 export const dummyEmailProps: EmailProps = {
   donation: {
     name: "John Doe",
@@ -210,7 +213,7 @@ export const dummyEmailProps: EmailProps = {
     registrationNumber: "123456789",
     signatoryName: "Jane Smith",
     signature: "/signature.png",
-    smallLogo: "/favicon.ico",
+    smallLogo: "/android-chrome-192x192.png",
   },
   currentDate: new Date(),
   donationDate: new Date("2023-05-17"),
@@ -269,7 +272,7 @@ namespace sharedStyle {
     margin: "0",
     lineHeight: "2",
     color: "#747474",
-    fontWeight: "500",
+    fontWeight: 500,
     whiteSpace: "pre-line" as const,
   }
 
@@ -277,7 +280,7 @@ namespace sharedStyle {
 
   export const heading = {
     fontSize: "32px",
-    fontWeight: "300",
+    fontWeight: 300,
     color: "#888888",
   }
 
@@ -328,11 +331,11 @@ namespace sharedStyle {
     background: "#fafafa",
     paddingLeft: "10px",
     fontSize: "14px",
-    fontWeight: "500",
+    fontWeight: 500,
     margin: "0",
   }
 
-  export const productTitle = { fontSize: "12px", fontWeight: "600", ...resetText }
+  export const productTitle = { fontSize: "12px", fontWeight: 600, ...resetText }
 
   export const productDescription = {
     fontSize: "12px",
@@ -344,21 +347,21 @@ namespace sharedStyle {
     margin: "0",
     color: "rgb(102,102,102)",
     fontSize: "10px",
-    fontWeight: "600" as const,
+    fontWeight: 600,
     padding: "0px 30px 0px 0px",
     textAlign: "right" as const,
   }
 
   export const productPrice = {
     fontSize: "12px",
-    fontWeight: "600",
+    fontWeight: 600,
     margin: "0",
   }
 
   export const productPriceLarge = {
-    margin: "0px 20px 0px 0px",
+    marginTop: "20px",
     fontSize: "16px",
-    fontWeight: "600" as const,
+    fontWeight: 600,
     whiteSpace: "nowrap" as const,
     textAlign: "right" as const,
   }
@@ -374,9 +377,10 @@ namespace sharedStyle {
 
   export const productPriceVerticalLine = {
     height: "48px",
-    borderLeft: "1px solid",
-    borderColor: "rgb(238,238,238)",
-  }
+    borderLeftWidth: "1px",
+    borderLeftStyle: "solid",
+    borderLeftColor: "#EEEEEE",
+  } as const
 
   export const productPriceLargeWrapper = { display: "table-cell", width: "90px" }
 
@@ -392,20 +396,75 @@ namespace sharedStyle {
   }
 }
 
-const styleSheet = StyleSheet.create(sharedStyle)
+const styleSheet = StyleSheet.create({
+  ...sharedStyle,
+  container: { display: "flex", flexDirection: "column", padding: 30, fontFamily: "Helvetica" },
+  headingContainer: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  heading: { ...sharedStyle.heading },
+  smallLogo: {
+    height: 50,
+    width: 50,
+  },
+  informationTable: {
+    ...sharedStyle.informationTable,
+    display: "flex",
+    flexDirection: "row",
+    paddingTop: 10,
+  },
+  productTitle: {
+    ...sharedStyle.productTitle,
+    fontFamily: "Helvetica-Bold",
+  },
+  totalContainer: {
+    height: "48px",
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    borderTopWidth: "1px",
+    borderTopStyle: "solid",
+    borderBottomWidth: "1px",
+    borderBottomStyle: "solid",
+    borderColor: "#EEEEEE",
+    marginTop: 30,
+    fontFamily: "Helvetica-Bold",
+  },
+  productPriceLargeWrapper: {
+    ...sharedStyle.productPriceLargeWrapper,
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    borderLeftWidth: "1px",
+    borderLeftStyle: "solid",
+    borderLeftColor: "#EEEEEE",
+  },
+  productPriceLarge: {
+    ...sharedStyle.productPriceLarge,
+    margin: 0,
+    fontFamily: "Helvetica-Bold",
+  },
+  productPrice: {
+    ...sharedStyle.productPrice,
+    fontFamily: "Helvetica-Bold",
+  },
+} as any)
 
 const PdfField = ({
   label,
   content,
-  align,
 }: {
   content: string
   label?: string
   align?: "center" | "right" | "left" | "justify" | "char"
 }) => (
-  <View style={sharedStyle.informationTableColumn}>
-    {label && <Text style={sharedStyle.informationTableLabel}>{label}</Text>}
-    <Text style={sharedStyle.informationTableValue}>{content}</Text>
+  <View style={styleSheet.informationTableColumn}>
+    {label && <PdfText style={styleSheet.informationTableLabel}>{label}</PdfText>}
+    <PdfText style={styleSheet.informationTableValue}>{content}</PdfText>
   </View>
 )
 
@@ -419,10 +478,10 @@ export function PdfReceipt({ donation, receiptNo, donee, donationDate, currency 
   return (
     <Document>
       <Page size="A4" style={styleSheet.container}>
-        <View>
-          <Img src={donee.smallLogo} height={42} width={42} alt={`${donee.companyName} logo`} />
+        <View style={styleSheet.headingContainer}>
+          <PdfImage style={styleSheet.smallLogo} src={donee.smallLogo} />
 
-          <PdfText style={styleSheet.heading}>Receipt {receiptNo}</PdfText>
+          <PdfText style={styleSheet.heading}>Receipt #{receiptNo}</PdfText>
         </View>
         <View style={styleSheet.informationTable}>
           <View>
@@ -434,37 +493,23 @@ export function PdfReceipt({ donation, receiptNo, donee, donationDate, currency 
           </View>
           <PdfField label={"Address"} content={donee.companyAddress} />
         </View>
-        <View style={styleSheet.informationTable}>
+        <View style={[styleSheet.informationTable, { justifyContent: "space-between" }]}>
           <View>
-            <View style={styleSheet.informationTableRow}>
-              <PdfField
-                label="Donations Received"
-                content={donationDate.getFullYear().toString()}
-              />
-            </View>
-            <View style={styleSheet.informationTableRow}>
-              <PdfField label="Location Issued" content={donee.country} />
-            </View>
-            <View style={styleSheet.informationTableRow}>
-              <PdfField label="Receipt Issued" content={formatDate(donationDate)} />
-            </View>
+            <PdfField label="Donations Received" content={donationDate.getFullYear().toString()} />
+            <PdfField label="Location Issued" content={donee.country} />
+            <PdfField label="Receipt Issued" content={formatDate(donationDate)} />
           </View>
-          <View>
-            <View style={styleSheet.informationTableRow}>
-              <PdfField content={donee.signatoryName} align="right" />
-            </View>
-            <View style={styleSheet.informationTableRow}>
-              <Img
-                src={donee.signature}
-                height={100}
-                width={150}
-                alt={`${donee.signatoryName}'s signature`}
-              />
-            </View>
+          <View style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+            <PdfText
+              style={[styleSheet.text, styleSheet.informationTableValue, { marginRight: 10 }]}
+            >
+              {donee.signatoryName}
+            </PdfText>
+            <PdfImage style={{ height: 100, margin: 10 }} src={donee.signature} />
           </View>
         </View>
         <View style={styleSheet.informationTable}>
-          <View style={styleSheet.informationTableRow}>
+          <View>
             <PdfField label="Donor Name" content={donation.name} />
             <PdfField label="Address" content={donation.address} />
           </View>
@@ -475,7 +520,10 @@ export function PdfReceipt({ donation, receiptNo, donee, donationDate, currency 
         <View>
           {donation.products.map(
             ({ name, total, id }: { name: string; id: number; total: number }) => (
-              <View key={id}>
+              <View
+                key={id}
+                style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
+              >
                 <View style={{ paddingLeft: "22px" }}>
                   <PdfText style={styleSheet.productTitle}>{name}</PdfText>
                   <PdfText style={styleSheet.productDescription}>{""}</PdfText>
@@ -488,29 +536,26 @@ export function PdfReceipt({ donation, receiptNo, donee, donationDate, currency 
             )
           )}
         </View>
-        <View style={styleSheet.productPriceLine} />
-        <View>
-          <View style={styleSheet.tableCell}>
-            <PdfText style={styleSheet.productPriceTotal}>Eligible Gift For Tax Purposes</PdfText>
-          </View>
-          <View style={styleSheet.productPriceVerticalLine}></View>
+        <View style={styleSheet.totalContainer}>
+          <PdfText style={styleSheet.productPriceTotal}>Eligible Gift For Tax Purposes</PdfText>
           <View style={styleSheet.productPriceLargeWrapper}>
             <PdfText style={styleSheet.productPriceLarge}>{formatCurrency(donation.total)}</PdfText>
           </View>
         </View>
-        <View style={styleSheet.productPriceLineBottom} />
-        <View>
-          <View style={styleSheet.block}>
-            <Img src={donee.smallLogo} width={42} height={42} alt={`${donee.companyName} logo`} />
-          </View>
+        <View style={{ marginTop: 20 }}>
+          <PdfImage
+            style={[styleSheet.smallLogo, { marginHorizontal: "auto" }]}
+            src={donee.smallLogo}
+          />
         </View>
         <PdfText style={styleSheet.footerCopyright}>
-          Canada Revenue Agency:{" "}
-          <Link href="https://www.canada.ca/charities-giving">www.canada.ca/charities-giving</Link>
+          Official donation receipt for income tax purposes
         </PdfText>
-        <PdfText style={styleSheet.footerCopyright}>
-          Created with:{" "}
-          <Link href="https://donationreceipt.online/info">DonationReceipt.Online</Link>
+        <PdfText style={[styleSheet.footerCopyright, { margin: "10px 0 0 0" }]}>
+          Canada Revenue Agency:{" "}
+          <PdfLink src="https://www.canada.ca/charities-giving">
+            www.canada.ca/charities-giving
+          </PdfLink>
         </PdfText>
       </Page>
     </Document>
