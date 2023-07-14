@@ -1,4 +1,5 @@
-import { dummyEmailProps, WithBody, WithBodyProps } from "./receipt"
+import { dummyEmailProps } from "./receipt"
+import { WithBody, WithBodyProps } from "@/components/receipt"
 
 const body = `Dear ${dummyEmailProps.donation.name},
 

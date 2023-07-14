@@ -17,7 +17,8 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
-import { dummyEmailProps, WithBody, WithBodyProps } from "@/emails/receipt"
+import { dummyEmailProps } from "@/emails/receipt"
+import { WithBody, WithBodyProps } from "@/components/receipt"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { DataType as EmailDataType } from "@/pages/api/email"
 

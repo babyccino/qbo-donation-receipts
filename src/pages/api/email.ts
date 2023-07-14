@@ -6,7 +6,7 @@ import { renderToBuffer } from "@react-pdf/renderer"
 import { z } from "zod"
 
 import { AuthorisedHandler, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
-import { WithBody } from "@/emails/receipt"
+import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
 import { user } from "@/lib/db"
 import {
   addBillingAddressesToDonations,
@@ -16,7 +16,6 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { getThisYear } from "@/lib/util/date"
-import { ReceiptPdfDocument } from "@/components/receipt"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { config } from "@/lib/util/config"
 
