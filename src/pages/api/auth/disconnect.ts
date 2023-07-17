@@ -27,6 +27,6 @@ async function revokeAccessToken(token: string): Promise<void> {
 const handler: AuthorisedHanlder = async (req, res, session) => {
   await revokeAccessToken(session.accessToken)
   serverSignOut(res)
-  res.status(200).redirect("/disconnected")
+  res.status(200).redirect("/auth/disconnected")
 }
 export default createAuthorisedHandler(handler, ["POST", "GET"], "/")

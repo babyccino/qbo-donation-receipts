@@ -80,8 +80,8 @@ export default function Layout({ children }: { children: ReactNode }) {
               logo={<Svg.Upgrade />}
               label="Upgrade To Pro"
             />
-            <NavLink link="terms" logo={<Svg.Help />} label="Terms and Conditions" />
-            <NavLink link="privacy" logo={<Svg.Documentation />} label="Privacy Policy" />
+            <NavLink link="terms/terms" logo={<Svg.Help />} label="Terms and Conditions" />
+            <NavLink link="terms/privacy" logo={<Svg.Documentation />} label="Privacy Policy" />
             <NavLink link="support" logo={<Svg.Inbox2 />} label="Support" />
           </ul>
         </nav>

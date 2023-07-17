@@ -83,8 +83,8 @@ const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
     doc.get(),
   ])
 
-  if (companyInfo.country !== "CA" || userInfo.address.country !== "CA") return "/terms"
-  if (!userInfo.emailVerified) return "/email-verified"
+  if (companyInfo?.country !== "CA") return "/terms/country"
+  if (!userInfo.emailVerified) return "/terms/email-verified"
 
   const { email, givenName: name } = userInfo
   user.email = email
