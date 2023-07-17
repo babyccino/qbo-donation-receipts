@@ -228,7 +228,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     country: donee?.country as string,
     companyName: donee?.companyName as string,
     logo: getImageUrl(donee?.smallLogo as string),
-    name: billingAddress?.name as string,
+    name: billingAddress?.name ?? data.name,
   }
   if (!subscribed)
     return {
