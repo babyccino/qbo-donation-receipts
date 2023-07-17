@@ -113,7 +113,6 @@ export default IndexPage
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
-  console.log(session!.accessToken)
 
   if (!session)
     return {
