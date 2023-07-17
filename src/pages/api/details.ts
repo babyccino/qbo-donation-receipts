@@ -10,8 +10,7 @@ async function uploadImage(dataUrl: string, path: string, pub: boolean): Promise
   const buffer = Buffer.from(base64String, "base64")
   const fullPath = `${path}.${extension}`
   const file = storageBucket.file(fullPath)
-  void file.save(buffer, { contentType: "image" })
-  if (pub) file.makePublic()
+  await Promise.all([file.save(buffer, { contentType: "image" }), pub && file.makePublic()])
   return fullPath
 }
 

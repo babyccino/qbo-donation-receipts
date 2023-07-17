@@ -81,7 +81,8 @@ export const price = (id: string) =>
 export const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
 export type Bucket = typeof storageBucket
 
-export const getImageUrl = (path: string) =>
-  `http://${
-    firebaseStorageEmulatorHost ?? "https://firebasestorage.googleapis.com/v0/b"
-  }/${firebaseProjectId}.appspot.com/${path}`
+export function getImageUrl(path: string) {
+  if (firebaseStorageEmulatorHost)
+    return `http://${firebaseStorageEmulatorHost}/${firebaseProjectId}.appspot.com/${path}`
+  return `https://storage.googleapis.com/${firebaseProjectId}.appspot.com/${path}`
+}
