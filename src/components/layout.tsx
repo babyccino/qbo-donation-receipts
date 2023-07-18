@@ -51,6 +51,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <NavLink link="services" logo={<Svg.Products />} label="Items" />
             <NavLink link="details" logo={<Svg.Components />} label="Details" />
             <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
+            <NavLink link="email" logo={<Svg.Envelope />} label="Email" />
             {user && <NavLink link="account" logo={<Svg.Users />} label="Account" />}
             {user ? (
               <NavAnchor

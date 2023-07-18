@@ -23,6 +23,7 @@ import { DoneeInfo } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
+import Link from "next/link"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -36,7 +37,7 @@ function DownloadAllFiles() {
   }
 
   return (
-    <div className="mx-auto mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
+    <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
       <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
     </div>
@@ -243,7 +244,17 @@ export default function IndexPage(props: Props) {
   // TODO add sort by total donation/name
   return (
     <section className="flex h-full w-full flex-col p-8">
-      {subscribed && <DownloadAllFiles />}
+      {subscribed && (
+        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <DownloadAllFiles />
+          <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
+            <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
+            <Link href="/email" className={buttonStyling}>
+              Email
+            </Link>
+          </div>
+        </div>
+      )}
       <Alert
         color="info"
         className="mb-4 sm:hidden"
