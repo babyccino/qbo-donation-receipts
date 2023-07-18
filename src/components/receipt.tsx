@@ -23,9 +23,9 @@ import {
   Font,
 } from "@react-pdf/renderer"
 
+import { formatDate } from "@/lib/util/date"
 import { Donation } from "@/lib/qbo-api"
 import { DoneeInfo } from "@/types/db"
-import { formatDate } from "@/lib/util/date"
 
 const ColumnEntry = ({
   label,

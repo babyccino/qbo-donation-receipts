@@ -1,11 +1,11 @@
-import NextAuth, { NextAuthOptions } from "next-auth"
+import NextAuth, { Account, NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
-import { Session } from "next-auth"
+import { Session, CallbacksOptions } from "next-auth"
 
 import { user as firestoreUser } from "@/lib/db"
-import { QBOProfile, getCompanyInfo } from "@/lib/qbo-api"
-import { fetchJsonData, base64EncodeString, getResponseContent } from "@/lib/util/request"
+import { QBOProfile, getCompanyInfo, OpenIdUserInfo } from "@/lib/qbo-api"
+import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 
 const {
@@ -14,12 +14,11 @@ const {
   qboWellKnown,
   qboOauthRoute,
   qboAccountsBaseRoute,
-  qboOauthRevocationEndpoint,
-  nextAuthJwtSecret,
+  nextauthSecret,
 } = config
 const MS_IN_HOUR = 3600000
 
-const customProvider: OAuthConfig<QBOProfile> = {
+export const customProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
   name: "QBO",
   clientId: qboClientId,
@@ -64,27 +63,71 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   }
 }
 
-async function revokeAccessToken(token: JWT): Promise<void> {
-  console.log("revoking access token")
+type QboCBOptions = CallbacksOptions<QBOProfile, Account>
+const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
+  if (!account || !profile) return "/404"
 
-  const { refreshToken } = token
-  if (typeof refreshToken !== "string") throw new Error("jwt token missing refresh token")
+  const { access_token: accessToken, providerAccountId: id } = account
+  const { realmid: realmId } = profile
+  const doc = firestoreUser.doc(id)
 
-  const url = qboOauthRevocationEndpoint
-  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Basic ${encoded}`,
-      "Content-Type": "application/json",
-    },
-    body: `{"token":"${refreshToken}"}`,
-  })
+  // all the fetch/database requests are done at the same time for performance
+  // then all the necessary information for the other steps of the sign-in process
+  // is passed down through the user/account/profile/token/session/etc.
+  const [userInfo, companyInfo, dbUser] = await Promise.all([
+    fetchJsonData<OpenIdUserInfo>(
+      `${qboAccountsBaseRoute}/openid_connect/userinfo`,
+      accessToken as string
+    ),
+    getCompanyInfo({ realmId, accessToken } as Session),
+    doc.get(),
+  ])
 
-  if (!response.ok) {
-    throw new Error(`access token could not be revoked: ${getResponseContent(response)}`)
+  if (companyInfo?.country !== "CA") return "/terms/country"
+  if (!userInfo.emailVerified) return "/terms/email-verified"
+
+  const { email, givenName: name } = userInfo
+  user.email = email
+  user.name = name
+
+  const dbUserData = dbUser.data()
+  if (!dbUserData) doc.set({ id, name, email, realmId, donee: companyInfo }, { merge: true })
+
+  return true
+}
+
+const jwt: QboCBOptions["jwt"] = async ({ token, account, profile, user, trigger, session }) => {
+  if (account && profile) {
+    const {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAt,
+      providerAccountId: id,
+    } = account
+    if (!accessToken || !refreshToken || expiresAt === undefined)
+      throw new Error("Account is missing important data\naccount:" + JSON.stringify(account))
+
+    const accessTokenExpires = Date.now() + MS_IN_HOUR
+    const { realmid: realmId } = profile
+
+    token = {
+      ...token,
+      accessToken,
+      refreshToken,
+      accessTokenExpires,
+      id,
+      realmId,
+      name: user.name as string,
+      email: user.email as string,
+    }
   }
+
+  if (trigger === "update") {
+    token = { ...token, ...session }
+  }
+
+  if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
+  else return token
 }
 
 export const authOptions: NextAuthOptions = {
@@ -95,92 +138,24 @@ export const authOptions: NextAuthOptions = {
   theme: {
     colorScheme: "dark",
   },
-  jwt: {
-    secret: nextAuthJwtSecret,
-  },
   callbacks: {
-    async signIn({ user, account, profile }) {
-      if (!account || !profile) return "/404"
-
-      const { access_token: accessToken, providerAccountId: id } = account
-      const { realmid: realmId } = profile
-      const doc = firestoreUser.doc(id)
-
-      // all the fetch/database requests are done at the same time for performance
-      // then all the necessary information for the other steps of the sign in process
-      // is passed down through the user/account/profile/token/session/etc.
-      const [userInfo, companyInfo, dbUser] = await Promise.all([
-        fetchJsonData<{ email: string; givenName: string }>(
-          `${qboAccountsBaseRoute}/openid_connect/userinfo`,
-          accessToken as string
-        ),
-        getCompanyInfo({ realmId, accessToken } as Session),
-        doc.get(),
-      ])
-
-      if (companyInfo.country !== "CA") return "/terms"
-
-      const { email, givenName: name } = userInfo
-      user.email = email
-      user.name = name
-
-      const dbUserData = dbUser.data()
-      if (!dbUserData) doc.set({ id, name, email, realmId, donee: companyInfo }, { merge: true })
-
-      return true
-    },
-    async jwt({ token, account, profile, user, trigger, session }) {
-      if (account && profile) {
-        const {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expires_at: expiresAt,
-          providerAccountId: id,
-        } = account
-        if (!accessToken || !refreshToken || expiresAt === undefined)
-          throw new Error("Account is missing important data\naccount:" + JSON.stringify(account))
-
-        const accessTokenExpires = Date.now() + MS_IN_HOUR
-        const { realmid: realmId } = profile
-
-        token = {
-          ...token,
-          accessToken,
-          refreshToken,
-          accessTokenExpires,
-          id,
-          realmId,
-          name: user.name as string,
-          email: user.email as string,
-        }
-      }
-
-      if (trigger === "update") {
-        token = { ...token, ...session }
-      }
-
-      if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
-      else return token
-    },
-    // async redirect({ url, baseUrl }) {
-    //   return baseUrl
-    // },
-    session: async ({ session, token }) => {
-      return {
-        ...session,
-        accessToken: token.accessToken as string,
-        realmId: token.realmId as string,
-        user: {
-          id: token.id as string,
-          name: token.name as string,
-          email: token.email as string,
-        },
-      }
-    },
+    // @ts-ignore using qbo profile instead of default next-auth profile breaks type
+    signIn,
+    // @ts-ignore
+    jwt,
+    session: async ({ session, token }) => ({
+      ...session,
+      accessToken: token.accessToken as string,
+      realmId: token.realmId as string,
+      user: {
+        id: token.id as string,
+        name: token.name as string,
+        email: token.email as string,
+      },
+    }),
   },
-  events: {
-    signOut: ({ token }) => revokeAccessToken(token),
-  },
+  session: { maxAge: 60 * 30 },
+  secret: nextauthSecret,
 }
 
 export default NextAuth(authOptions)

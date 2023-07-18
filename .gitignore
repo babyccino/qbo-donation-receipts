@@ -21,7 +21,6 @@ next-env.d.ts
 .env*
 .swc
 
-src/pages/pdf-example.tsx
 src/pages/test-page.tsx
 src/pages/api/test-api.ts
 

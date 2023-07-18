@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react"
 import { GetServerSideProps } from "next"
 import { getServerSession, Session } from "next-auth"
+import { twMerge } from "tailwind-merge"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
@@ -14,16 +15,14 @@ import {
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { buttonStyling, MissingData, Svg } from "@/components/ui"
+import { Svg, Link, buttonStyling } from "@/components/ui"
 import { alreadyFilledIn } from "@/lib/app-api"
 import { user } from "@/lib/db"
-import { multipleClasses } from "@/lib/util/etc"
 import { getThisYear } from "@/lib/util/date"
 import { DoneeInfo } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
-import Link from "next/link"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -49,6 +48,18 @@ const ErrorComponent = () => (
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
       We were not able to gather your QuickBooks Online data.
     </span>
+  </div>
+)
+
+const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
+  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
+    <span className="col-span-full font-medium text-gray-900 dark:text-white">
+      Some information necessary to generate your receipts is missing
+    </span>
+    <div className="flex justify-evenly gap-3">
+      {!filledIn.items && <Link href="services">Fill in Qualifying Items</Link>}
+      {!filledIn.doneeDetails && <Link href="details">Fill in Donee Details</Link>}
+    </div>
   </div>
 )
 
@@ -150,7 +161,7 @@ const TableRow = ({
   hover?: ReactNode
 }) => (
   <tr
-    className={multipleClasses(
+    className={twMerge(
       "relative border-b bg-white dark:border-gray-700 dark:bg-gray-800",
       className
     )}
@@ -249,9 +260,7 @@ export default function IndexPage(props: Props) {
           <DownloadAllFiles />
           <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
             <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
-            <Link href="/email" className={buttonStyling}>
-              Email
-            </Link>
+            <Link href="/email">Email</Link>
           </div>
         </div>
       )}

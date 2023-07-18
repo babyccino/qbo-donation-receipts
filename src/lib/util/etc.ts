@@ -1,26 +1,21 @@
-export const multipleClasses = (...args: (string | undefined)[]) =>
-  args.reduce<string>((prev, curr): string => {
-    if (curr === undefined || curr === "") return prev
-    if (prev === "") return curr
-    return `${prev} ${curr}`
-  }, "")
-
 export type DeepPartial<T> = T extends object
   ? {
       [P in keyof T]?: DeepPartial<T[P]>
     }
   : T
 
-type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
+export type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
   ? `${Lowercase<T>}${Capitalize<SnakeToCamelCase<U>>}`
-  : S
+  : Lowercase<S>
 type SnakeToCamelCaseNested<T> = T extends object
   ? {
       [K in keyof T as SnakeToCamelCase<K & string>]: SnakeToCamelCaseNested<T[K]>
     }
   : T
 
-const snakeToCamel = (str: string) => str.replace(/([-_]\w)/g, match => match[1].toUpperCase())
+export const snakeToCamel = (str: string) =>
+  str.toLowerCase().replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+
 export function snakeKeysToCamel<T extends object>(obj: T) {
   const keys = Object.keys(obj) as (keyof T)[]
   return keys.reduce<any>((result, key) => {

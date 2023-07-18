@@ -16,7 +16,7 @@ import {
 } from "flowbite-react"
 export { Select, Checkbox } from "flowbite-react"
 
-import { multipleClasses } from "@/lib/util/etc"
+import { twMerge } from "tailwind-merge"
 
 // components from flowbite.com
 // svg from heroicons.dev
@@ -132,7 +132,7 @@ export const TextArea = ({
 
 export const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement>) => (
   <legend
-    className={multipleClasses(
+    className={twMerge(
       className,
       "font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl"
     )}
@@ -143,7 +143,7 @@ export const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement
 
 export const Fieldset = ({ children, className }: FieldsetHTMLAttributes<HTMLFieldSetElement>) => (
   <fieldset
-    className={multipleClasses(
+    className={twMerge(
       className,
       "m-auto w-full rounded-lg bg-white p-6 pt-5 shadow dark:border dark:border-gray-700 dark:bg-gray-800 md:mt-0"
     )}

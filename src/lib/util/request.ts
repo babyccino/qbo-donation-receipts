@@ -1,6 +1,8 @@
 import { DataType as CheckoutSessionDataType } from "@/pages/api/stripe/create-checkout-session"
 import { config } from "@/lib/util/config"
 
+const { vercelEnv, vercelBranchUrl, vercelUrl, productionUrl } = config
+
 export async function subscribe(redirect?: string) {
   const data: CheckoutSessionDataType = { redirect }
   const { url } = await postJsonData("/api/stripe/create-checkout-session", data)
@@ -10,11 +12,11 @@ export async function subscribe(redirect?: string) {
   window.location.replace(url)
 }
 
+const formatUrl = (url: string) => `https://${url}${url.at(-1) === "/" ? "" : "/"}`
 export const getBaseUrl = () => {
-  const vercelUrl = config.nextPublicVercelUrl
-  const url = vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000/"
-  if (url.at(-1) === "/") return url
-  else return `${url}/`
+  if (vercelEnv === "preview") return formatUrl(vercelBranchUrl ?? "")
+  if (vercelEnv === "production") return formatUrl(productionUrl ?? vercelUrl ?? "")
+  return "http://localhost:3000/"
 }
 
 export function isJpegOrPngDataURL(str: string): boolean {
