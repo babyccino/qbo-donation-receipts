@@ -139,7 +139,6 @@ type Row = {
 }
 
 export type CustomerSalesReport = {
-  Fault: undefined
   Header: {
     Time: string
     ReportName: string
@@ -174,8 +173,6 @@ type QboError = {
 
 export type CustomerSalesRow = {
   ColData: ColData[]
-  type?: undefined
-  group?: undefined
 }
 
 export type CustomerSalesSectionRow = {
@@ -187,7 +184,6 @@ export type CustomerSalesSectionRow = {
   }
   Summary: Row
   type: "Section"
-  group?: undefined
 }
 
 // last row is of this shape showing the totals of all the respective items
@@ -300,7 +296,7 @@ export function createDonationsFromSalesReport(
   const allItems = parseItemsFromReport(report)
 
   const allRows = report.Rows.Row
-  const rowsToUse = allRows.filter(row => !row.group && !(row.group === "GrandTotal")) as (
+  const rowsToUse = allRows.filter(row => !("group" in row && row.group === "GrandTotal")) as (
     | CustomerSalesRow
     | CustomerSalesSectionRow
   )[]
@@ -371,10 +367,13 @@ function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
   return { data, id, total, name }
 }
 
+function isSalesSectionRow(
+  row: CustomerSalesRow | CustomerSalesSectionRow
+): row is CustomerSalesSectionRow {
+  return "type" in row && row.type === "Section"
+}
 const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
-  row.type && row.type === "Section"
-    ? getCustomerSalesSectionRowData(row)
-    : getCustomerSalesRowData(row)
+  isSalesSectionRow(row) ? getCustomerSalesSectionRowData(row) : getCustomerSalesRowData(row)
 
 const { nodeEnv, qboBaseApiRoute } = config
 const baseApiRoute = nodeEnv && nodeEnv === "test" ? "test" : `${qboBaseApiRoute}/company`
