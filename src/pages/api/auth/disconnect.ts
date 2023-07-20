@@ -41,7 +41,7 @@ const handler: NextApiHandler = async (req, res) => {
   const session = await getServerSession(req, res, authOptions)
 
   // if user is not signed in, sign them in, then return to this route
-  if (!session) return serverSignIn(req, res, true, "/api/disconnect")
+  if (!session) return serverSignIn(req, res, true, "/api/auth/disconnect")
 
   if (!isSessionQboConnected(session)) {
     return res.redirect(302, "/auth/disconnected")
