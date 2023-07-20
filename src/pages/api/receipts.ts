@@ -10,24 +10,27 @@ import {
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { getThisYear } from "@/lib/util/date"
-import { AuthorisedHanlder, createAuthorisedHandler } from "@/lib/app-api"
+import {
+  assertSessionIsQboConnected,
+  AuthorisedHanlder,
+  createAuthorisedHandler,
+} from "@/lib/app-api"
 import { ApiError } from "next/dist/server/api-utils"
 
 const handler: AuthorisedHanlder = async (req, res, session) => {
-  const id = session.user.id
-
   const doc = await user.doc(session.user.id).get()
 
   const dbUser = doc.data()
   if (!dbUser) throw new ApiError(401, "No user data found in database")
   if (!dbUser.donee || !dbUser.donee) throw new ApiError(401, "User data incomplete")
+  assertSessionIsQboConnected(session)
 
   const [salesReport, customerQueryResult] = await Promise.all([
     getCustomerSalesReport(session, dbUser),
     getCustomerData(session),
   ])
 
-  if (salesReport.Fault) throw new ApiError(400, "QBO did not return a sales report")
+  if ("Fault" in salesReport) throw new ApiError(400, "QBO did not return a sales report")
 
   const doneeInfo = dbUser.donee
   const products = new Set(dbUser.items)

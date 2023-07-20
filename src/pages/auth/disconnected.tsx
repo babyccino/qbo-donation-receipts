@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { SignIn } from "@/components/qbo"
+import { Connect } from "@/components/qbo"
+import { signIn } from "next-auth/react"
 
 const Disconnected = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">
@@ -8,12 +8,14 @@ const Disconnected = () => (
         QuickBooks Online disconnected.
       </p>
       <p className="mb-6 text-lg font-light text-gray-500 dark:text-gray-400">
-        Your QuickBooks integration has been disconnected. If you{"'"}d like to re-connect sign in
-        here:
+        Your QuickBooks integration has been disconnected. Click below to reconnect:
       </p>
-      <Link href="/auth/signin" className="mx-auto inline-block">
-        <SignIn />
-      </Link>
+      <button
+        className="mx-auto inline-block"
+        onClick={e => void signIn("QBO", { callbackUrl: "/" })}
+      >
+        <Connect />
+      </button>
     </div>
   </section>
 )

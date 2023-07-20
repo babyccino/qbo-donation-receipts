@@ -5,6 +5,7 @@ import { getBaseUrl } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import crypto from "@/lib/crypto"
 import { config } from "@/lib/util/config"
+import { encode, JWT } from "next-auth/jwt"
 
 const defaultProviderId = authOptions.providers[0].id
 const { nextauthSecret, vercelEnv } = config
@@ -56,7 +57,12 @@ function splitCookies(cookie: string): string[] {
   return splits
 }
 
-export async function serverSignIn(req: NextApiRequest, res: NextApiResponse, redirect: boolean) {
+export async function serverSignIn(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  redirect: boolean,
+  callbackUrl: string = "/"
+) {
   const { csrfToken, csrfTokenHash } = await getCsrfTokenAndHash(
     req.cookies["next-auth.csrf-token"]
   )
@@ -73,7 +79,7 @@ export async function serverSignIn(req: NextApiRequest, res: NextApiResponse, re
     redirect: "follow" as const,
     body: new URLSearchParams({
       csrfToken,
-      callbackUrl: "/",
+      callbackUrl,
       json: "true",
     }),
   }
@@ -86,4 +92,14 @@ export async function serverSignIn(req: NextApiRequest, res: NextApiResponse, re
   if (redirect) res.redirect(302, data.url)
 
   return data.url
+}
+
+export async function updateServerSession(res: NextApiResponse, token: JWT) {
+  const encoded = await encode({ token, secret: nextauthSecret })
+  res.setHeader(
+    "Set-Cookie",
+    `${sessionCookie}=${encoded}; path=/; MaxAge=1800 HttpOnly; ${
+      vercelEnv ? "Secure; " : ""
+    }SameSite=Lax`
+  )
 }

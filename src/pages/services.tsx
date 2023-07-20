@@ -17,7 +17,7 @@ import {
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
-import { alreadyFilledIn } from "@/lib/app-api"
+import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 
@@ -176,8 +176,12 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
-
   if (!session) throw new Error("Couldn't find session")
+  if (!isSessionQboConnected(session))
+    return {
+      redirect: { destination: "/auth/disconnected" },
+      props: {} as any,
+    }
 
   const [doc, items] = await Promise.all([user.doc(session.user.id).get(), getItems(session)])
   const dbUser = doc.data()

@@ -12,7 +12,7 @@ declare module "next-auth" {
       email: string
     }
     expires: string
-    accessToken: string
+    accessToken: string | null
     realmId: string
   }
 

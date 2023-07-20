@@ -13,6 +13,8 @@ import { useRouter } from "next/router"
 import { DataType } from "./api/stripe/update-subscription"
 import { getDaysBetweenDates } from "@/lib/util/date"
 import { isUserSubscribed } from "@/lib/stripe"
+import { signIn, useSession } from "next-auth/react"
+import { Connect } from "@/components/qbo"
 
 type Account = { country: string; name: string; logo: string; companyName: string }
 type PropsSubscription = {
@@ -95,6 +97,7 @@ function ProfileCard({
   subscription?: PropsSubscription
 }) {
   const router = useRouter()
+  const { data: session } = useSession()
 
   return (
     <Card className="w-72">
@@ -150,15 +153,22 @@ function ProfileCard({
           </Button>
         </>
       )}
-      <Button
-        color="light"
-        className="flex-shrink"
-        onClick={async () => {
-          await postJsonData("/api/auth/disconnect")
-        }}
-      >
-        Disconnect
-      </Button>
+      {session?.accessToken ? (
+        <Button
+          color="light"
+          className="flex-shrink"
+          onClick={async () => {
+            await postJsonData("/api/auth/disconnect")
+            router.push("/auth/disconnected")
+          }}
+        >
+          Disconnect
+        </Button>
+      ) : (
+        <button className="flex-shrink self-center" onClick={e => void signIn("QBO")}>
+          <Connect />
+        </button>
+      )}
     </Card>
   )
 }

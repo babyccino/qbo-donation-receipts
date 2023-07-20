@@ -48,13 +48,13 @@ export default function Layout({ children }: { children: ReactNode }) {
         >
           <ul className="h-full space-y-2 overflow-y-auto bg-gray-50 px-3 py-4 font-medium dark:bg-gray-800">
             <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
-            <NavLink link="services" logo={<Svg.Products />} label="Items" />
-            <NavLink link="details" logo={<Svg.Components />} label="Details" />
-            <NavLink link="generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
-            {user && <NavLink link="account" logo={<Svg.Users />} label="Account" />}
+            <NavLink link="/services" logo={<Svg.Products />} label="Items" />
+            <NavLink link="/details" logo={<Svg.Components />} label="Details" />
+            <NavLink link="/generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
+            {user && <NavLink link="/account" logo={<Svg.Users />} label="Account" />}
             {user ? (
               <NavAnchor
-                href="api/auth/signout"
+                href="/api/auth/signout"
                 logo={<Svg.SignIn />}
                 onClick={e => {
                   e.preventDefault()
@@ -63,7 +63,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 label="Sign Out"
               />
             ) : (
-              <NavLink link="api/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
+              <NavLink link="/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
             )}
 
             <hr
@@ -80,9 +80,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               logo={<Svg.Upgrade />}
               label="Upgrade To Pro"
             />
-            <NavLink link="terms/terms" logo={<Svg.Help />} label="Terms and Conditions" />
-            <NavLink link="terms/privacy" logo={<Svg.Documentation />} label="Privacy Policy" />
-            <NavLink link="support" logo={<Svg.Inbox2 />} label="Support" />
+            <NavLink link="/terms/terms" logo={<Svg.Help />} label="Terms and Conditions" />
+            <NavLink link="/terms/privacy" logo={<Svg.Documentation />} label="Privacy Policy" />
+            <NavLink link="/support" logo={<Svg.Inbox2 />} label="Support" />
           </ul>
         </nav>
       </header>
