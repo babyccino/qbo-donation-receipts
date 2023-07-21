@@ -16,8 +16,8 @@ import {
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { Svg, Link, buttonStyling } from "@/components/ui"
-import { alreadyFilledIn } from "@/lib/app-api"
 import { user } from "@/lib/db"
+import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
 import { getThisYear } from "@/lib/util/date"
 import { DoneeInfo } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
@@ -57,8 +57,8 @@ const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: b
       Some information necessary to generate your receipts is missing
     </span>
     <div className="flex justify-evenly gap-3">
-      {!filledIn.items && <Link href="services">Fill in Qualifying Items</Link>}
-      {!filledIn.doneeDetails && <Link href="details">Fill in Donee Details</Link>}
+      {!filledIn.items && <Link href="/services">Fill in Qualifying Items</Link>}
+      {!filledIn.doneeDetails && <Link href="/details">Fill in Donee Details</Link>}
     </div>
   </div>
 )
@@ -321,8 +321,12 @@ export default function IndexPage(props: Props) {
 // --- server-side props ---
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
-
   if (!session) throw new Error("Couldn't find session")
+  if (!isSessionQboConnected(session))
+    return {
+      redirect: { destination: "/auth/disconnected" },
+      props: {} as any,
+    }
 
   const doc = await user.doc(session.user.id).get()
   const dbUser = doc.data()
@@ -348,7 +352,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     downloadImagesForDonee(dbUser.donee),
   ])
 
-  if (salesReport.Fault)
+  if ("Fault" in salesReport)
     return {
       props: {
         status: "error",

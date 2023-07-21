@@ -5,6 +5,7 @@ import { ApiError } from "next/dist/server/api-utils"
 
 import { authOptions } from "src/pages/api/auth/[...nextauth]"
 import { User } from "@/types/db"
+import { QboConnectedSession } from "@/lib/qbo-api"
 
 export function alreadyFilledIn(user: User | undefined): {
   items: boolean
@@ -56,7 +57,7 @@ export type AuthorisedHandler = (
   req: NextApiRequest,
   res: NextApiResponse,
   session: Session
-) => Promise<void>
+) => Promise<unknown>
 type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
 export const createAuthorisedHandler =
   (handler: AuthorisedHandler, methods: HttpVerb[], redirect?: string): NextApiHandler =>
@@ -84,3 +85,11 @@ export const createAuthorisedHandler =
       res.status(error.statusCode).json(error)
     }
   }
+
+export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
+  Boolean(session.accessToken)
+export function assertSessionIsQboConnected(
+  session: Session
+): asserts session is QboConnectedSession {
+  if (!session.accessToken) throw new ApiError(401, "user not qbo connected")
+}

@@ -144,8 +144,18 @@ type Row = {
   ColData: ColData[]
 }
 
+type CustomerSalesReportError = {
+  Fault: { Error: QboError[]; type: string }
+  time: string
+}
+type QboError = {
+  Message: string
+  Detail: string
+  code: string
+  element: string
+}
+
 export type CustomerSalesReport = {
-  Fault: undefined
   Header: {
     Time: string
     ReportName: string
@@ -164,27 +174,18 @@ export type CustomerSalesReport = {
     }[]
   }
   Rows: {
-    Row: (CustomerSalesRow | CustomerSalesSectionRow | CustomerSalesTotalsRow)[]
+    Row: CustomerSalesReportRow[]
   }
 }
-type CustomerSalesReportError = {
-  Fault: { Error: QboError[]; type: string }
-  time: string
-}
-type QboError = {
-  Message: string
-  Detail: string
-  code: string
-  element: string
-}
-
-export type CustomerSalesRow = {
+type CustomerSalesReportRow = SalesRow | SalesSectionRow | NotSpecifiedSalesRow | SalesTotalsRow
+export type SalesRow = {
   ColData: ColData[]
-  type?: undefined
-  group?: undefined
 }
-
-export type CustomerSalesSectionRow = {
+type NotSpecifiedSalesRow = {
+  ColData: ColData[]
+  group: "**"
+}
+export type SalesSectionRow = {
   Header: {
     ColData: ColData[]
   }
@@ -193,11 +194,9 @@ export type CustomerSalesSectionRow = {
   }
   Summary: Row
   type: "Section"
-  group?: undefined
 }
-
 // last row is of this shape showing the totals of all the respective items
-export type CustomerSalesTotalsRow = {
+export type SalesTotalsRow = {
   Summary: Row
   type: "Section"
   group: "GrandTotal"
@@ -267,12 +266,6 @@ export type CompanyInfo = {
 }
 
 const padIfExists = (str: string | null | undefined) => (str ? ` ${str}` : "")
-/**
- * Returns a concatenated string representing the billing address object.
- *
- * @param {Address} address - The billing address object.
- * @returns {string} - The concatenated string representing the billing address.
- */
 export const getAddressString = (address: Address): string =>
   address.Line1 +
   padIfExists(address.Line2) +
@@ -299,12 +292,6 @@ export function getAddressArray({
   return ret
 }
 
-/**
- * Combines the customer queries from multiple sources into a single query.
- *
- * @param {...CustomerQueryResult} queries - The customer query responses to be combined.
- * @returns {CustomerQueryResult} - A combined customer query response object.
- */
 export function combineCustomerQueries(...queries: CustomerQueryResult[]): CustomerQueryResult {
   const customers = queries.flatMap(({ QueryResponse: { Customer } }) => Customer)
   const total = queries.reduce((prev, { QueryResponse }) => prev + QueryResponse.maxResults, 0)
@@ -315,13 +302,6 @@ export function combineCustomerQueries(...queries: CustomerQueryResult[]): Custo
   }
 }
 
-/**
- * Adds billing addresses to an array of donation objects by querying the customer data.
- *
- * @param {DonationWithoutAddress[]} donations - An array of donation objects without billing addresses.
- * @param {CustomerQueryResult} customers - A customer query response object containing customer data.
- * @returns {Donation[]} - An array of donation objects with billing addresses.
- */
 export const addBillingAddressesToDonations = (
   donations: DonationWithoutAddress[],
   customers: CustomerQueryResult
@@ -338,12 +318,8 @@ export const addBillingAddressesToDonations = (
     return { ...donation, address, email: customer.PrimaryEmailAddr?.Address ?? null }
   })
 
-/**
- * Creates a list of donations from a customer sales report.
- * @param {CustomerSalesReport} report - The sales report to process.
- * @param {Set<number>} selectedItemIds - The IDs of the items to include in the donations.
- * @returns {DonationWithoutAddress[]} - The list of donations.
- */
+const notGroupedRow = (row: CustomerSalesReportRow): row is SalesRow | SalesSectionRow =>
+  !("group" in row)
 export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
   selectedItemIds: Set<number>
@@ -351,10 +327,7 @@ export function createDonationsFromSalesReport(
   const allItems = parseItemsFromReport(report)
 
   const allRows = report.Rows.Row
-  const rowsToUse = allRows.filter(row => !row.group && !(row.group === "GrandTotal")) as (
-    | CustomerSalesRow
-    | CustomerSalesSectionRow
-  )[]
+  const rowsToUse = allRows.filter<SalesRow | SalesSectionRow>(notGroupedRow)
 
   return rowsToUse
     .map<DonationWithoutAddress>(row => createDonationFromRow(row, selectedItemIds, allItems))
@@ -362,7 +335,7 @@ export function createDonationsFromSalesReport(
 }
 
 function createDonationFromRow(
-  row: CustomerSalesRow | CustomerSalesSectionRow,
+  row: SalesRow | SalesSectionRow,
   selectedItemIds: Set<number>,
   allItems: Item[]
 ): DonationWithoutAddress {
@@ -392,7 +365,7 @@ function parseColData(col: ColData): number {
   return parsedNum ? parsedNum : 0
 }
 
-function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
+function getCustomerSalesSectionRowData(row: SalesSectionRow): RowData {
   const { Header, Summary } = row
   const customer = Header.ColData[0]
   const rawData = Summary.ColData
@@ -408,7 +381,7 @@ function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
   return { data, id, total, name }
 }
 
-function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
+function getCustomerSalesRowData(row: SalesRow): RowData {
   const rawData = row.ColData
   const customer = rawData[0]
 
@@ -423,42 +396,27 @@ function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
   return { data, id, total, name }
 }
 
-const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
-  row.type && row.type === "Section"
-    ? getCustomerSalesSectionRowData(row)
-    : getCustomerSalesRowData(row)
+function isSalesSectionRow(row: SalesRow | SalesSectionRow): row is SalesSectionRow {
+  return "type" in row && row.type === "Section"
+}
+const getRowData = (row: SalesRow | SalesSectionRow): RowData =>
+  isSalesSectionRow(row) ? getCustomerSalesSectionRowData(row) : getCustomerSalesRowData(row)
 
 const { nodeEnv, qboBaseApiRoute } = config
 const baseApiRoute = nodeEnv && nodeEnv === "test" ? "test" : `${qboBaseApiRoute}/company`
 
-/**
- * Constructs a query URL for a given realm ID and query string.
- * @param {string} realmId - The ID of the realm to query.
- * @param {string} query - The query string to use.
- * @returns {string} The complete query URL.
- */
 export const makeQueryUrl = (realmId: string, query: string) =>
   `${baseApiRoute}/${realmId}/query?query=${query}`
 
-/**
- * Extracts start and end date values from a query object.
- * @param {User} dbUser - The user object from the db.
- * @returns {[string, string]} An array containing the start and end dates as strings.
- * @throws {Error} If the date data is malformed.
- */
 async function getDates(dbUser: User): Promise<[string, string]> {
   if (!dbUser.date) throw new Error("Date data not found in database")
 
   return [formatDateHtmlReverse(dbUser.date.startDate), formatDateHtmlReverse(dbUser.date.endDate)]
 }
 
-/**
- * Fetches a customer sales report for a given session and server-side context.
- * @param {Session} session - The session object representing the user's authorization.
- * @param {User} dbUser - The user object from the db.
- * @returns {Promise<CustomerSalesReport>} A promise resolving to the customer sales report.
- */
-export async function getCustomerSalesReport(session: Session, dbUser: User) {
+export type QboConnectedSession = Session & { accessToken: string }
+
+export async function getCustomerSalesReport(session: QboConnectedSession, dbUser: User) {
   const [startDate, endDate] = await getDates(dbUser)
 
   const url = `${baseApiRoute}/${session.realmId}/reports/CustomerSales?\
@@ -467,12 +425,7 @@ summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDa
   return fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(url, session.accessToken)
 }
 
-/**
- * Fetches customer data for a given session.
- * @param {Session} session - The session object representing the user's authorization.
- * @returns {Promise<CustomerQueryResult>} A promise resolving to the customer data.
- */
-export function getCustomerData(session: Session) {
+export function getCustomerData(session: QboConnectedSession) {
   const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
 
   // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
@@ -480,12 +433,7 @@ export function getCustomerData(session: Session) {
   return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
 }
 
-/**
- * Fetches item data for a given session.
- * @param {Session} session - The session object representing the user's authorization.
- * @returns {Promise<Item[]>} A promise resolving to an array of item objects.
- */
-export async function getItems(session: Session) {
+export async function getItems(session: QboConnectedSession) {
   const url = makeQueryUrl(session.realmId, "select * from Item")
   const itemQueryResponse = await fetchJsonData<ItemQueryResponse>(url, session.accessToken)
   const items = itemQueryResponse.QueryResponse.Item
@@ -495,12 +443,7 @@ export async function getItems(session: Session) {
     .map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
 }
 
-/**
- * Fetches company information for a given session.
- * @param {Session} session - The session object representing the user's authorization.
- * @returns {Promise<CompanyInfo>} A promise resolving to the company information.
- */
-export async function getCompanyInfo(session: Session) {
+export async function getCompanyInfo(session: QboConnectedSession) {
   const url = makeQueryUrl(session.realmId, "select * from CompanyInfo")
   const companyQueryResult = await fetchJsonData<CompanyInfoQueryResult>(url, session.accessToken)
   return parseCompanyInfo(companyQueryResult)

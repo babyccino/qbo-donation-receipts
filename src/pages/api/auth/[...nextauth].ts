@@ -1,10 +1,10 @@
 import NextAuth, { Account, NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
-import { Session, CallbacksOptions } from "next-auth"
+import { CallbacksOptions } from "next-auth"
 
 import { user as firestoreUser } from "@/lib/db"
-import { QBOProfile, getCompanyInfo, OpenIdUserInfo } from "@/lib/qbo-api"
+import { QBOProfile, getCompanyInfo, OpenIdUserInfo, QboConnectedSession } from "@/lib/qbo-api"
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 
@@ -79,7 +79,7 @@ const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
       `${qboAccountsBaseRoute}/openid_connect/userinfo`,
       accessToken as string
     ),
-    getCompanyInfo({ realmId, accessToken } as Session),
+    getCompanyInfo({ realmId, accessToken } as QboConnectedSession),
     doc.get(),
   ])
 

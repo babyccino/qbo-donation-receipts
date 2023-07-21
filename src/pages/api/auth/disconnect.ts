@@ -1,9 +1,20 @@
 import { base64EncodeString, getResponseContent } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
-import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/app-api"
-import { serverSignOut } from "@/lib/util/next-auth-helper"
+import { isSessionQboConnected } from "@/lib/app-api"
+import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper"
+import { getToken } from "next-auth/jwt"
+import { ApiError } from "next/dist/server/api-utils"
+import { NextApiHandler } from "next"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 
-const { qboClientId, qboClientSecret, qboOauthRevocationEndpoint } = config
+const {
+  qboClientId,
+  qboClientSecret,
+  qboOauthRevocationEndpoint,
+  nextauthSecret: secret,
+  vercelEnv,
+} = config
 
 async function revokeAccessToken(token: string): Promise<void> {
   console.log("revoking access token")
@@ -24,9 +35,24 @@ async function revokeAccessToken(token: string): Promise<void> {
   }
 }
 
-const handler: AuthorisedHandler = async (req, res, session) => {
-  await revokeAccessToken(session.accessToken)
-  serverSignOut(res)
-  res.status(200).redirect("/auth/disconnected")
+const handler: NextApiHandler = async (req, res) => {
+  if (!(req.method === "GET" || req.method === "POST")) return res.status(405).end()
+
+  const session = await getServerSession(req, res, authOptions)
+
+  // if user is not signed in, sign them in, then return to this route
+  if (!session) return serverSignIn(req, res, true, "/api/auth/disconnect")
+
+  if (!isSessionQboConnected(session)) {
+    return res.redirect(302, "/auth/disconnected")
+  }
+
+  const token = await getToken({ req, secret, secureCookie: Boolean(vercelEnv) })
+  if (!token) throw new ApiError(500, "Client has session but session token was not found")
+
+  token.accessToken = null
+  await Promise.all([revokeAccessToken(session.accessToken), updateServerSession(res, token)])
+
+  res.redirect(302, "/auth/disconnected")
 }
-export default createAuthorisedHandler(handler, ["POST", "GET"], "/")
+export default handler

@@ -10,12 +10,17 @@ import {
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { getThisYear } from "@/lib/util/date"
-import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/app-api"
+import {
+  assertSessionIsQboConnected,
+  AuthorisedHandler,
+  createAuthorisedHandler,
+} from "@/lib/app-api"
 import { ApiError } from "next/dist/server/api-utils"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 
 const handler: AuthorisedHandler = async (req, res, session) => {
   const doc = await user.doc(session.user.id).get()
+  assertSessionIsQboConnected(session)
 
   const dbUser = doc.data()
   if (!dbUser) throw new ApiError(401, "No user data found in database")
@@ -30,7 +35,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     downloadImagesForDonee(dbUser.donee),
   ])
 
-  if (salesReport.Fault) throw new ApiError(400, "QBO did not return a sales report")
+  if ("Fault" in salesReport) throw new ApiError(400, "QBO did not return a sales report")
 
   const products = new Set(dbUser.items)
 
