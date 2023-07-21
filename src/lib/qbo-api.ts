@@ -138,6 +138,17 @@ type Row = {
   ColData: ColData[]
 }
 
+type CustomerSalesReportError = {
+  Fault: { Error: QboError[]; type: string }
+  time: string
+}
+type QboError = {
+  Message: string
+  Detail: string
+  code: string
+  element: string
+}
+
 export type CustomerSalesReport = {
   Header: {
     Time: string
@@ -157,25 +168,18 @@ export type CustomerSalesReport = {
     }[]
   }
   Rows: {
-    Row: (CustomerSalesRow | CustomerSalesSectionRow | CustomerSalesTotalsRow)[]
+    Row: CustomerSalesReportRow[]
   }
 }
-type CustomerSalesReportError = {
-  Fault: { Error: QboError[]; type: string }
-  time: string
-}
-type QboError = {
-  Message: string
-  Detail: string
-  code: string
-  element: string
-}
-
-export type CustomerSalesRow = {
+type CustomerSalesReportRow = SalesRow | SalesSectionRow | NotSpecifiedSalesRow | SalesTotalsRow
+export type SalesRow = {
   ColData: ColData[]
 }
-
-export type CustomerSalesSectionRow = {
+type NotSpecifiedSalesRow = {
+  ColData: ColData[]
+  group: "**"
+}
+export type SalesSectionRow = {
   Header: {
     ColData: ColData[]
   }
@@ -185,9 +189,8 @@ export type CustomerSalesSectionRow = {
   Summary: Row
   type: "Section"
 }
-
 // last row is of this shape showing the totals of all the respective items
-export type CustomerSalesTotalsRow = {
+export type SalesTotalsRow = {
   Summary: Row
   type: "Section"
   group: "GrandTotal"
@@ -289,6 +292,8 @@ export function addBillingAddressesToDonations(
   })
 }
 
+const notGroupedRow = (row: CustomerSalesReportRow): row is SalesRow | SalesSectionRow =>
+  !("group" in row)
 export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
   selectedItemIds: Set<number>
@@ -296,10 +301,7 @@ export function createDonationsFromSalesReport(
   const allItems = parseItemsFromReport(report)
 
   const allRows = report.Rows.Row
-  const rowsToUse = allRows.filter(row => !("group" in row && row.group === "GrandTotal")) as (
-    | CustomerSalesRow
-    | CustomerSalesSectionRow
-  )[]
+  const rowsToUse = allRows.filter<SalesRow | SalesSectionRow>(notGroupedRow)
 
   return rowsToUse
     .map<DonationWithoutAddress>(row => createDonationFromRow(row, selectedItemIds, allItems))
@@ -307,7 +309,7 @@ export function createDonationsFromSalesReport(
 }
 
 function createDonationFromRow(
-  row: CustomerSalesRow | CustomerSalesSectionRow,
+  row: SalesRow | SalesSectionRow,
   selectedItemIds: Set<number>,
   allItems: Item[]
 ): DonationWithoutAddress {
@@ -336,7 +338,7 @@ function parseColData(col: ColData): number {
   return parsedNum ? parsedNum : 0
 }
 
-function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
+function getCustomerSalesSectionRowData(row: SalesSectionRow): RowData {
   const { Header, Summary } = row
   const customer = Header.ColData[0]
   const rawData = Summary.ColData
@@ -352,7 +354,7 @@ function getCustomerSalesSectionRowData(row: CustomerSalesSectionRow): RowData {
   return { data, id, total, name }
 }
 
-function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
+function getCustomerSalesRowData(row: SalesRow): RowData {
   const rawData = row.ColData
   const customer = rawData[0]
 
@@ -367,12 +369,10 @@ function getCustomerSalesRowData(row: CustomerSalesRow): RowData {
   return { data, id, total, name }
 }
 
-function isSalesSectionRow(
-  row: CustomerSalesRow | CustomerSalesSectionRow
-): row is CustomerSalesSectionRow {
+function isSalesSectionRow(row: SalesRow | SalesSectionRow): row is SalesSectionRow {
   return "type" in row && row.type === "Section"
 }
-const getRowData = (row: CustomerSalesRow | CustomerSalesSectionRow): RowData =>
+const getRowData = (row: SalesRow | SalesSectionRow): RowData =>
   isSalesSectionRow(row) ? getCustomerSalesSectionRowData(row) : getCustomerSalesRowData(row)
 
 const { nodeEnv, qboBaseApiRoute } = config

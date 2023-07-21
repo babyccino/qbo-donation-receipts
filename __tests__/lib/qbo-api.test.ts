@@ -1,19 +1,19 @@
 import {
-  combineCustomerQueries,
-  getAddress,
+  QboConnectedSession,
   Donation,
   CustomerSalesReport,
-  createDonationsFromSalesReport,
-  addBillingAddressesToDonations,
   CompanyInfoQueryResult,
   CustomerQueryResult,
   DonationWithoutAddress,
+  combineCustomerQueries,
+  getAddress,
+  createDonationsFromSalesReport,
+  addBillingAddressesToDonations,
   getItems,
   parseCompanyInfo,
 } from "@/lib/qbo-api"
 import { DeepPartial } from "@/lib/util/etc"
 import { fetchJsonData } from "@/lib/util/request"
-import { Session } from "next-auth"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -29,7 +29,6 @@ const Header = Object.freeze({
 describe("processCustomerData", () => {
   it("should convert a report with one customer and one product correctly", () => {
     const report: CustomerSalesReport = {
-      Fault: undefined,
       Header,
       Columns: {
         Column: [
@@ -120,7 +119,6 @@ describe("processCustomerData", () => {
 
   it("should convert a report with one customer section and one product correctly", () => {
     const report: CustomerSalesReport = {
-      Fault: undefined,
       Header,
       Columns: {
         Column: [
@@ -238,7 +236,6 @@ describe("processCustomerData", () => {
 
   it("selecting item which is not in customer's data gives empty array", () => {
     const report: CustomerSalesReport = {
-      Fault: undefined,
       Header,
       Columns: {
         Column: [
@@ -314,7 +311,6 @@ describe("processCustomerData", () => {
 
   it("should convert a report with multiple products and customers correctly", () => {
     const report: CustomerSalesReport = {
-      Fault: undefined,
       Header,
       Columns: {
         Column: [
@@ -741,7 +737,7 @@ describe("addAddressesToCustomerData", () => {
   })
 })
 
-const createMockSession = (): Session => ({
+const createMockSession = (): QboConnectedSession => ({
   accessToken: "mock-access-token",
   realmId: "mock-realm-id",
   expires: "",
