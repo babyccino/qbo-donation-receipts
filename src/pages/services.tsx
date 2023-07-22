@@ -187,7 +187,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const dbUser = doc.data()
   if (!dbUser) throw new Error("User has no corresponding db entry")
 
-  // TODO not showing correctly
   const selectedItems = dbUser.items || null
   const detailsFilledIn = Boolean(context.query.details) || alreadyFilledIn(dbUser).doneeDetails
 
