@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { GetServerSideProps } from "next"
-import { getServerSession, Session } from "next-auth"
+import { getServerSession } from "next-auth"
 import { Button, Modal } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
@@ -8,13 +8,14 @@ import { postJsonData } from "@/lib/util/request"
 import { MissingData } from "@/components/ui"
 import { Fieldset, TextArea } from "@/components/form"
 import { user } from "@/lib/db"
-import { alreadyFilledIn } from "@/lib/app-api"
+import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
 import { DoneeInfo, User } from "@/types/db"
 import {
   addBillingAddressesToDonations,
   createDonationsFromSalesReport,
   getCustomerData,
   getCustomerSalesReport,
+  QboConnectedSession,
 } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { dummyEmailProps } from "@/emails/receipt"
@@ -178,13 +179,13 @@ export default function Email(props: Props) {
   )
 }
 
-async function getUsersWithoutEmails(dbUser: User, session: Session) {
+async function getUsersWithoutEmails(dbUser: User, session: QboConnectedSession) {
   const [salesReport, customerQueryResult] = await Promise.all([
     getCustomerSalesReport(session, dbUser),
     getCustomerData(session),
   ])
 
-  if (salesReport.Fault) throw new Error()
+  if ("Fault" in salesReport) throw new Error()
 
   const products = new Set(dbUser.items as number[])
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
@@ -198,8 +199,12 @@ async function getUsersWithoutEmails(dbUser: User, session: Session) {
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
-
   if (!session) throw new Error("Couldn't find session")
+  if (!isSessionQboConnected(session))
+    return {
+      redirect: { destination: "/auth/disconnected" },
+      props: {} as any,
+    }
 
   const doc = await user.doc(session.user.id).get()
   const dbUser = doc.data()

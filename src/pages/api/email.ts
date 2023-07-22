@@ -5,7 +5,12 @@ import nodemailer from "nodemailer"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { z } from "zod"
 
-import { AuthorisedHandler, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
+import {
+  assertSessionIsQboConnected,
+  AuthorisedHandler,
+  createAuthorisedHandler,
+  parseRequestBody,
+} from "@/lib/app-api"
 import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
 import { user } from "@/lib/db"
 import {
@@ -31,6 +36,8 @@ export type DataType = z.infer<typeof parser>
 const getFileNameFromImagePath = (str: string) => str.split("/")[1]
 
 const handler: AuthorisedHandler = async (req, res, session) => {
+  assertSessionIsQboConnected(session)
+
   const data = parseRequestBody(parser, req.body)
   const { emailBody } = data
 
@@ -48,7 +55,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     downloadImagesForDonee(donee),
   ])
 
-  if (salesReport.Fault) throw new ApiError(400, "QBO did not return a sales report")
+  if ("Fault" in salesReport) throw new ApiError(400, "QBO did not return a sales report")
 
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, new Set(items))
   const customerData = addBillingAddressesToDonations(
