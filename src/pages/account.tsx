@@ -31,60 +31,58 @@ type Props =
       account: Account
     }
 
-const Tick = () => (
-  <div className="-mb-1 mr-4 inline-block w-5 text-green-300">
-    <Svg.Tick />
-  </div>
-)
-const Cross = () => (
-  <div className="-mb-1 mr-4 inline-block w-5 text-red-300">
-    <Svg.Cross />
-  </div>
-)
-const PricingCard = ({
-  title,
-  features,
-  nonFeatures,
-  price,
+function PricingCard({
+  plan,
+  title: propsTitle,
   button,
 }: {
-  title: string
-  features: ReactNode[]
-  nonFeatures?: ReactNode[]
-  price: number
-  button?: { inner: ReactNode; onClick?: MouseEventHandler<HTMLButtonElement> }
-}) => (
-  <Card>
-    <h5 className="mb-4 text-xl font-medium text-gray-500 dark:text-gray-400">{title}</h5>
-    <div className="flex items-baseline text-gray-900 dark:text-white">
-      <span className="text-3xl font-semibold">CAD</span>
-      <span className="text-5xl font-extrabold tracking-tight">{price}</span>
-      <span className="ml-1 text-xl font-normal text-gray-500 dark:text-gray-400">/year</span>
-    </div>
-    <ul className="my-7 space-y-5">
-      {features.map((feature, idx) => (
-        <li
-          key={idx}
-          className="flex space-x-3 text-base font-normal leading-tight text-gray-500 dark:text-gray-400"
-        >
-          <Tick />
-          {feature}
-        </li>
-      ))}
-      {nonFeatures &&
-        nonFeatures.map((nonFeature, idx) => (
+  plan: "pro" | "free"
+  title?: string
+  button?: ReactNode
+}) {
+  const isPro = plan === "pro"
+  const features = isPro ? paidFeatures : freeFeatures
+  const price = isPro ? 20 : 0
+
+  const title = propsTitle ?? (isPro ? "Pro Plan" : "Free Plan")
+
+  return (
+    <Card>
+      <h5 className="mb-4 text-xl font-medium text-gray-500 dark:text-gray-400">{title}</h5>
+      <div className="flex items-baseline text-gray-900 dark:text-white">
+        <span className="text-3xl font-semibold">CAD</span>
+        <span className="text-5xl font-extrabold tracking-tight">{price}</span>
+        <span className="ml-1 text-xl font-normal text-gray-500 dark:text-gray-400">/year</span>
+      </div>
+      <ul className="my-7 space-y-5">
+        {features.map((feature, idx) => (
           <li
             key={idx}
-            className="flex space-x-3 text-base font-normal leading-tight text-gray-500 line-through decoration-gray-500"
+            className="flex space-x-3 text-base font-normal leading-tight text-gray-500 dark:text-gray-400"
           >
-            <Cross />
-            {nonFeature}
+            <div className="-mb-1 mr-4 inline-block w-5 text-green-300">
+              <Svg.Tick />
+            </div>
+            {feature}
           </li>
         ))}
-    </ul>
-    {button && <Button onClick={button.onClick}>{button.inner}</Button>}
-  </Card>
-)
+        {!isPro &&
+          freeNonFeatures.map((nonFeature, idx) => (
+            <li
+              key={idx}
+              className="flex space-x-3 text-base font-normal leading-tight text-gray-500 line-through decoration-gray-500"
+            >
+              <div className="-mb-1 mr-4 inline-block w-5 text-red-300">
+                <Svg.Cross />
+              </div>
+              {nonFeature}
+            </li>
+          ))}
+      </ul>
+      {button}
+    </Card>
+  )
+}
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
@@ -189,19 +187,18 @@ export default function AccountPage(props: Props) {
       <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
         <PricingCard
           title="Your selected plan"
-          features={subscribed ? paidFeatures : freeFeatures}
-          nonFeatures={subscribed ? undefined : freeNonFeatures}
-          price={0}
+          plan={subscribed ? "pro" : "free"}
           button={
-            !subscribed
-              ? {
-                  inner: "Go pro",
-                  onClick: e => {
-                    e.preventDefault()
-                    void subscribe("/account")
-                  },
-                }
-              : undefined
+            !subscribed ? (
+              <Button
+                onClick={e => {
+                  e.preventDefault()
+                  subscribe("/account")
+                }}
+              >
+                Go pro
+              </Button>
+            ) : undefined
           }
         />
       </div>

@@ -5,7 +5,7 @@ import {
   postJsonData,
 } from "@/lib/util/request"
 
-describe("fetchJsonData", () => {
+describe("postJsonData", () => {
   let mockFetch: jest.MockedFunction<typeof fetch>
 
   beforeEach(() => {

@@ -37,6 +37,7 @@ export const base64EncodeFile = (file: File) =>
     reader.onerror = reject
   })
 
+export const dataUrlToBase64 = (str: string) => str.slice(str.indexOf("base64,") + 1)
 export async function getResponseContent(response: Response) {
   const contentType = response.headers.get("content-type")
   if (contentType && contentType.includes("application/json")) {

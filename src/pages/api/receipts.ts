@@ -12,27 +12,31 @@ import { renderToBuffer } from "@react-pdf/renderer"
 import { getThisYear } from "@/lib/util/date"
 import {
   assertSessionIsQboConnected,
-  AuthorisedHanlder,
+  AuthorisedHandler,
   createAuthorisedHandler,
 } from "@/lib/app-api"
 import { ApiError } from "next/dist/server/api-utils"
+import { downloadImagesForDonee } from "@/lib/db-helper"
 
-const handler: AuthorisedHanlder = async (req, res, session) => {
+const handler: AuthorisedHandler = async (req, res, session) => {
   const doc = await user.doc(session.user.id).get()
+  assertSessionIsQboConnected(session)
 
   const dbUser = doc.data()
   if (!dbUser) throw new ApiError(401, "No user data found in database")
   if (!dbUser.donee || !dbUser.donee) throw new ApiError(401, "User data incomplete")
-  assertSessionIsQboConnected(session)
+  const doneeInfo = dbUser.donee
+  if (!(doneeInfo.signature && doneeInfo.smallLogo))
+    throw new Error("Either the donor's signature or logo image has not been set")
 
-  const [salesReport, customerQueryResult] = await Promise.all([
+  const [salesReport, customerQueryResult, donee] = await Promise.all([
     getCustomerSalesReport(session, dbUser),
     getCustomerData(session),
+    downloadImagesForDonee(dbUser.donee),
   ])
 
   if ("Fault" in salesReport) throw new ApiError(400, "QBO did not return a sales report")
 
-  const doneeInfo = dbUser.donee
   const products = new Set(dbUser.items)
 
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
@@ -50,7 +54,7 @@ const handler: AuthorisedHanlder = async (req, res, session) => {
         currentDate: new Date(),
         donation: entry,
         donationDate: new Date(),
-        donee: doneeInfo,
+        donee,
         receiptNo: counter++,
       })
     )

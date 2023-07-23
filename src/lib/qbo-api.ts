@@ -54,6 +54,12 @@ export type ItemQueryResponseItem = {
     CreateTime: string
     LastUpdatedTime: string
   }
+  SubItem?: boolean
+  ParentRef?: {
+    value: string
+    name: string
+  }
+  Level?: number
 }
 
 export type ItemQueryResponse = {
@@ -202,8 +208,9 @@ export type Donation = {
   total: number
   products: { name: string; id: number; total: number }[]
   address: string
+  email: string | null
 }
-export type DonationWithoutAddress = Omit<Donation, "address">
+export type DonationWithoutAddress = Omit<Donation, "address" | "email">
 
 export type Item = { name: string; id: number }
 
@@ -258,14 +265,32 @@ export type CompanyInfo = {
   country: string
 }
 
-export const getAddress = (address: Address): string =>
+const padIfExists = (str: string | null | undefined) => (str ? ` ${str}` : "")
+export const getAddressString = (address: Address): string =>
   address.Line1 +
-  (address.Line2 ? " " + address.Line2 : "") +
-  (address.Line3 ? " " + address.Line3 : "") +
+  padIfExists(address.Line2) +
+  padIfExists(address.Line3) +
   (address.City || address.PostalCode || address.CountrySubDivisionCode ? "," : "") +
-  (address.City ? " " + address.City : "") +
-  (address.PostalCode ? " " + address.PostalCode : "") +
-  (address.CountrySubDivisionCode ? " " + address.CountrySubDivisionCode : "")
+  padIfExists(address.City) +
+  padIfExists(address.PostalCode) +
+  padIfExists(address.CountrySubDivisionCode)
+
+export function getAddressArray({
+  Line1,
+  Line2,
+  Line3,
+  City,
+  CountrySubDivisionCode,
+  PostalCode,
+}: Address) {
+  const ret = [Line1]
+  if (Line2) ret.push(Line2)
+  if (Line3) ret.push(Line3)
+  if (!(City || PostalCode || CountrySubDivisionCode)) return ret
+  const line4 = padIfExists(City) + padIfExists(PostalCode) + padIfExists(CountrySubDivisionCode)
+  ret.push(line4)
+  return ret
+}
 
 export function combineCustomerQueries(...queries: CustomerQueryResult[]): CustomerQueryResult {
   const customers = queries.flatMap(({ QueryResponse: { Customer } }) => Customer)
@@ -277,20 +302,21 @@ export function combineCustomerQueries(...queries: CustomerQueryResult[]): Custo
   }
 }
 
-export function addBillingAddressesToDonations(
+export const addBillingAddressesToDonations = (
   donations: DonationWithoutAddress[],
   customers: CustomerQueryResult
-): Donation[] {
-  return donations.map<Donation>(donation => {
+) =>
+  donations.map<Donation>(donation => {
     const customer = customers.QueryResponse.Customer.find(el => parseInt(el.Id) === donation.id)
 
-    const address = customer?.BillAddr
-      ? getAddress(customer.BillAddr)
+    if (!customer) throw new Error(`Customer not found for donation with id: ${donation.id}`)
+
+    const address = customer.BillAddr
+      ? getAddressString(customer.BillAddr)
       : "No billing address on file"
 
-    return { ...donation, address }
+    return { ...donation, address, email: customer.PrimaryEmailAddr?.Address ?? null }
   })
-}
 
 const notGroupedRow = (row: CustomerSalesReportRow): row is SalesRow | SalesSectionRow =>
   !("group" in row)
@@ -317,21 +343,22 @@ function createDonationFromRow(
 
   const products = data
     .map((total, index) => ({ total, ...allItems[index] }))
-    .filter(product => product.total > 0 && selectedItemIds.has(product.id))
+    .filter(({ total, id }) => total > 0 && selectedItemIds.has(id))
 
-  const total = products.reduce((sum, product) => sum + product.total, 0)
+  const total = products.reduce((sum, { total }) => sum + total, 0)
 
   return { name, id, total, products }
 }
 
-function parseItemsFromReport(report: CustomerSalesReport): Item[] {
-  const columns = report.Columns.Column.slice(1, -1)
-  return columns.map((column, i) => {
+function skipFirstAndLast<T>(arr: T[]): T[] {
+  return arr.slice(1, -1)
+}
+const parseItemsFromReport = (report: CustomerSalesReport) =>
+  skipFirstAndLast(report.Columns.Column).map((column, i) => {
     if (!column.MetaData) throw new Error(`Column ${i} is missing 'MetaData'`)
     const id = parseInt(column.MetaData[0].Value)
     return { name: column.ColTitle, id }
   })
-}
 
 function parseColData(col: ColData): number {
   const parsedNum = parseFloat(col.value)
@@ -349,7 +376,7 @@ function getCustomerSalesSectionRowData(row: SalesSectionRow): RowData {
   const id = parseInt(customer.id as string)
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
-  const data: number[] = rawData.slice(1, -1).map<number>(parseColData)
+  const data: number[] = skipFirstAndLast(rawData).map<number>(parseColData)
 
   return { data, id, total, name }
 }
@@ -364,7 +391,7 @@ function getCustomerSalesRowData(row: SalesRow): RowData {
   const id = parseInt(customer.id)
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
-  const data: number[] = rawData.slice(1, -1).map<number>(parseColData)
+  const data = skipFirstAndLast(rawData).map<number>(parseColData)
 
   return { data, id, total, name }
 }
@@ -402,7 +429,6 @@ export function getCustomerData(session: QboConnectedSession) {
   const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
 
   // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
-  // TODO this should be stored on the server so we don't have to fetch constantly
 
   return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
 }
@@ -411,7 +437,10 @@ export async function getItems(session: QboConnectedSession) {
   const url = makeQueryUrl(session.realmId, "select * from Item")
   const itemQueryResponse = await fetchJsonData<ItemQueryResponse>(url, session.accessToken)
   const items = itemQueryResponse.QueryResponse.Item
-  return items.map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
+  // TODO handle subitems
+  return items
+    .filter(item => !item.SubItem)
+    .map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
 }
 
 export async function getCompanyInfo(session: QboConnectedSession) {
@@ -424,8 +453,8 @@ function getValidAddress(
   legalAddress: Address | undefined,
   companyAddress: Address | undefined
 ): string {
-  if (legalAddress) return getAddress(legalAddress)
-  if (companyAddress) return getAddress(companyAddress)
+  if (legalAddress) return getAddressString(legalAddress)
+  if (companyAddress) return getAddressString(companyAddress)
   return "No address on file"
 }
 

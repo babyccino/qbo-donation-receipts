@@ -1,27 +1,28 @@
-import { useState, ReactNode } from "react"
+import { ReactNode, useState } from "react"
 import { GetServerSideProps } from "next"
-import { Session, getServerSession } from "next-auth"
+import { getServerSession, Session } from "next-auth"
+import { twMerge } from "tailwind-merge"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { PDFViewer, PDFDownloadLink } from "@/lib/pdfviewer"
+import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import {
-  Donation,
   addBillingAddressesToDonations,
   createDonationsFromSalesReport,
+  Donation,
   getCustomerData,
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { Svg, Link, buttonStyling } from "@/components/ui"
+import { user } from "@/lib/db"
 import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
-import { Bucket, storageBucket, user } from "@/lib/db"
 import { getThisYear } from "@/lib/util/date"
-import { DoneeInfo, User } from "@/types/db"
+import { DoneeInfo } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
-import { twMerge } from "tailwind-merge"
+import { downloadImagesForDonee } from "@/lib/db-helper"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -35,7 +36,7 @@ function DownloadAllFiles() {
   }
 
   return (
-    <div className="mx-auto mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
+    <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
       <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
     </div>
@@ -254,7 +255,15 @@ export default function IndexPage(props: Props) {
   // TODO add sort by total donation/name
   return (
     <section className="flex h-full w-full flex-col p-8">
-      {subscribed && <DownloadAllFiles />}
+      {subscribed && (
+        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <DownloadAllFiles />
+          <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
+            <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
+            <Link href="/email">Email</Link>
+          </div>
+        </div>
+      )}
       <Alert
         color="info"
         className="mb-4 sm:hidden"
@@ -310,20 +319,6 @@ export default function IndexPage(props: Props) {
 }
 
 // --- server-side props ---
-function getProducts(dbUser: User): Set<number> {
-  if (!dbUser.items) throw new Error("items data not found in query nor database")
-  return new Set(dbUser.items)
-}
-
-async function getImageAsDataUrl(bucket: Bucket, url: string) {
-  const file = await bucket.file(url).download()
-  const fileString = file[0].toString("base64")
-  const match = url.match(/[^.]+$/)
-  if (!match) throw new Error("")
-  const extension = match[0]
-  return `data:image/${extension};base64,${fileString}`
-}
-
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) throw new Error("Couldn't find session")
@@ -350,11 +345,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   const doneeInfo = dbUser.donee as DoneeInfo
   if (!(doneeInfo.signature && doneeInfo.smallLogo))
     throw new Error("Either the donor's signature or logo image has not been set")
-  const [salesReport, customerQueryResult, signatureDataUrl, smallLogoDataUrl] = await Promise.all([
+
+  const [salesReport, customerQueryResult, donee] = await Promise.all([
     getCustomerSalesReport(session, dbUser),
     getCustomerData(session),
-    getImageAsDataUrl(storageBucket, doneeInfo.signature),
-    getImageAsDataUrl(storageBucket, doneeInfo.smallLogo),
+    downloadImagesForDonee(dbUser.donee),
   ])
 
   if ("Fault" in salesReport)
@@ -365,7 +360,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const products = getProducts(dbUser)
+  const products = new Set(dbUser.items as number[])
+
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(
     donationDataWithoutAddresses,
@@ -378,7 +374,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       status: "success",
       session,
       customerData: subscribed ? customerData : customerData.slice(0, 3),
-      doneeInfo: { ...doneeInfo, signature: signatureDataUrl, smallLogo: smallLogoDataUrl },
+      doneeInfo: donee,
       subscribed,
     },
   }

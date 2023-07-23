@@ -1,12 +1,11 @@
 import {
   QboConnectedSession,
-  Donation,
+  combineCustomerQueries,
+  getAddressString,
   CustomerSalesReport,
   CompanyInfoQueryResult,
   CustomerQueryResult,
   DonationWithoutAddress,
-  combineCustomerQueries,
-  getAddress,
   createDonationsFromSalesReport,
   addBillingAddressesToDonations,
   getItems,
@@ -26,7 +25,7 @@ const Header = Object.freeze({
   Option: [],
 })
 
-describe("processCustomerData", () => {
+describe("createDonationsFromSalesReport", () => {
   it("should convert a report with one customer and one product correctly", () => {
     const report: CustomerSalesReport = {
       Header,
@@ -98,7 +97,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: Omit<Donation, "address">[] = [
+    const expected: DonationWithoutAddress[] = [
       {
         name: "John",
         id: 123,
@@ -215,7 +214,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: Omit<Donation, "address">[] = [
+    const expected: DonationWithoutAddress[] = [
       {
         name: "Jeff",
         id: 22,
@@ -377,7 +376,7 @@ describe("processCustomerData", () => {
       },
     }
 
-    const expected: Omit<Donation, "address">[] = [
+    const expected: DonationWithoutAddress[] = [
       {
         name: "Customer A",
         id: 1,
@@ -410,7 +409,7 @@ describe("processCustomerData", () => {
     const result = createDonationsFromSalesReport(report, new Set([1001, 1002, 1003]))
     expect(result).toEqual(expected)
 
-    const expected2: Omit<Donation, "address">[] = [
+    const expected2: DonationWithoutAddress[] = [
       {
         name: "Customer A",
         id: 1,
@@ -451,7 +450,7 @@ describe("getAddress", () => {
       Lat: "37.78688",
       Long: "-122.399",
     }
-    const result = getAddress(address)
+    const result = getAddressString(address)
     expect(result).toEqual("123 Main St Suite 456, San Francisco 94105 CA")
   })
 
@@ -463,7 +462,7 @@ describe("getAddress", () => {
       PostalCode: "94105",
       CountrySubDivisionCode: "CA",
     }
-    const result = getAddress(address)
+    const result = getAddressString(address)
     expect(result).toEqual("123 Main St, San Francisco 94105 CA")
   })
 })
@@ -702,9 +701,10 @@ describe("addAddressesToCustomerData", () => {
             PostalCode: "94105",
             CountrySubDivisionCode: "CA",
           },
+          PrimaryEmailAddr: { Address: "john@gmail.com" },
         },
         {
-          Id: "789",
+          Id: "456",
         },
       ],
       startPosition: 1,
@@ -725,6 +725,7 @@ describe("addAddressesToCustomerData", () => {
           { name: "Product 2", id: 2, total: 50 },
         ],
         address: "123 Main St, San Francisco 94105 CA",
+        email: "john@gmail.com",
       },
       {
         name: "Jane",
@@ -732,6 +733,7 @@ describe("addAddressesToCustomerData", () => {
         total: 200,
         products: [{ name: "Product 3", id: 3, total: 200 }],
         address: "No billing address on file",
+        email: null,
       },
     ])
   })
@@ -858,9 +860,7 @@ describe("parseCompanyInfo", () => {
       "No company info found"
     )
   })
-})
 
-describe("parseCompanyInfo", () => {
   it("should parse the company info object correctly when LegalAddr is defined", () => {
     const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
       QueryResponse: {

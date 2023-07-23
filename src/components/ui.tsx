@@ -560,3 +560,26 @@ export namespace Svg {
     </svg>
   )
 }
+export const MissingData = ({
+  filledIn,
+}: {
+  filledIn: { items: boolean; doneeDetails: boolean }
+}) => (
+  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
+    <span className="col-span-full font-medium text-gray-900 dark:text-white">
+      Some information necessary to generate your receipts is missing
+    </span>
+    <div className="flex justify-evenly gap-3">
+      {!filledIn.items && (
+        <Link className={buttonStyling} href="/services">
+          Fill in Qualifying Items
+        </Link>
+      )}
+      {!filledIn.doneeDetails && (
+        <Link className={buttonStyling} href="/details">
+          Fill in Donee Details
+        </Link>
+      )}
+    </div>
+  </div>
+)

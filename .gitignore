@@ -1,3 +1,4 @@
+
 .DS_Store
 
 node_modules/
@@ -18,6 +19,7 @@ next-env.d.ts
 .next
 .vercel
 .env*
+.swc
 
 src/pages/test-page.tsx
 src/pages/api/test-api.ts
@@ -28,4 +30,5 @@ serviceAccountKey.json
 credentials.csv
 rootkey.csv
 
+.react-email
 .idea

@@ -5,7 +5,8 @@
       "@/lib/*": ["src/lib/*"],
       "@/components/*": ["src/components/*"],
       "@/types/*": ["src/types/*"],
-      "@/pages/*": ["src/pages/*"]
+      "@/pages/*": ["src/pages/*"],
+      "@/emails/*": ["src/emails/*"]
     },
     "target": "ES2015",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -23,7 +24,6 @@
     "incremental": true
   },
   "include": [
-    "process.d.ts",
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",

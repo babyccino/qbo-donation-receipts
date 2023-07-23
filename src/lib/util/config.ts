@@ -68,5 +68,7 @@ export const config = getConfig({
   NEXT_PUBLIC_VERCEL_URL: nonVital,
   PRODUCTION_URL: nonVital,
 
+  TEST_EMAIL: nonVital,
+
   NODE_ENV: nonVital,
 })

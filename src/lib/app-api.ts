@@ -53,14 +53,14 @@ export function parseRequestBody<T extends ZodRawShape>(
   return response.data
 }
 
-export type AuthorisedHanlder = (
+export type AuthorisedHandler = (
   req: NextApiRequest,
   res: NextApiResponse,
   session: Session
 ) => Promise<unknown>
 type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
 export const createAuthorisedHandler =
-  (handler: AuthorisedHanlder, methods: HttpVerb[], redirect?: string): NextApiHandler =>
+  (handler: AuthorisedHandler, methods: HttpVerb[], redirect?: string): NextApiHandler =>
   async (req, res) => {
     console.log(`${req.method} request made to ${req.url}`)
     if (!req.method || !methods.includes(req.method as HttpVerb)) {

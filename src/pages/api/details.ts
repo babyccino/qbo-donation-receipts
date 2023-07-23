@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { storageBucket, user } from "@/lib/db"
-import { AuthorisedHanlder, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
+import { AuthorisedHandler, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
 import { isJpegOrPngDataURL } from "@/lib/util/request"
 
 async function uploadImage(dataUrl: string, path: string, pub: boolean): Promise<string> {
@@ -27,7 +27,7 @@ export const parser = z.object({
 })
 export type DataType = z.infer<typeof parser>
 
-const handler: AuthorisedHanlder = async (req, res, session) => {
+const handler: AuthorisedHandler = async (req, res, session) => {
   const id = session.user.id
 
   const data = parseRequestBody(parser, req.body)
