@@ -7,10 +7,10 @@ import { isJpegOrPngDataURL } from "@/lib/util/request"
 async function uploadImage(dataUrl: string, path: string, pub: boolean): Promise<string> {
   const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
   const base64String = dataUrl.slice(dataUrl.indexOf(",") + 1)
-  const buffer = Buffer.from(base64String, "base64")
   const fullPath = `${path}.${extension}`
   const file = storageBucket.file(fullPath)
-  await Promise.all([file.save(buffer, { contentType: "image" }), pub && file.makePublic()])
+  await file.save(Buffer.from(base64String, "base64"), { contentType: "image" })
+  if (pub) await file.makePublic()
   return fullPath
 }
 
