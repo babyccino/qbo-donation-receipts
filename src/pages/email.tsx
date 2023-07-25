@@ -185,8 +185,6 @@ async function getUsersWithoutEmails(dbUser: User, session: QboConnectedSession)
     getCustomerData(session),
   ])
 
-  if ("Fault" in salesReport) throw new Error()
-
   const products = new Set(dbUser.items as number[])
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
   const customerData = addBillingAddressesToDonations(

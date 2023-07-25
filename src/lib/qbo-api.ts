@@ -1,9 +1,10 @@
 import { Session } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 
-import { formatDateHtmlReverse } from "./util/date"
-import { fetchJsonData } from "./util/request"
+import { formatDateHtmlReverse } from "@/lib/util/date"
+import { fetchJsonData } from "@/lib/util/request"
+import { config } from "@/lib/util/config"
 import { User } from "@/types/db"
-import { config } from "./util/config"
 
 export type QBOProfile = {
   sub: string
@@ -422,7 +423,18 @@ export async function getCustomerSalesReport(session: QboConnectedSession, dbUse
   const url = `${baseApiRoute}/${session.realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
 
-  return fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(url, session.accessToken)
+  const salesReport = await fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(
+    url,
+    session.accessToken
+  )
+  if ("Fault" in salesReport) {
+    const err = salesReport.Fault.Error[0]?.Message
+    throw new ApiError(
+      500,
+      "QBO did not return a sales report" + (err ? "\nQBO error: " + err : "")
+    )
+  }
+  return salesReport
 }
 
 export function getCustomerData(session: QboConnectedSession) {

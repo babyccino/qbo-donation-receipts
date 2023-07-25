@@ -315,9 +315,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     downloadImagesForDonee(dbUser.donee),
   ])
 
-  if ("Fault" in salesReport)
-    throw new ApiError(400, "The QuickBooks Online api has returned an unexpected error")
-
   const products = new Set(dbUser.items as number[])
 
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)

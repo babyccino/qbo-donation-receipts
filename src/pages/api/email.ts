@@ -55,8 +55,6 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     downloadImagesForDonee(donee),
   ])
 
-  if ("Fault" in salesReport) throw new ApiError(400, "QBO did not return a sales report")
-
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, new Set(items))
   const customerData = addBillingAddressesToDonations(
     donationDataWithoutAddresses,
