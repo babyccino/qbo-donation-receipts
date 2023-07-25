@@ -12,6 +12,14 @@ import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
 
+const imageHelper = "PNG, JPG or GIF (max 100kb)."
+const imageNotRequiredHelper = (
+  <>
+    <p className="mb-2">{imageHelper}</p>
+    <p>Choose an image if you wish to replace your saved image</p>
+  </>
+)
+
 type Props = {
   doneeInfo: DoneeInfo
   session: Session
@@ -27,20 +35,15 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
     const formData = new FormData(formRef.current)
 
-    const companyName = formData.get("companyName") as string
-    const companyAddress = formData.get("companyAddress") as string
-    const country = formData.get("country") as string
-    const registrationNumber = formData.get("registrationNumber") as string
-    const signatoryName = formData.get("signatoryName") as string
     const signature = formData.get("signature") as File
     const smallLogo = formData.get("smallLogo") as File
 
     return {
-      companyName,
-      companyAddress,
-      country,
-      registrationNumber,
-      signatoryName,
+      companyName: formData.get("companyName") as string,
+      companyAddress: formData.get("companyAddress") as string,
+      country: formData.get("country") as string,
+      registrationNumber: formData.get("registrationNumber") as string,
+      signatoryName: formData.get("signatoryName") as string,
       signature: signature.name !== "" ? await base64EncodeFile(signature) : undefined,
       smallLogo: smallLogo.name !== "" ? await base64EncodeFile(smallLogo) : undefined,
     }
@@ -50,26 +53,13 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
     event.preventDefault()
 
     const formData: DetailsApiDataType = await getFormData()
-    const apiResponse = await postJsonData("/api/details", formData)
+    await postJsonData("/api/details", formData)
 
-    if (itemsFilledIn)
-      router.push({
-        pathname: "generate-receipts",
-      })
-    else
-      router.push({
-        pathname: "services",
-        query: { details: true },
-      })
+    const destination = itemsFilledIn ? "/generate-receipts" : "/services"
+    router.push({
+      pathname: destination,
+    })
   }
-
-  const imageHelper = "PNG, JPG or GIF (max 100kb)."
-  const imageNotRequiredHelper = (
-    <>
-      <p className="mb-2">{imageHelper}</p>
-      <p>Choose an image if you wish to replace your saved image</p>
-    </>
-  )
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4 p-4">
@@ -144,14 +134,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const dbUser = doc.data()
   if (!dbUser) throw new Error("User has no corresponding db entry")
 
-  const itemsFilledIn = Boolean(context.query.items) || alreadyFilledIn(dbUser).items
-
   // if donee data is already in db use that to prefill form otherwise use data from quickbooks
   return {
     props: {
       session,
       doneeInfo: dbUser.donee,
-      itemsFilledIn,
+      itemsFilledIn: alreadyFilledIn(dbUser).items,
     },
   }
 }
