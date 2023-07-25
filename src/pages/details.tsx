@@ -63,7 +63,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
       })
   }
 
-  const imageHelper = "PNG, JPG or GIF (MAX. 800x400px)."
+  const imageHelper = "PNG, JPG or GIF (max 100kb)."
   const imageNotRequiredHelper = (
     <>
       <p className="mb-2">{imageHelper}</p>
@@ -113,12 +113,14 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
         <ImageInput
           id="signature"
           label="Image of signatory's signature"
+          maxSize={102400}
           helper={doneeInfo.signatoryName ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.signatoryName)}
         />
         <ImageInput
           id="smallLogo"
           label="Small image of organisation's logo"
+          maxSize={102400}
           helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.smallLogo)}
         />
