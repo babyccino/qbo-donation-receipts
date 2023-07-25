@@ -20,30 +20,56 @@ import { user } from "@/lib/db"
 import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
+import { unknown } from "zod"
 
+type DateRange = { startDate: Date; endDate: Date }
 type Props = {
   items: Item[]
   session: Session
-  selectedItems: number[] | null
   detailsFilledIn: boolean
-}
+} & (
+  | {}
+  | {
+      selectedItems: number[]
+      date: { startDate: string; endDate: string }
+    }
+)
 
 type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
 
-export default function Services({ items, selectedItems, detailsFilledIn }: Props) {
+const createDateRange = (startDateString: string, endDateString: string) => ({
+  startDate: new Date(startDateString),
+  endDate: new Date(endDateString),
+})
+
+const previousYear = new Date().getFullYear() - 1
+const defaultDateState = createDateRange(`${previousYear}/01/01`, `${previousYear}/12/31`)
+
+const datesEqual = (date1: Date, date2: Date) => date1.getTime() - date2.getTime() === 0
+function getDateRange({ startDate, endDate }: DateRange): DateRangeType {
+  if (datesEqual(startDate, startOfThisYear()) && datesEqual(endDate, endOfThisYear()))
+    return DateRangeType.ThisYear
+  if (datesEqual(startDate, startOfPreviousYear()) && datesEqual(endDate, endOfPreviousYear()))
+    return DateRangeType.LastYear
+  return DateRangeType.Custom
+}
+
+export default function Services(props: Props) {
+  const { items, detailsFilledIn } = props
+  const prefill = "selectedItems" in props && "date" in props
+  const propsDate = (
+    prefill ? createDateRange(props.date.startDate, props.date.endDate) : null
+  ) as DateRange
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
-  const [dateRangeState, setDateRangeState] = useState<DateRangeType>(DateRangeType.LastYear)
+
+  const [dateRangeState, setDateRangeState] = useState<DateRangeType>(
+    prefill ? getDateRange(propsDate) : DateRangeType.LastYear
+  )
   const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
-  const previousYear = new Date().getFullYear() - 1
-  const [customDateState, setCustomDateState] = useState({
-    // startDate: new Date(`${previousYear}/01/01`),
-    // change to above in prod
-    startDate: new Date(`1970/01/01`),
-    endDate: new Date(`${previousYear}/12/31`),
-  })
+  const [customDateState, setCustomDateState] = useState(prefill ? propsDate : defaultDateState)
   const onDateChange = (date: DateValueType) => {
     if (!date || !date.endDate || !date.startDate) return
     const startDate = typeof date.startDate == "string" ? new Date(date.startDate) : date.startDate
@@ -70,19 +96,8 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
     }
   }
 
-  const checkAll: MouseEventHandler<HTMLButtonElement> = event => {
-    event.preventDefault()
-    for (const el of inputRefs.current) {
-      el.checked = true
-    }
-  }
-
-  const unCheckAll: MouseEventHandler<HTMLButtonElement> = event => {
-    event.preventDefault()
-    for (const el of inputRefs.current) {
-      el.checked = false
-    }
-  }
+  const checkAll = (_: any) => inputRefs.current.forEach(el => (el.checked = true))
+  const unCheckAll = (_: any) => inputRefs.current.forEach(el => (el.checked = false))
 
   const getItems = () => {
     if (!formRef.current) throw new Error("Form html element has not yet been initialised")
@@ -96,17 +111,12 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
 
     const items = getItems()
     const postData: ServicesApiDataType = { items, date: customDateState }
-    const apiResponse = await postJsonData("/api/services", postData)
+    await postJsonData("/api/services", postData)
 
-    if (detailsFilledIn)
-      router.push({
-        pathname: "generate-receipts",
-      })
-    else
-      router.push({
-        pathname: "details",
-        query: { items: true },
-      })
+    const destination = detailsFilledIn ? "/generate-receipts" : "/details"
+    router.push({
+      pathname: destination,
+    })
   }
 
   return (
@@ -127,9 +137,9 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
         {items.map(({ id, name }) => (
           <Toggle
             key={id}
-            defaultChecked={selectedItems ? selectedItems.includes(id) : true}
             id={id}
             label={name}
+            defaultChecked={prefill ? props.selectedItems.includes(id) : true}
             ref={el => (el ? inputRefs.current.push(el) : null)}
           />
         ))}
@@ -147,7 +157,7 @@ export default function Services({ items, selectedItems, detailsFilledIn }: Prop
           onChange={handleSelectChange}
           name="dateRangeType"
           id="dateRangeType"
-          defaultValue={DateRangeType.LastYear}
+          value={dateRangeState}
         >
           <option value={DateRangeType.LastYear}>Last year</option>
           <option value={DateRangeType.ThisYear}>This year</option>
@@ -186,15 +196,30 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const [doc, items] = await Promise.all([user.doc(session.user.id).get(), getItems(session)])
   const dbUser = doc.data()
   if (!dbUser) throw new Error("User has no corresponding db entry")
+  const detailsFilledIn = alreadyFilledIn(dbUser).doneeDetails
 
-  const selectedItems = dbUser.items || null
-  const detailsFilledIn = Boolean(context.query.details) || alreadyFilledIn(dbUser).doneeDetails
+  if (dbUser.date && dbUser.items) {
+    const selectedItems = dbUser.items
+    const date = {
+      startDate: dbUser.date.startDate.toISOString(),
+      endDate: dbUser.date.endDate.toISOString(),
+    }
+
+    return {
+      props: {
+        session,
+        items,
+        detailsFilledIn,
+        selectedItems,
+        date,
+      },
+    }
+  }
 
   return {
     props: {
       session,
       items,
-      selectedItems,
       detailsFilledIn,
     },
   }
