@@ -20,18 +20,19 @@ import { user } from "@/lib/db"
 import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
-import { unknown } from "zod"
 
 type DateRange = { startDate: Date; endDate: Date }
+type StringDateRange = { startDate: string; endDate: string }
 type Props = {
   items: Item[]
   session: Session
   detailsFilledIn: boolean
 } & (
-  | {}
+  | { itemsFilledIn: false }
   | {
+      itemsFilledIn: true
       selectedItems: number[]
-      date: { startDate: string; endDate: string }
+      date: StringDateRange
     }
 )
 
@@ -46,7 +47,7 @@ const previousYear = new Date().getFullYear() - 1
 const defaultDateState = createDateRange(`${previousYear}/01/01`, `${previousYear}/12/31`)
 
 const datesEqual = (date1: Date, date2: Date) => date1.getTime() - date2.getTime() === 0
-function getDateRange({ startDate, endDate }: DateRange): DateRangeType {
+function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
   if (datesEqual(startDate, startOfThisYear()) && datesEqual(endDate, endOfThisYear()))
     return DateRangeType.ThisYear
   if (datesEqual(startDate, startOfPreviousYear()) && datesEqual(endDate, endOfPreviousYear()))
@@ -56,20 +57,21 @@ function getDateRange({ startDate, endDate }: DateRange): DateRangeType {
 
 export default function Services(props: Props) {
   const { items, detailsFilledIn } = props
-  const prefill = "selectedItems" in props && "date" in props
-  const propsDate = (
-    prefill ? createDateRange(props.date.startDate, props.date.endDate) : null
-  ) as DateRange
+  const propsDate = props.itemsFilledIn
+    ? createDateRange(props.date.startDate, props.date.endDate)
+    : null
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
 
   const [dateRangeState, setDateRangeState] = useState<DateRangeType>(
-    prefill ? getDateRange(propsDate) : DateRangeType.LastYear
+    props.itemsFilledIn ? getDateRangeType(propsDate as DateRange) : DateRangeType.LastYear
   )
   const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
-  const [customDateState, setCustomDateState] = useState(prefill ? propsDate : defaultDateState)
+  const [customDateState, setCustomDateState] = useState(
+    props.itemsFilledIn ? (propsDate as DateRange) : defaultDateState
+  )
   const onDateChange = (date: DateValueType) => {
     if (!date || !date.endDate || !date.startDate) return
     const startDate = typeof date.startDate == "string" ? new Date(date.startDate) : date.startDate
@@ -139,7 +141,7 @@ export default function Services(props: Props) {
             key={id}
             id={id}
             label={name}
-            defaultChecked={prefill ? props.selectedItems.includes(id) : true}
+            defaultChecked={props.itemsFilledIn ? props.selectedItems.includes(id) : true}
             ref={el => (el ? inputRefs.current.push(el) : null)}
           />
         ))}
@@ -207,6 +209,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
 
     return {
       props: {
+        itemsFilledIn: true,
         session,
         items,
         detailsFilledIn,
@@ -218,6 +221,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
 
   return {
     props: {
+      itemsFilledIn: false,
       session,
       items,
       detailsFilledIn,
