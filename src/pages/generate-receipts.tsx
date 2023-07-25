@@ -1,11 +1,14 @@
 import { ReactNode, useState } from "react"
 import { GetServerSideProps } from "next"
+import { ApiError } from "next/dist/server/api-utils"
 import { getServerSession, Session } from "next-auth"
 import { twMerge } from "tailwind-merge"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
+import { ReceiptPdfDocument } from "@/components/receipt"
+import { Svg, Link, buttonStyling } from "@/components/ui"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import {
   addBillingAddressesToDonations,
@@ -14,15 +17,13 @@ import {
   getCustomerData,
   getCustomerSalesReport,
 } from "@/lib/qbo-api"
-import { ReceiptPdfDocument } from "@/components/receipt"
-import { Svg, Link, buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
 import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
 import { getThisYear } from "@/lib/util/date"
-import { DoneeInfo } from "@/types/db"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
+import { DoneeInfo } from "@/types/db"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -38,18 +39,12 @@ function DownloadAllFiles() {
   return (
     <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
-      <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
+      <Button onClick={onClick} disabled={loading}>
+        {loading ? "...Creating download" : "Download"}
+      </Button>
     </div>
   )
 }
-
-const ErrorComponent = () => (
-  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
-    <span className="col-span-full font-medium text-gray-900 dark:text-white">
-      We were not able to gather your QuickBooks Online data.
-    </span>
-  </div>
-)
 
 const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
@@ -77,7 +72,7 @@ const ReceiptLimitCard = () => (
   </Card>
 )
 
-const receiptInner = (
+const showReceiptInner = (
   <>
     <span className="hidden sm:inline">Show Receipt</span>
     <span className="inline-block h-5 w-5 sm:ml-2">
@@ -87,13 +82,14 @@ const receiptInner = (
 )
 function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
   const [show, setShow] = useState(false)
-  const containerClassName =
-    (show ? "flex" : "hidden") +
-    " fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
+  const containerClassName = twMerge(
+    show ? "flex" : "hidden",
+    "fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
+  )
 
   return (
     <>
-      <Button onClick={() => setShow(true)}>{receiptInner}</Button>
+      <Button onClick={() => setShow(true)}>{showReceiptInner}</Button>
       <div className={containerClassName} onClick={() => setShow(false)}>
         <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
           <Receipt />
@@ -108,7 +104,6 @@ function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
     </>
   )
 }
-const FakeShowReceipt = () => <div className={buttonStyling + " inline-block"}>{receiptInner}</div>
 
 const downloadReceiptInner = (
   <>
@@ -129,9 +124,6 @@ const DownloadReceipt = ({
     {({ loading }) => (loading ? "Loading document..." : downloadReceiptInner)}
   </PDFDownloadLink>
 )
-const FakeDownloadReceipt = () => (
-  <div className={buttonStyling + " inline-block"}>{downloadReceiptInner}</div>
-)
 
 const rand = (min: number, max: number) => Math.random() * (max - min) + min
 const { round } = Math
@@ -149,80 +141,65 @@ const getRandomIndex = () => round(rand(-0.5, names.length - 0.0001))
 const getRandomName = () => `${names[getRandomIndex()]} ${names[getRandomIndex()]}`
 const getRandomBalance = () => `$${round(rand(100, 100000))}.00`
 
-const TableRow = ({
-  cols,
-  className,
-  blur,
-  hover,
-}: {
-  cols: [ReactNode, ReactNode, ReactNode, ReactNode]
-  className?: string
-  blur?: boolean
-  hover?: ReactNode
-}) => (
-  <tr
-    className={twMerge(
-      "relative border-b bg-white dark:border-gray-700 dark:bg-gray-800",
-      className
-    )}
-  >
-    <th
-      scope="row"
-      className="whitespace-nowrap px-6 py-2 font-medium text-gray-900 dark:text-white"
-    >
-      {cols[0]}
-    </th>
-    <td className="px-6 py-2">{cols[1]}</td>
-    <td className="px-6 py-2">{cols[2]}</td>
-    <td className="px-6 py-2">{cols[3]}</td>
-    {(blur || hover) && (
-      <div
-        className={
-          "absolute left-0 z-40 h-full w-full" + (blur ? " top-[2px] backdrop-blur-sm" : "")
-        }
-      >
-        {hover}
-      </div>
-    )}
-  </tr>
+const Tr = ({ children }: { children?: ReactNode }) => (
+  <tr className="relative border-b bg-white dark:border-gray-700 dark:bg-gray-800">{children}</tr>
 )
+const Th = ({ children }: { children?: ReactNode }) => (
+  <th scope="row" className="whitespace-nowrap px-6 py-2 font-medium text-gray-900 dark:text-white">
+    {children}
+  </th>
+)
+const Td = ({ children }: { children?: ReactNode }) => <td className="px-6 py-2">{children}</td>
+
 const BlurredRows = () => (
   <>
+    <tr className="relative z-50 border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+      <Th>{getRandomName()}</Th>
+      <Td>{getRandomBalance()}</Td>
+      <Td>
+        <div className={twMerge(buttonStyling, "inline-block")}>{showReceiptInner}</div>
+      </Td>
+      <Td>
+        <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
+      </Td>
+      <div className="absolute left-0 top-[2px] z-40 h-full w-full backdrop-blur-sm">
+        <ReceiptLimitCard />
+      </div>
+    </tr>
     {new Array(10).fill(0).map((_, idx) => (
-      <TableRow
-        key={idx}
-        cols={[
-          getRandomName(),
-          getRandomBalance(),
-          <FakeShowReceipt key="2" />,
-          <FakeDownloadReceipt key="3" />,
-        ]}
-        blur
-      />
+      <Tr key={idx}>
+        <Th>{getRandomName()}</Th>
+        <Td>{getRandomBalance()}</Td>
+        <Td>
+          <div className={twMerge(buttonStyling, "inline-block")}>{showReceiptInner}</div>
+        </Td>
+        <Td>
+          <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
+        </Td>
+        <div className="absolute left-0 top-[2px] z-40 h-full w-full backdrop-blur-sm" />
+      </Tr>
     ))}
   </>
 )
 
 type Props =
   | {
-      status: "success"
+      receiptsReady: true
+      session: Session
       customerData: Donation[]
       doneeInfo: DoneeInfo
-      session: Session
       subscribed: boolean
     }
   | {
-      status: "missing data"
+      receiptsReady: false
       filledIn: { items: boolean; doneeDetails: boolean }
     }
-  | { status: "error"; error: string }
 
 // ----- PAGE ----- //
 export default function IndexPage(props: Props) {
-  if (props.status === "error") return <ErrorComponent />
-  if (props.status === "missing data") return <MissingData {...props} />
+  if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
-  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
+  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "CAD" })
   const { customerData, doneeInfo, subscribed } = props
 
   const currentYear = getThisYear()
@@ -230,7 +207,7 @@ export default function IndexPage(props: Props) {
     const fileName = `${entry.name}.pdf`
     const Receipt = () => (
       <ReceiptPdfDocument
-        currency="USD"
+        currency="CAD"
         currentDate={new Date()}
         donation={entry}
         donationDate={new Date()}
@@ -240,15 +217,16 @@ export default function IndexPage(props: Props) {
     )
 
     return (
-      <TableRow
-        key={entry.id}
-        cols={[
-          entry.name,
-          formatter.format(entry.total),
-          <ShowReceipt key="2" Receipt={Receipt} />,
-          <DownloadReceipt key="3" Receipt={Receipt} fileName={fileName} />,
-        ]}
-      />
+      <Tr key={entry.id}>
+        <Th>{entry.name}</Th>
+        <Td>{formatter.format(entry.total)}</Td>
+        <Td>
+          <ShowReceipt key="2" Receipt={Receipt} />
+        </Td>
+        <Td>
+          <DownloadReceipt key="3" Receipt={Receipt} fileName={fileName} />
+        </Td>
+      </Tr>
     )
   }
 
@@ -295,22 +273,7 @@ export default function IndexPage(props: Props) {
           </thead>
           <tbody>
             {customerData.map(mapCustomerToTableRow)}
-            {!subscribed && (
-              <>
-                <TableRow
-                  className="z-50"
-                  cols={[
-                    getRandomName(),
-                    getRandomBalance(),
-                    <FakeShowReceipt key="2" />,
-                    <FakeDownloadReceipt key="3" />,
-                  ]}
-                  blur
-                  hover={<ReceiptLimitCard />}
-                />
-                <BlurredRows />
-              </>
-            )}
+            {!subscribed && <BlurredRows />}
           </tbody>
         </table>
       </div>
@@ -335,7 +298,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   if (!(inDatabase.items && inDatabase.doneeDetails))
     return {
       props: {
-        status: "missing data",
+        receiptsReady: false,
         filledIn: inDatabase,
       },
     }
@@ -353,12 +316,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   ])
 
   if ("Fault" in salesReport)
-    return {
-      props: {
-        status: "error",
-        error: "",
-      },
-    }
+    throw new ApiError(400, "The QuickBooks Online api has returned an unexpected error")
 
   const products = new Set(dbUser.items as number[])
 
@@ -371,7 +329,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
 
   return {
     props: {
-      status: "success",
+      receiptsReady: true,
       session,
       customerData: subscribed ? customerData : customerData.slice(0, 3),
       doneeInfo: donee,
