@@ -1,10 +1,8 @@
-import { Session } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { formatDateHtmlReverse } from "@/lib/util/date"
 import { fetchJsonData } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
-import { User } from "@/types/db"
 
 export type QBOProfile = {
   sub: string
@@ -323,15 +321,16 @@ const notGroupedRow = (row: CustomerSalesReportRow): row is SalesRow | SalesSect
   !("group" in row)
 export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
-  selectedItemIds: Set<number>
+  selectedItemIds: number[]
 ): DonationWithoutAddress[] {
   const allItems = parseItemsFromReport(report)
 
   const allRows = report.Rows.Row
   const rowsToUse = allRows.filter<SalesRow | SalesSectionRow>(notGroupedRow)
+  const itemsSet = new Set(selectedItemIds)
 
   return rowsToUse
-    .map<DonationWithoutAddress>(row => createDonationFromRow(row, selectedItemIds, allItems))
+    .map<DonationWithoutAddress>(row => createDonationFromRow(row, itemsSet, allItems))
     .filter(donation => donation.total !== 0)
 }
 
@@ -409,23 +408,20 @@ const baseApiRoute = nodeEnv && nodeEnv === "test" ? "test" : `${qboBaseApiRoute
 export const makeQueryUrl = (realmId: string, query: string) =>
   `${baseApiRoute}/${realmId}/query?query=${query}`
 
-async function getDates(dbUser: User): Promise<[string, string]> {
-  if (!dbUser.date) throw new Error("Date data not found in database")
+export async function getCustomerSalesReport(
+  accessToken: string,
+  realmId: string,
+  dates: { startDate: Date; endDate: Date }
+) {
+  const startDate = formatDateHtmlReverse(dates.startDate)
+  const endDate = formatDateHtmlReverse(dates.endDate)
 
-  return [formatDateHtmlReverse(dbUser.date.startDate), formatDateHtmlReverse(dbUser.date.endDate)]
-}
-
-export type QboConnectedSession = Session & { accessToken: string }
-
-export async function getCustomerSalesReport(session: QboConnectedSession, dbUser: User) {
-  const [startDate, endDate] = await getDates(dbUser)
-
-  const url = `${baseApiRoute}/${session.realmId}/reports/CustomerSales?\
+  const url = `${baseApiRoute}/${realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
 
   const salesReport = await fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(
     url,
-    session.accessToken
+    accessToken
   )
   if ("Fault" in salesReport) {
     const err = salesReport.Fault.Error[0]?.Message
@@ -437,27 +433,31 @@ summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDa
   return salesReport
 }
 
-export function getCustomerData(session: QboConnectedSession) {
-  const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
+export function getCustomerData(accessToken: string, realmId: string) {
+  const url = makeQueryUrl(realmId, "select * from Customer MAXRESULTS 1000")
 
   // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
 
-  return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
+  return fetchJsonData<CustomerQueryResult>(url, accessToken)
 }
 
-export async function getItems(session: QboConnectedSession) {
-  const url = makeQueryUrl(session.realmId, "select * from Item")
-  const itemQueryResponse = await fetchJsonData<ItemQueryResponse>(url, session.accessToken)
-  const items = itemQueryResponse.QueryResponse.Item
+export async function getItems(accessToken: string, realmId: string) {
+  const url = makeQueryUrl(realmId, "select * from Item")
+  const itemQuery = await fetchJsonData<ItemQueryResponse>(url, accessToken)
+  return formatItemQuery(itemQuery)
+}
+
+export function formatItemQuery(itemQuery: ItemQueryResponse) {
+  const items = itemQuery.QueryResponse.Item
   // TODO handle subitems
   return items
     .filter(item => !item.SubItem)
     .map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
 }
 
-export async function getCompanyInfo(session: QboConnectedSession) {
-  const url = makeQueryUrl(session.realmId, "select * from CompanyInfo")
-  const companyQueryResult = await fetchJsonData<CompanyInfoQueryResult>(url, session.accessToken)
+export async function getCompanyInfo(accessToken: string, realmId: string) {
+  const url = makeQueryUrl(realmId, "select * from CompanyInfo")
+  const companyQueryResult = await fetchJsonData<CompanyInfoQueryResult>(url, accessToken)
   return parseCompanyInfo(companyQueryResult)
 }
 
@@ -479,4 +479,19 @@ export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): Com
     companyAddress: getValidAddress(LegalAddr, CompanyAddr),
     country: Country,
   }
+}
+
+export async function getDonations(
+  accessToken: string,
+  realmId: string,
+  dates: { startDate: Date; endDate: Date },
+  items: number[]
+) {
+  const [salesReport, customerQueryResult] = await Promise.all([
+    getCustomerSalesReport(accessToken, realmId, dates),
+    getCustomerData(accessToken, realmId),
+  ])
+
+  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, items)
+  return addBillingAddressesToDonations(donationDataWithoutAddresses, customerQueryResult)
 }

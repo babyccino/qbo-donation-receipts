@@ -1,5 +1,4 @@
 import {
-  QboConnectedSession,
   combineCustomerQueries,
   getAddressString,
   CustomerSalesReport,
@@ -8,11 +7,11 @@ import {
   DonationWithoutAddress,
   createDonationsFromSalesReport,
   addBillingAddressesToDonations,
-  getItems,
+  formatItemQuery,
   parseCompanyInfo,
+  ItemQueryResponse,
 } from "@/lib/qbo-api"
 import { DeepPartial } from "@/lib/util/etc"
-import { fetchJsonData } from "@/lib/util/request"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -112,7 +111,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, new Set([456]))
+    const result = createDonationsFromSalesReport(report, [456])
     expect(result).toEqual(expected)
   })
 
@@ -229,7 +228,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, new Set([456]))
+    const result = createDonationsFromSalesReport(report, [456])
     expect(result).toEqual(expected)
   })
 
@@ -304,7 +303,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     }
 
-    const result = createDonationsFromSalesReport(report, new Set([1]))
+    const result = createDonationsFromSalesReport(report, [1])
     expect(result).toEqual([])
   })
 
@@ -406,7 +405,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, new Set([1001, 1002, 1003]))
+    const result = createDonationsFromSalesReport(report, [1001, 1002, 1003])
     expect(result).toEqual(expected)
 
     const expected2: DonationWithoutAddress[] = [
@@ -433,7 +432,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     ]
 
-    const result2 = createDonationsFromSalesReport(report, new Set([1001, 1002]))
+    const result2 = createDonationsFromSalesReport(report, [1001, 1002])
     expect(result2).toEqual(expected2)
   })
 })
@@ -739,32 +738,9 @@ describe("addAddressesToCustomerData", () => {
   })
 })
 
-const createMockSession = (): QboConnectedSession => ({
-  accessToken: "mock-access-token",
-  realmId: "mock-realm-id",
-  expires: "",
-  user: {
-    email: "",
-    id: "",
-    image: "",
-    name: "",
-  },
-})
-
-// Mock the fetchJsonData function
-jest.mock("./../../src/lib/util/request", () => ({
-  fetchJsonData: jest.fn(),
-}))
-
-describe("getItems", () => {
-  const fetchJsonDataMock: jest.MockedFunction<typeof fetchJsonData> = fetchJsonData as any
-
-  afterEach(() => {
-    jest.clearAllMocks()
-  })
-
+describe("formatItemQuery", () => {
   it("should fetch item data and return an array of item objects", async () => {
-    const mockItemQueryResponse = {
+    const itemQueryResponse: DeepPartial<ItemQueryResponse> = {
       QueryResponse: {
         Item: [
           { Id: "1", Name: "Item 1" },
@@ -772,9 +748,7 @@ describe("getItems", () => {
         ],
       },
     }
-    const mockSession = createMockSession()
-    fetchJsonDataMock.mockResolvedValueOnce(mockItemQueryResponse)
-    const result = await getItems(mockSession)
+    const result = formatItemQuery(itemQueryResponse as ItemQueryResponse)
 
     // Verify that the function returned the expected result
     expect(result).toEqual([

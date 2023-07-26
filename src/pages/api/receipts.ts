@@ -2,12 +2,7 @@ import { ApiError } from "next/dist/server/api-utils"
 import JSZip from "jszip"
 
 import { user } from "@/lib/db"
-import {
-  addBillingAddressesToDonations,
-  createDonationsFromSalesReport,
-  getCustomerData,
-  getCustomerSalesReport,
-} from "@/lib/qbo-api"
+import { getDonations } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { getThisYear } from "@/lib/util/date"
@@ -15,6 +10,7 @@ import {
   assertSessionIsQboConnected,
   AuthorisedHandler,
   createAuthorisedHandler,
+  receiptReady,
 } from "@/lib/app-api"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 
@@ -24,28 +20,16 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   const dbUser = doc.data()
   if (!dbUser) throw new ApiError(401, "No user data found in database")
-  if (!dbUser.donee || !dbUser.donee) throw new ApiError(401, "User data incomplete")
-  const doneeInfo = dbUser.donee
-  if (!(doneeInfo.signature && doneeInfo.smallLogo))
-    throw new Error("Either the donor's signature or logo image has not been set")
+  if (!receiptReady(dbUser)) throw new ApiError(401, "Data missing from user")
 
-  const [salesReport, customerQueryResult, donee] = await Promise.all([
-    getCustomerSalesReport(session, dbUser),
-    getCustomerData(session),
+  const [donations, donee] = await Promise.all([
+    getDonations(session.accessToken, session.realmId, dbUser.date, dbUser.items),
     downloadImagesForDonee(dbUser.donee),
   ])
 
-  const products = new Set(dbUser.items)
-
-  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
-  const customerData = addBillingAddressesToDonations(
-    donationDataWithoutAddresses,
-    customerQueryResult
-  )
-
   const zip = new JSZip()
   let counter = getThisYear()
-  for (const entry of customerData) {
+  for (const entry of donations) {
     const buffer = await renderToBuffer(
       ReceiptPdfDocument({
         currency: "CAD",

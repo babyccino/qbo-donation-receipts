@@ -10,15 +10,9 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { Svg, Link, buttonStyling } from "@/components/ui"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
-import {
-  addBillingAddressesToDonations,
-  createDonationsFromSalesReport,
-  Donation,
-  getCustomerData,
-  getCustomerSalesReport,
-} from "@/lib/qbo-api"
+import { Donation, getDonations } from "@/lib/qbo-api"
 import { user } from "@/lib/db"
-import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
+import { alreadyFilledIn, isSessionQboConnected, receiptReady } from "@/lib/app-api"
 import { getThisYear } from "@/lib/util/date"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -186,7 +180,7 @@ type Props =
   | {
       receiptsReady: true
       session: Session
-      customerData: Donation[]
+      donations: Donation[]
       doneeInfo: DoneeInfo
       subscribed: boolean
     }
@@ -200,7 +194,7 @@ export default function IndexPage(props: Props) {
   if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "CAD" })
-  const { customerData, doneeInfo, subscribed } = props
+  const { donations: customerData, doneeInfo, subscribed } = props
 
   const currentYear = getThisYear()
   const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
@@ -282,6 +276,7 @@ export default function IndexPage(props: Props) {
 }
 
 // --- server-side props ---
+
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) throw new Error("Couldn't find session")
@@ -293,42 +288,28 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
 
   const doc = await user.doc(session.user.id).get()
   const dbUser = doc.data()
+  if (!dbUser) throw new Error("No user data found in database")
 
-  const inDatabase = alreadyFilledIn(dbUser)
-  if (!(inDatabase.items && inDatabase.doneeDetails))
+  if (!receiptReady(dbUser))
     return {
       props: {
         receiptsReady: false,
-        filledIn: inDatabase,
+        filledIn: alreadyFilledIn(dbUser),
       },
     }
 
-  if (!dbUser) throw new Error("No user data found in database")
-
-  const doneeInfo = dbUser.donee as DoneeInfo
-  if (!(doneeInfo.signature && doneeInfo.smallLogo))
-    throw new Error("Either the donor's signature or logo image has not been set")
-
-  const [salesReport, customerQueryResult, donee] = await Promise.all([
-    getCustomerSalesReport(session, dbUser),
-    getCustomerData(session),
+  const [donations, donee] = await Promise.all([
+    getDonations(session.accessToken, session.realmId, dbUser.date, dbUser.items),
     downloadImagesForDonee(dbUser.donee),
   ])
 
-  const products = new Set(dbUser.items as number[])
-
-  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
-  const customerData = addBillingAddressesToDonations(
-    donationDataWithoutAddresses,
-    customerQueryResult
-  )
   const subscribed = isUserSubscribed(dbUser)
 
   return {
     props: {
       receiptsReady: true,
       session,
-      customerData: subscribed ? customerData : customerData.slice(0, 3),
+      donations: subscribed ? donations : donations.slice(0, 3),
       doneeInfo: donee,
       subscribed,
     },

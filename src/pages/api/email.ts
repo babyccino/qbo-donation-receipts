@@ -10,16 +10,11 @@ import {
   AuthorisedHandler,
   createAuthorisedHandler,
   parseRequestBody,
+  receiptReady,
 } from "@/lib/app-api"
 import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
 import { user } from "@/lib/db"
-import {
-  addBillingAddressesToDonations,
-  createDonationsFromSalesReport,
-  Donation,
-  getCustomerData,
-  getCustomerSalesReport,
-} from "@/lib/qbo-api"
+import { Donation, getDonations } from "@/lib/qbo-api"
 import { getThisYear } from "@/lib/util/date"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { config } from "@/lib/util/config"
@@ -45,21 +40,14 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   const dbUser = doc.data()
   if (!dbUser) throw new ApiError(401, "No user data found in database")
-  const { donee, date, items } = dbUser
-  if (!donee || !items || !date || !donee.signature || !donee.smallLogo)
-    throw new ApiError(401, "User data incomplete:\n" + JSON.stringify(dbUser, undefined, "  "))
+  if (!receiptReady(dbUser)) throw new ApiError(401, "User data incomplete")
 
-  const [salesReport, customerQueryResult, doneeWithImages] = await Promise.all([
-    getCustomerSalesReport(session, dbUser),
-    getCustomerData(session),
-    downloadImagesForDonee(donee),
+  const { donee, date } = dbUser
+
+  const [donations, doneeWithImages] = await Promise.all([
+    getDonations(session.accessToken, session.realmId, date, dbUser.items),
+    downloadImagesForDonee(dbUser.donee),
   ])
-
-  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, new Set(items))
-  const customerData = addBillingAddressesToDonations(
-    donationDataWithoutAddresses,
-    customerQueryResult
-  )
 
   let counter = getThisYear()
   const { companyName } = donee
@@ -121,11 +109,11 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   if (testEmail) {
     console.log(`sending test email to ${testEmail}`)
-    await sendReceipt(customerData[0])
+    await sendReceipt(donations[0])
     return res.status(200).json({ ok: true })
   }
 
-  const receiptsSent = customerData.filter(entry => entry.email !== null).map(sendReceipt)
+  const receiptsSent = donations.filter(entry => entry.email !== null).map(sendReceipt)
   await Promise.all(receiptsSent)
 
   res.status(200).json({ ok: true })

@@ -10,10 +10,9 @@ export async function getImageAsDataUrl(url: string) {
   return `data:image/${extension};base64,${fileString}`
 }
 
-export async function downloadImagesForDonee(donee: DoneeInfo): Promise<DoneeInfo> {
-  if (!(donee.signature && donee.smallLogo))
-    throw new Error("Either the donor's signature or logo image has not been set")
-
+export async function downloadImagesForDonee(
+  donee: Required<DoneeInfo>
+): Promise<Required<DoneeInfo>> {
   const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
     getImageAsDataUrl(donee.signature),
     getImageAsDataUrl(donee.smallLogo),

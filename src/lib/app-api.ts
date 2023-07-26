@@ -4,9 +4,36 @@ import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { authOptions } from "src/pages/api/auth/[...nextauth]"
-import { User } from "@/types/db"
-import { QboConnectedSession } from "@/lib/qbo-api"
+import { DoneeInfo, User } from "@/types/db"
 
+export function receiptReady(user: User): user is User & {
+  items: Required<User>["items"]
+  donee: Required<DoneeInfo>
+  date: Required<User>["date"]
+} {
+  const { items, donee, date } = user
+  const {
+    companyAddress,
+    companyName,
+    country,
+    registrationNumber,
+    signatoryName,
+    signature,
+    smallLogo,
+  } = donee || {}
+
+  return Boolean(
+    items &&
+      date &&
+      companyAddress &&
+      companyName &&
+      country &&
+      registrationNumber &&
+      signatoryName &&
+      signature &&
+      smallLogo
+  )
+}
 export function alreadyFilledIn(user: User | undefined): {
   items: boolean
   doneeDetails: boolean
@@ -86,6 +113,7 @@ export const createAuthorisedHandler =
     }
   }
 
+type QboConnectedSession = Session & { accessToken: string }
 export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
   Boolean(session.accessToken)
 export function assertSessionIsQboConnected(

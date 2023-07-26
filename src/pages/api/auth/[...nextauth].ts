@@ -4,9 +4,10 @@ import { OAuthConfig } from "next-auth/providers"
 import { CallbacksOptions } from "next-auth"
 
 import { user as firestoreUser } from "@/lib/db"
-import { QBOProfile, getCompanyInfo, OpenIdUserInfo, QboConnectedSession } from "@/lib/qbo-api"
+import { QBOProfile, getCompanyInfo, OpenIdUserInfo } from "@/lib/qbo-api"
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
+import { ApiError } from "next/dist/server/api-utils"
 
 const {
   qboClientId,
@@ -68,6 +69,7 @@ const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
   if (!account || !profile) return "/404"
 
   const { access_token: accessToken, providerAccountId: id } = account
+  if (!accessToken) throw new ApiError(500, "access token not provided")
   const { realmid: realmId } = profile
   const doc = firestoreUser.doc(id)
 
@@ -79,7 +81,7 @@ const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
       `${qboAccountsBaseRoute}/openid_connect/userinfo`,
       accessToken as string
     ),
-    getCompanyInfo({ realmId, accessToken } as QboConnectedSession),
+    getCompanyInfo(accessToken, realmId),
     doc.get(),
   ])
 
