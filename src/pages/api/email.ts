@@ -10,7 +10,7 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { receiptReady } from "@/lib/db-helper"
+import { isUserDataComplete } from "@/lib/db-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
 import { user } from "@/lib/db"
@@ -41,7 +41,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   const dbUser = doc.data()
   if (!dbUser) throw new ApiError(401, "No user data found in database")
-  if (!receiptReady(dbUser)) throw new ApiError(401, "User data incomplete")
+  if (!isUserDataComplete(dbUser)) throw new ApiError(401, "User data incomplete")
 
   const { donee, date } = dbUser
 

@@ -12,7 +12,7 @@ import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { getDonations } from "@/lib/qbo-api"
 import { Donation } from "@/types/qbo-api"
 import { user } from "@/lib/db"
-import { alreadyFilledIn, receiptReady } from "@/lib/db-helper"
+import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
@@ -347,11 +347,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   const dbUser = doc.data()
   if (!dbUser) throw new Error("No user data found in database")
 
-  if (!receiptReady(dbUser))
+  if (!isUserDataComplete(dbUser))
     return {
       props: {
         receiptsReady: false,
-        filledIn: alreadyFilledIn(dbUser),
+        filledIn: checkUserDataCompletion(dbUser),
       },
     }
 

@@ -8,7 +8,7 @@ import { postJsonData } from "@/lib/util/request"
 import { MissingData } from "@/components/ui"
 import { Fieldset, TextArea } from "@/components/form"
 import { user } from "@/lib/db"
-import { alreadyFilledIn, receiptReady } from "@/lib/db-helper"
+import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { DoneeInfo } from "@/types/db"
 import { getDonations } from "@/lib/qbo-api"
@@ -189,14 +189,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   if (!dbUser) throw new Error("No user data found in database")
 
   if (!isUserSubscribed(dbUser)) return { redirect: { permanent: false, destination: "/account" } }
-  if (!receiptReady(dbUser)) {
+  if (!isUserDataComplete(dbUser)) {
     const { donee } = dbUser
     delete donee.signature
     delete donee.smallLogo
     return {
       props: {
         status: AccountStatus.IncompleteData,
-        filledIn: alreadyFilledIn(dbUser),
+        filledIn: checkUserDataCompletion(dbUser),
         donee,
       },
     }

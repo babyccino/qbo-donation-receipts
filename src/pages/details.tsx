@@ -6,7 +6,7 @@ import { Session, getServerSession } from "next-auth"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { buttonStyling } from "@/components/ui"
 import { user } from "@/lib/db"
-import { alreadyFilledIn } from "@/lib/db-helper"
+import { checkUserDataCompletion } from "@/lib/db-helper"
 import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
@@ -138,7 +138,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
     props: {
       session,
       doneeInfo: dbUser.donee,
-      itemsFilledIn: alreadyFilledIn(dbUser).items,
+      itemsFilledIn: checkUserDataCompletion(dbUser).items,
     },
   }
 }

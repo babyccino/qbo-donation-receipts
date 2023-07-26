@@ -7,7 +7,7 @@ import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { getThisYear } from "@/lib/util/date"
 import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/util/request-server"
-import { receiptReady } from "@/lib/db-helper"
+import { isUserDataComplete } from "@/lib/db-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 
@@ -17,7 +17,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   const dbUser = doc.data()
   if (!dbUser) throw new ApiError(401, "No user data found in database")
-  if (!receiptReady(dbUser)) throw new ApiError(401, "Data missing from user")
+  if (!isUserDataComplete(dbUser)) throw new ApiError(401, "Data missing from user")
 
   const [donations, donee] = await Promise.all([
     getDonations(session.accessToken, session.realmId, dbUser.date, dbUser.items),

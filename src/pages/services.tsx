@@ -21,7 +21,7 @@ import { user } from "@/lib/db"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
-import { alreadyFilledIn } from "@/lib/db-helper"
+import { checkUserDataCompletion } from "@/lib/db-helper"
 
 type DateRange = { startDate: Date; endDate: Date }
 type StringDateRange = { startDate: string; endDate: string }
@@ -203,7 +203,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   ])
   const dbUser = doc.data()
   if (!dbUser) throw new Error("User has no corresponding db entry")
-  const detailsFilledIn = alreadyFilledIn(dbUser).doneeDetails
+  const detailsFilledIn = checkUserDataCompletion(dbUser).doneeDetails
 
   if (dbUser.date && dbUser.items) {
     const selectedItems = dbUser.items

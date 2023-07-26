@@ -25,11 +25,12 @@ export async function downloadImagesForDonee(
   }
 }
 
-export function receiptReady(user: User): user is User & {
+type UserDataComplete = User & {
   items: Required<User>["items"]
   donee: Required<DoneeInfo>
   date: Required<User>["date"]
-} {
+}
+export function isUserDataComplete(user: User): user is UserDataComplete {
   const { items, donee, date } = user
   const {
     companyAddress,
@@ -53,13 +54,10 @@ export function receiptReady(user: User): user is User & {
       smallLogo
   )
 }
-export function alreadyFilledIn(user: User | undefined): {
+export function checkUserDataCompletion({ items, donee, date }: User): {
   items: boolean
   doneeDetails: boolean
 } {
-  if (!user) return { items: false, doneeDetails: false }
-
-  const { items, donee, date } = user
   const {
     companyAddress,
     companyName,
