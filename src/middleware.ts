@@ -10,11 +10,11 @@ export const config = {
   matcher: [
     "/api/stripe/create-checkout-session",
     "/api/details",
-    "/api/services",
+    "/api/items",
     "/api/receipts",
     "/details",
     "/generate-receipts",
-    "/services",
+    "/items",
     "/account",
     "/email",
   ],

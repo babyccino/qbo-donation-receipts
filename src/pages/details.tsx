@@ -5,12 +5,20 @@ import { Session, getServerSession } from "next-auth"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { buttonStyling } from "@/components/ui"
-import { user } from "@/lib/db"
-import { alreadyFilledIn } from "@/lib/app-api"
+import { getUserData } from "@/lib/db"
+import { checkUserDataCompletion } from "@/lib/db-helper"
 import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
+
+const imageHelper = "PNG, JPG or GIF (max 100kb)."
+const imageNotRequiredHelper = (
+  <>
+    <p className="mb-2">{imageHelper}</p>
+    <p>Choose an image if you wish to replace your saved image</p>
+  </>
+)
 
 type Props = {
   doneeInfo: DoneeInfo
@@ -27,20 +35,15 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
     const formData = new FormData(formRef.current)
 
-    const companyName = formData.get("companyName") as string
-    const companyAddress = formData.get("companyAddress") as string
-    const country = formData.get("country") as string
-    const registrationNumber = formData.get("registrationNumber") as string
-    const signatoryName = formData.get("signatoryName") as string
     const signature = formData.get("signature") as File
     const smallLogo = formData.get("smallLogo") as File
 
     return {
-      companyName,
-      companyAddress,
-      country,
-      registrationNumber,
-      signatoryName,
+      companyName: formData.get("companyName") as string,
+      companyAddress: formData.get("companyAddress") as string,
+      country: formData.get("country") as string,
+      registrationNumber: formData.get("registrationNumber") as string,
+      signatoryName: formData.get("signatoryName") as string,
       signature: signature.name !== "" ? await base64EncodeFile(signature) : undefined,
       smallLogo: smallLogo.name !== "" ? await base64EncodeFile(smallLogo) : undefined,
     }
@@ -50,26 +53,13 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
     event.preventDefault()
 
     const formData: DetailsApiDataType = await getFormData()
-    const apiResponse = await postJsonData("/api/details", formData)
+    await postJsonData("/api/details", formData)
 
-    if (itemsFilledIn)
-      router.push({
-        pathname: "generate-receipts",
-      })
-    else
-      router.push({
-        pathname: "services",
-        query: { details: true },
-      })
+    const destination = itemsFilledIn ? "/generate-receipts" : "/items"
+    router.push({
+      pathname: destination,
+    })
   }
-
-  const imageHelper = "PNG, JPG or GIF (MAX. 800x400px)."
-  const imageNotRequiredHelper = (
-    <>
-      <p className="mb-2">{imageHelper}</p>
-      <p>Choose an image if you wish to replace your saved image</p>
-    </>
-  )
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4 p-4">
@@ -113,12 +103,14 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
         <ImageInput
           id="signature"
           label="Image of signatory's signature"
+          maxSize={102400}
           helper={doneeInfo.signatoryName ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.signatoryName)}
         />
         <ImageInput
           id="smallLogo"
           label="Small image of organisation's logo"
+          maxSize={102400}
           helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.smallLogo)}
         />
@@ -138,18 +130,13 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
   if (!session) throw new Error("Couldn't find session")
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
-  if (!dbUser) throw new Error("User has no corresponding db entry")
+  const user = await getUserData(session.user.id)
 
-  const itemsFilledIn = Boolean(context.query.items) || alreadyFilledIn(dbUser).items
-
-  // if donee data is already in db use that to prefill form otherwise use data from quickbooks
   return {
     props: {
       session,
-      doneeInfo: dbUser.donee,
-      itemsFilledIn,
+      doneeInfo: user.donee,
+      itemsFilledIn: checkUserDataCompletion(user).items,
     },
   }
 }

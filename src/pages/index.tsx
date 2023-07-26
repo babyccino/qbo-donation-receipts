@@ -6,8 +6,8 @@ import Link from "next/link"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Svg, Link as StyledLink } from "@/components/ui"
-import { user } from "@/lib/db"
-import { alreadyFilledIn } from "@/lib/app-api"
+import { checkUserDataCompletion } from "@/lib/db-helper"
+import { getUserData } from "@/lib/db"
 
 const Card = ({
   title,
@@ -56,7 +56,7 @@ const IndexPage = ({ filledIn }: Props) => (
         In just a few easy steps we can create and send your client{"'"}s donation receipts
       </p>
       {(!filledIn || (!filledIn.items && !filledIn.doneeDetails)) && (
-        <StyledLink href="/services" className="px-5 py-3 text-lg">
+        <StyledLink href="/items" className="px-5 py-3 text-lg">
           Get started
           <div className="-mb-1 ml-2 inline-block h-5 w-5">
             <Svg.RightArrow />
@@ -75,7 +75,7 @@ const IndexPage = ({ filledIn }: Props) => (
         <Svg.HandDrawnUpArrow />
       </div>
       <Card
-        href="/services"
+        href="/items"
         className="mt-4"
         title="Select your qualifying items"
         body="Select which of your QuickBooks sales constitute a gift"
@@ -123,10 +123,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
-
-  const filledIn = alreadyFilledIn(dbUser)
+  const user = await getUserData(session.user.id)
+  const filledIn = checkUserDataCompletion(user)
 
   return {
     props: {

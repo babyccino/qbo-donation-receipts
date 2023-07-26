@@ -5,7 +5,7 @@ export const dummyEmailProps: EmailProps = {
     name: "John Doe",
     id: 12345,
     total: 100,
-    products: [
+    items: [
       {
         name: "Product 1",
         id: 1,

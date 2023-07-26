@@ -1,18 +1,19 @@
 import {
-  QboConnectedSession,
   combineCustomerQueries,
   getAddressString,
+  createDonationsFromSalesReport,
+  addBillingAddressesToDonations,
+  formatItemQuery,
+  parseCompanyInfo,
+} from "@/lib/qbo-api"
+import {
   CustomerSalesReport,
   CompanyInfoQueryResult,
   CustomerQueryResult,
   DonationWithoutAddress,
-  createDonationsFromSalesReport,
-  addBillingAddressesToDonations,
-  getItems,
-  parseCompanyInfo,
-} from "@/lib/qbo-api"
+  ItemQueryResponse,
+} from "@/types/qbo-api"
 import { DeepPartial } from "@/lib/util/etc"
-import { fetchJsonData } from "@/lib/util/request"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -102,7 +103,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "John",
         id: 123,
         total: 100.0,
-        products: [
+        items: [
           {
             name: "Product A",
             id: 456,
@@ -112,7 +113,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, new Set([456]))
+    const result = createDonationsFromSalesReport(report, [456])
     expect(result).toEqual(expected)
   })
 
@@ -219,7 +220,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Jeff",
         id: 22,
         total: 100.0,
-        products: [
+        items: [
           {
             name: "Product A",
             id: 456,
@@ -229,7 +230,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, new Set([456]))
+    const result = createDonationsFromSalesReport(report, [456])
     expect(result).toEqual(expected)
   })
 
@@ -304,11 +305,11 @@ describe("createDonationsFromSalesReport", () => {
       },
     }
 
-    const result = createDonationsFromSalesReport(report, new Set([1]))
+    const result = createDonationsFromSalesReport(report, [1])
     expect(result).toEqual([])
   })
 
-  it("should convert a report with multiple products and customers correctly", () => {
+  it("should convert a report with multiple items and customers correctly", () => {
     const report: CustomerSalesReport = {
       Header,
       Columns: {
@@ -381,7 +382,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer A",
         id: 1,
         total: 30,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 10 },
           { name: "Widget C", id: 1003, total: 20 },
         ],
@@ -390,7 +391,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer B",
         id: 2,
         total: 40,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 15 },
           { name: "Widget B", id: 1002, total: 25 },
         ],
@@ -399,14 +400,14 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer C",
         id: 3,
         total: 55,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 20 },
           { name: "Widget C", id: 1003, total: 35 },
         ],
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, new Set([1001, 1002, 1003]))
+    const result = createDonationsFromSalesReport(report, [1001, 1002, 1003])
     expect(result).toEqual(expected)
 
     const expected2: DonationWithoutAddress[] = [
@@ -414,13 +415,13 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer A",
         id: 1,
         total: 10,
-        products: [{ name: "Widget A", id: 1001, total: 10 }],
+        items: [{ name: "Widget A", id: 1001, total: 10 }],
       },
       {
         name: "Customer B",
         id: 2,
         total: 40,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 15 },
           { name: "Widget B", id: 1002, total: 25 },
         ],
@@ -429,11 +430,11 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer C",
         id: 3,
         total: 20,
-        products: [{ name: "Widget A", id: 1001, total: 20 }],
+        items: [{ name: "Widget A", id: 1001, total: 20 }],
       },
     ]
 
-    const result2 = createDonationsFromSalesReport(report, new Set([1001, 1002]))
+    const result2 = createDonationsFromSalesReport(report, [1001, 1002])
     expect(result2).toEqual(expected2)
   })
 })
@@ -676,7 +677,7 @@ describe("addAddressesToCustomerData", () => {
       name: "John",
       id: 123,
       total: 100,
-      products: [
+      items: [
         { name: "Product 1", id: 1, total: 50 },
         { name: "Product 2", id: 2, total: 50 },
       ],
@@ -685,7 +686,7 @@ describe("addAddressesToCustomerData", () => {
       name: "Jane",
       id: 456,
       total: 200,
-      products: [{ name: "Product 3", id: 3, total: 200 }],
+      items: [{ name: "Product 3", id: 3, total: 200 }],
     },
   ]
 
@@ -720,7 +721,7 @@ describe("addAddressesToCustomerData", () => {
         name: "John",
         id: 123,
         total: 100,
-        products: [
+        items: [
           { name: "Product 1", id: 1, total: 50 },
           { name: "Product 2", id: 2, total: 50 },
         ],
@@ -731,7 +732,7 @@ describe("addAddressesToCustomerData", () => {
         name: "Jane",
         id: 456,
         total: 200,
-        products: [{ name: "Product 3", id: 3, total: 200 }],
+        items: [{ name: "Product 3", id: 3, total: 200 }],
         address: "No billing address on file",
         email: null,
       },
@@ -739,32 +740,9 @@ describe("addAddressesToCustomerData", () => {
   })
 })
 
-const createMockSession = (): QboConnectedSession => ({
-  accessToken: "mock-access-token",
-  realmId: "mock-realm-id",
-  expires: "",
-  user: {
-    email: "",
-    id: "",
-    image: "",
-    name: "",
-  },
-})
-
-// Mock the fetchJsonData function
-jest.mock("./../../src/lib/util/request", () => ({
-  fetchJsonData: jest.fn(),
-}))
-
-describe("getItems", () => {
-  const fetchJsonDataMock: jest.MockedFunction<typeof fetchJsonData> = fetchJsonData as any
-
-  afterEach(() => {
-    jest.clearAllMocks()
-  })
-
+describe("formatItemQuery", () => {
   it("should fetch item data and return an array of item objects", async () => {
-    const mockItemQueryResponse = {
+    const itemQueryResponse: DeepPartial<ItemQueryResponse> = {
       QueryResponse: {
         Item: [
           { Id: "1", Name: "Item 1" },
@@ -772,9 +750,7 @@ describe("getItems", () => {
         ],
       },
     }
-    const mockSession = createMockSession()
-    fetchJsonDataMock.mockResolvedValueOnce(mockItemQueryResponse)
-    const result = await getItems(mockSession)
+    const result = formatItemQuery(itemQueryResponse as ItemQueryResponse)
 
     // Verify that the function returned the expected result
     expect(result).toEqual([

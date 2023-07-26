@@ -6,7 +6,6 @@ const FourOhFour = () => (
   <>
     <Head>
       <title>Page Not Found</title>
-      <meta name="description" content="Expedite your organisation's year-end!" />
     </Head>
     <section className="flex min-h-full flex-col justify-center">
       <div className="mx-auto max-w-screen-sm px-4 py-8 text-center lg:px-6 lg:py-16">
@@ -17,7 +16,7 @@ const FourOhFour = () => (
           Something{"'"}s missing.
         </p>
         <p className="mb-4 text-lg font-light text-gray-500 dark:text-gray-400">
-          Sorry, we can{"'"}t find that page. You{"'"}ll find lots to explore on the home page.{" "}
+          Sorry, we can{"'"}t find that page. You{"'"}ll find lots to explore on the home page.
         </p>
         <Link
           href="/"

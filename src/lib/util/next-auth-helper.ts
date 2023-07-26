@@ -1,11 +1,13 @@
 import { NextApiResponse, NextApiRequest } from "next"
+import { ApiError } from "next/dist/server/api-utils"
 import { getCsrfToken } from "next-auth/react"
+import { encode, JWT } from "next-auth/jwt"
+import { Session } from "next-auth"
+import crypto from "@/lib/crypto"
 
 import { getBaseUrl } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import crypto from "@/lib/crypto"
 import { config } from "@/lib/util/config"
-import { encode, JWT } from "next-auth/jwt"
 
 const defaultProviderId = authOptions.providers[0].id
 const { nextauthSecret, vercelEnv } = config
@@ -102,4 +104,13 @@ export async function updateServerSession(res: NextApiResponse, token: JWT) {
       vercelEnv ? "Secure; " : ""
     }SameSite=Lax`
   )
+}
+
+type QboConnectedSession = Session & { accessToken: string }
+export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
+  Boolean(session.accessToken)
+export function assertSessionIsQboConnected(
+  session: Session
+): asserts session is QboConnectedSession {
+  if (!session.accessToken) throw new ApiError(401, "user not qbo connected")
 }

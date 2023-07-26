@@ -151,14 +151,18 @@ export const Fieldset = ({ children, className }: FieldsetHTMLAttributes<HTMLFie
     {children}
   </fieldset>
 )
+
+const supportedExtensions = ["jpg", "jpeg", "png"]
 export function ImageInput({
   label,
   id,
+  maxSize,
   helper,
   required,
 }: {
   label: string
   id: string
+  maxSize: number
   helper?: ReactNode
   required?: boolean
 }) {
@@ -168,12 +172,14 @@ export function ImageInput({
     event.preventDefault()
     const files = event.target.files
     if (!files || files.length === 0) return
-    const extension = files[0].name.split(".").pop()
-    if (!extension || (extension !== "jpg" && extension !== "jpeg" && extension !== "png")) {
-      // Todo check dimensions of image
+    const file = files[0]
+    const extension = file.name.split(".").pop()
+    if (!extension || !supportedExtensions.includes(extension) || file.size > maxSize) {
       event.target.value = ""
       return setError(true)
-    } else setError(false)
+    }
+
+    return setError(false)
   }
 
   return (

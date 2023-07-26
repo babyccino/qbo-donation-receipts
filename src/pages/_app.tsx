@@ -2,11 +2,12 @@ import "./globals.scss"
 
 import { SessionProvider } from "next-auth/react"
 import { AppProps } from "next/app"
+import Head from "next/head"
 import { Session } from "next-auth"
 import { NextSeo } from "next-seo"
 
 import Layout from "@/components/layout"
-import Head from "next/head"
+import ErrorBoundary from "@/components/error"
 
 export default function App({
   Component,
@@ -38,9 +39,11 @@ export default function App({
         <meta name="description" content="Expedite your organisation's year-end!" />
       </Head>
       <SessionProvider session={session}>
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
+        <ErrorBoundary>
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        </ErrorBoundary>
       </SessionProvider>
     </>
   )

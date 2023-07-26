@@ -6,20 +6,16 @@ import { renderToBuffer } from "@react-pdf/renderer"
 import { z } from "zod"
 
 import {
-  assertSessionIsQboConnected,
   AuthorisedHandler,
   createAuthorisedHandler,
   parseRequestBody,
-} from "@/lib/app-api"
+} from "@/lib/util/request-server"
+import { isUserDataComplete } from "@/lib/db-helper"
+import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
-import { user } from "@/lib/db"
-import {
-  addBillingAddressesToDonations,
-  createDonationsFromSalesReport,
-  Donation,
-  getCustomerData,
-  getCustomerSalesReport,
-} from "@/lib/qbo-api"
+import { getUserData } from "@/lib/db"
+import { getDonations } from "@/lib/qbo-api"
+import { Donation } from "@/types/qbo-api"
 import { getThisYear } from "@/lib/util/date"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { config } from "@/lib/util/config"
@@ -41,27 +37,15 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const data = parseRequestBody(parser, req.body)
   const { emailBody } = data
 
-  const doc = await user.doc(session.user.id).get()
+  const user = await getUserData(session.user.id)
+  if (!isUserDataComplete(user)) throw new ApiError(401, "User data incomplete")
 
-  const dbUser = doc.data()
-  if (!dbUser) throw new ApiError(401, "No user data found in database")
-  const { donee, date, items } = dbUser
-  if (!donee || !items || !date || !donee.signature || !donee.smallLogo)
-    throw new ApiError(401, "User data incomplete:\n" + JSON.stringify(dbUser, undefined, "  "))
+  const { donee, date } = user
 
-  const [salesReport, customerQueryResult, doneeWithImages] = await Promise.all([
-    getCustomerSalesReport(session, dbUser),
-    getCustomerData(session),
-    downloadImagesForDonee(donee),
+  const [donations, doneeWithImages] = await Promise.all([
+    getDonations(session.accessToken, session.realmId, date, user.items),
+    downloadImagesForDonee(user.donee),
   ])
-
-  if ("Fault" in salesReport) throw new ApiError(400, "QBO did not return a sales report")
-
-  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, new Set(items))
-  const customerData = addBillingAddressesToDonations(
-    donationDataWithoutAddresses,
-    customerQueryResult
-  )
 
   let counter = getThisYear()
   const { companyName } = donee
@@ -105,7 +89,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     )
 
     await transporter.sendMail({
-      from: { address: dbUser.email, name: companyName },
+      from: { address: user.email, name: companyName },
       to: recipient,
       subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
       attachments: [
@@ -123,11 +107,11 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   if (testEmail) {
     console.log(`sending test email to ${testEmail}`)
-    await sendReceipt(customerData[0])
+    await sendReceipt(donations[0])
     return res.status(200).json({ ok: true })
   }
 
-  const receiptsSent = customerData.filter(entry => entry.email !== null).map(sendReceipt)
+  const receiptsSent = donations.filter(entry => entry.email !== null).map(sendReceipt)
   await Promise.all(receiptsSent)
 
   res.status(200).json({ ok: true })

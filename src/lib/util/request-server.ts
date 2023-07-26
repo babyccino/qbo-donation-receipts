@@ -1,42 +1,9 @@
-import { TypeOf, ZodObject, ZodRawShape } from "zod"
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
-import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
+import { Session, getServerSession } from "next-auth"
 
-import { authOptions } from "src/pages/api/auth/[...nextauth]"
-import { User } from "@/types/db"
-import { QboConnectedSession } from "@/lib/qbo-api"
-
-export function alreadyFilledIn(user: User | undefined): {
-  items: boolean
-  doneeDetails: boolean
-} {
-  if (!user) return { items: false, doneeDetails: false }
-
-  const { items, donee, date } = user
-  const {
-    companyAddress,
-    companyName,
-    country,
-    registrationNumber,
-    signatoryName,
-    signature,
-    smallLogo,
-  } = donee || {}
-
-  return {
-    items: Boolean(items && date),
-    doneeDetails: Boolean(
-      companyAddress &&
-        companyName &&
-        country &&
-        registrationNumber &&
-        signatoryName &&
-        signature &&
-        smallLogo
-    ),
-  }
-}
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { TypeOf, ZodObject, ZodRawShape } from "zod"
 
 export function parseRequestBody<T extends ZodRawShape>(
   shape: ZodObject<T>,
@@ -85,11 +52,3 @@ export const createAuthorisedHandler =
       res.status(error.statusCode).json(error)
     }
   }
-
-export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
-  Boolean(session.accessToken)
-export function assertSessionIsQboConnected(
-  session: Session
-): asserts session is QboConnectedSession {
-  if (!session.accessToken) throw new ApiError(401, "user not qbo connected")
-}

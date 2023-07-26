@@ -1,5 +1,5 @@
 import { storageBucket } from "@/lib/db"
-import { DoneeInfo } from "@/types/db"
+import { DoneeInfo, User } from "@/types/db"
 
 export async function getImageAsDataUrl(url: string) {
   const file = await storageBucket.file(url).download()
@@ -10,10 +10,9 @@ export async function getImageAsDataUrl(url: string) {
   return `data:image/${extension};base64,${fileString}`
 }
 
-export async function downloadImagesForDonee(donee: DoneeInfo): Promise<DoneeInfo> {
-  if (!(donee.signature && donee.smallLogo))
-    throw new Error("Either the donor's signature or logo image has not been set")
-
+export async function downloadImagesForDonee(
+  donee: Required<DoneeInfo>
+): Promise<Required<DoneeInfo>> {
   const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
     getImageAsDataUrl(donee.signature),
     getImageAsDataUrl(donee.smallLogo),
@@ -23,5 +22,62 @@ export async function downloadImagesForDonee(donee: DoneeInfo): Promise<DoneeInf
     ...donee,
     signature: signatureDataUrl,
     smallLogo: smallLogoDataUrl,
+  }
+}
+
+type UserDataComplete = User & {
+  items: Required<User>["items"]
+  donee: Required<DoneeInfo>
+  date: Required<User>["date"]
+}
+export function isUserDataComplete(user: User): user is UserDataComplete {
+  const { items, donee, date } = user
+  const {
+    companyAddress,
+    companyName,
+    country,
+    registrationNumber,
+    signatoryName,
+    signature,
+    smallLogo,
+  } = donee || {}
+
+  return Boolean(
+    items &&
+      date &&
+      companyAddress &&
+      companyName &&
+      country &&
+      registrationNumber &&
+      signatoryName &&
+      signature &&
+      smallLogo
+  )
+}
+export function checkUserDataCompletion({ items, donee, date }: User): {
+  items: boolean
+  doneeDetails: boolean
+} {
+  const {
+    companyAddress,
+    companyName,
+    country,
+    registrationNumber,
+    signatoryName,
+    signature,
+    smallLogo,
+  } = donee || {}
+
+  return {
+    items: Boolean(items && date),
+    doneeDetails: Boolean(
+      companyAddress &&
+        companyName &&
+        country &&
+        registrationNumber &&
+        signatoryName &&
+        signature &&
+        smallLogo
+    ),
   }
 }

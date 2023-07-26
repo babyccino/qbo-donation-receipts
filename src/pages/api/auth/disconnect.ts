@@ -1,6 +1,6 @@
 import { base64EncodeString, getResponseContent } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
-import { isSessionQboConnected } from "@/lib/app-api"
+import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper"
 import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"

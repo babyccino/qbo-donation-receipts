@@ -6,23 +6,19 @@ import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
-import {
-  addBillingAddressesToDonations,
-  createDonationsFromSalesReport,
-  Donation,
-  getCustomerData,
-  getCustomerSalesReport,
-} from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { Svg, Link, buttonStyling } from "@/components/ui"
-import { user } from "@/lib/db"
-import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
-import { getThisYear } from "@/lib/util/date"
-import { DoneeInfo } from "@/types/db"
+import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
+import { getDonations } from "@/lib/qbo-api"
+import { Donation } from "@/types/qbo-api"
+import { getUserData } from "@/lib/db"
+import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
+import { DoneeInfo } from "@/types/db"
+import { getThisYear } from "@/lib/util/date"
+import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -38,18 +34,12 @@ function DownloadAllFiles() {
   return (
     <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
-      <Button onClick={onClick}>{loading ? "...Creating download" : "Download"}</Button>
+      <Button onClick={onClick} disabled={loading}>
+        {loading ? "...Creating download" : "Download"}
+      </Button>
     </div>
   )
 }
-
-const ErrorComponent = () => (
-  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
-    <span className="col-span-full font-medium text-gray-900 dark:text-white">
-      We were not able to gather your QuickBooks Online data.
-    </span>
-  </div>
-)
 
 const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
@@ -57,7 +47,7 @@ const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: b
       Some information necessary to generate your receipts is missing
     </span>
     <div className="flex justify-evenly gap-3">
-      {!filledIn.items && <Link href="/services">Fill in Qualifying Items</Link>}
+      {!filledIn.items && <Link href="/items">Fill in Qualifying Items</Link>}
       {!filledIn.doneeDetails && <Link href="/details">Fill in Donee Details</Link>}
     </div>
   </div>
@@ -77,7 +67,7 @@ const ReceiptLimitCard = () => (
   </Card>
 )
 
-const receiptInner = (
+const showReceiptInner = (
   <>
     <span className="hidden sm:inline">Show Receipt</span>
     <span className="inline-block h-5 w-5 sm:ml-2">
@@ -87,13 +77,14 @@ const receiptInner = (
 )
 function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
   const [show, setShow] = useState(false)
-  const containerClassName =
-    (show ? "flex" : "hidden") +
-    " fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
+  const containerClassName = twMerge(
+    show ? "flex" : "hidden",
+    "fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
+  )
 
   return (
     <>
-      <Button onClick={() => setShow(true)}>{receiptInner}</Button>
+      <Button onClick={() => setShow(true)}>{showReceiptInner}</Button>
       <div className={containerClassName} onClick={() => setShow(false)}>
         <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
           <Receipt />
@@ -108,7 +99,6 @@ function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
     </>
   )
 }
-const FakeShowReceipt = () => <div className={buttonStyling + " inline-block"}>{receiptInner}</div>
 
 const downloadReceiptInner = (
   <>
@@ -129,9 +119,6 @@ const DownloadReceipt = ({
     {({ loading }) => (loading ? "Loading document..." : downloadReceiptInner)}
   </PDFDownloadLink>
 )
-const FakeDownloadReceipt = () => (
-  <div className={buttonStyling + " inline-block"}>{downloadReceiptInner}</div>
-)
 
 const rand = (min: number, max: number) => Math.random() * (max - min) + min
 const { round } = Math
@@ -149,88 +136,122 @@ const getRandomIndex = () => round(rand(-0.5, names.length - 0.0001))
 const getRandomName = () => `${names[getRandomIndex()]} ${names[getRandomIndex()]}`
 const getRandomBalance = () => `$${round(rand(100, 100000))}.00`
 
-const TableRow = ({
-  cols,
-  className,
-  blur,
-  hover,
-}: {
-  cols: [ReactNode, ReactNode, ReactNode, ReactNode]
-  className?: string
-  blur?: boolean
-  hover?: ReactNode
-}) => (
-  <tr
-    className={twMerge(
-      "relative border-b bg-white dark:border-gray-700 dark:bg-gray-800",
-      className
-    )}
-  >
-    <th
-      scope="row"
-      className="whitespace-nowrap px-6 py-2 font-medium text-gray-900 dark:text-white"
-    >
-      {cols[0]}
-    </th>
-    <td className="px-6 py-2">{cols[1]}</td>
-    <td className="px-6 py-2">{cols[2]}</td>
-    <td className="px-6 py-2">{cols[3]}</td>
-    {(blur || hover) && (
-      <div
-        className={
-          "absolute left-0 z-40 h-full w-full" + (blur ? " top-[2px] backdrop-blur-sm" : "")
-        }
-      >
-        {hover}
-      </div>
-    )}
-  </tr>
+const Tr = ({ children }: { children?: ReactNode }) => (
+  <tr className="relative border-b bg-white dark:border-gray-700 dark:bg-gray-800">{children}</tr>
 )
+const Th = ({ children }: { children?: ReactNode }) => (
+  <th scope="row" className="whitespace-nowrap px-6 py-2 font-medium text-gray-900 dark:text-white">
+    {children}
+  </th>
+)
+const Td = ({ children }: { children?: ReactNode }) => <td className="px-6 py-2">{children}</td>
+
 const BlurredRows = () => (
   <>
+    <tr className="relative z-50 border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+      <Th>{getRandomName()}</Th>
+      <Td>{getRandomBalance()}</Td>
+      <Td>
+        <div className={twMerge(buttonStyling, "inline-block")}>{showReceiptInner}</div>
+      </Td>
+      <Td>
+        <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
+      </Td>
+      <div className="absolute left-0 top-[2px] z-40 h-full w-full backdrop-blur-sm">
+        <ReceiptLimitCard />
+      </div>
+    </tr>
     {new Array(10).fill(0).map((_, idx) => (
-      <TableRow
-        key={idx}
-        cols={[
-          getRandomName(),
-          getRandomBalance(),
-          <FakeShowReceipt key="2" />,
-          <FakeDownloadReceipt key="3" />,
-        ]}
-        blur
-      />
+      <Tr key={idx}>
+        <Th>{getRandomName()}</Th>
+        <Td>{getRandomBalance()}</Td>
+        <Td>
+          <div className={twMerge(buttonStyling, "inline-block")}>{showReceiptInner}</div>
+        </Td>
+        <Td>
+          <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
+        </Td>
+        <div className="absolute left-0 top-[2px] z-40 h-full w-full backdrop-blur-sm" />
+      </Tr>
     ))}
   </>
 )
 
 type Props =
   | {
-      status: "success"
-      customerData: Donation[]
-      doneeInfo: DoneeInfo
+      receiptsReady: true
       session: Session
+      donations: Donation[]
+      doneeInfo: DoneeInfo
       subscribed: boolean
     }
   | {
-      status: "missing data"
+      receiptsReady: false
       filledIn: { items: boolean; doneeDetails: boolean }
     }
-  | { status: "error"; error: string }
 
 // ----- PAGE ----- //
-export default function IndexPage(props: Props) {
-  if (props.status === "error") return <ErrorComponent />
-  if (props.status === "missing data") return <MissingData {...props} />
 
-  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
-  const { customerData, doneeInfo, subscribed } = props
+enum Sort {
+  Default = 0,
+  NameAsc,
+  NameDesc,
+  TotalAsc,
+  TotalDesc,
+}
+
+function getSortedDonations(donations: Donation[], sort: Sort) {
+  switch (sort) {
+    case Sort.NameAsc:
+      return donations.sort((a, b) => a.name.localeCompare(b.name))
+    case Sort.NameDesc:
+      return donations.sort((a, b) => b.name.localeCompare(a.name))
+    case Sort.TotalAsc:
+      return donations.sort((a, b) => a.total - b.total)
+    case Sort.TotalDesc:
+      return donations.sort((a, b) => b.total - a.total)
+    case Sort.Default:
+    default:
+      return donations
+  }
+}
+
+const unsortedSymbol = (
+  <span className="relative">
+    <span className="absolute translate-y-[0.21rem]">▾</span>
+    <span className="absolute translate-y-[-0.21rem]">▴</span>
+    <span className="opacity-0">▾</span>
+  </span>
+)
+function getSortSymbols(sort: Sort): { name: ReactNode; total: ReactNode } {
+  switch (sort) {
+    case Sort.NameAsc:
+      return { name: "▾", total: unsortedSymbol }
+    case Sort.NameDesc:
+      return { name: "▴", total: unsortedSymbol }
+    case Sort.TotalAsc:
+      return { total: "▴", name: unsortedSymbol }
+    case Sort.TotalDesc:
+      return { total: "▾", name: unsortedSymbol }
+    default:
+      return { name: unsortedSymbol, total: unsortedSymbol }
+  }
+}
+export default function IndexPage(props: Props) {
+  const [sort, setSort] = useState<Sort>(Sort.Default)
+
+  if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
+
+  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "CAD" })
+  const { doneeInfo, subscribed } = props
+  const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
   const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
     const fileName = `${entry.name}.pdf`
     const Receipt = () => (
       <ReceiptPdfDocument
-        currency="USD"
+        currency="CAD"
         currentDate={new Date()}
         donation={entry}
         donationDate={new Date()}
@@ -240,19 +261,19 @@ export default function IndexPage(props: Props) {
     )
 
     return (
-      <TableRow
-        key={entry.id}
-        cols={[
-          entry.name,
-          formatter.format(entry.total),
-          <ShowReceipt key="2" Receipt={Receipt} />,
-          <DownloadReceipt key="3" Receipt={Receipt} fileName={fileName} />,
-        ]}
-      />
+      <Tr key={entry.id}>
+        <Th>{entry.name}</Th>
+        <Td>{formatter.format(entry.total)}</Td>
+        <Td>
+          <ShowReceipt key="2" Receipt={Receipt} />
+        </Td>
+        <Td>
+          <DownloadReceipt key="3" Receipt={Receipt} fileName={fileName} />
+        </Td>
+      </Tr>
     )
   }
 
-  // TODO add sort by total donation/name
   return (
     <section className="flex h-full w-full flex-col p-8">
       {subscribed && (
@@ -279,11 +300,19 @@ export default function IndexPage(props: Props) {
         <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
           <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
-              <th scope="col" className="px-6 py-3">
-                Donor Name
+              <th
+                scope="col"
+                className="cursor-pointer px-6 py-3"
+                onClick={() => setSort(sort === Sort.NameAsc ? Sort.NameDesc : Sort.NameAsc)}
+              >
+                Donor Name {getSortSymbols(sort).name}
               </th>
-              <th scope="col" className="px-6 py-3">
-                Total
+              <th
+                scope="col"
+                className="cursor-pointer px-6 py-3"
+                onClick={() => setSort(sort === Sort.TotalDesc ? Sort.TotalAsc : Sort.TotalDesc)}
+              >
+                Total {getSortSymbols(sort).total}
               </th>
               <th scope="col" className="px-6 py-3">
                 Show Receipt
@@ -294,23 +323,8 @@ export default function IndexPage(props: Props) {
             </tr>
           </thead>
           <tbody>
-            {customerData.map(mapCustomerToTableRow)}
-            {!subscribed && (
-              <>
-                <TableRow
-                  className="z-50"
-                  cols={[
-                    getRandomName(),
-                    getRandomBalance(),
-                    <FakeShowReceipt key="2" />,
-                    <FakeDownloadReceipt key="3" />,
-                  ]}
-                  blur
-                  hover={<ReceiptLimitCard />}
-                />
-                <BlurredRows />
-              </>
-            )}
+            {donations.map(mapCustomerToTableRow)}
+            {!subscribed && <BlurredRows />}
           </tbody>
         </table>
       </div>
@@ -319,6 +333,7 @@ export default function IndexPage(props: Props) {
 }
 
 // --- server-side props ---
+
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) throw new Error("Couldn't find session")
@@ -328,52 +343,29 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       props: {} as any,
     }
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
+  const user = await getUserData(session.user.id)
+  if (!user) throw new Error("No user data found in database")
 
-  const inDatabase = alreadyFilledIn(dbUser)
-  if (!(inDatabase.items && inDatabase.doneeDetails))
+  if (!isUserDataComplete(user))
     return {
       props: {
-        status: "missing data",
-        filledIn: inDatabase,
+        receiptsReady: false,
+        filledIn: checkUserDataCompletion(user),
       },
     }
 
-  if (!dbUser) throw new Error("No user data found in database")
-
-  const doneeInfo = dbUser.donee as DoneeInfo
-  if (!(doneeInfo.signature && doneeInfo.smallLogo))
-    throw new Error("Either the donor's signature or logo image has not been set")
-
-  const [salesReport, customerQueryResult, donee] = await Promise.all([
-    getCustomerSalesReport(session, dbUser),
-    getCustomerData(session),
-    downloadImagesForDonee(dbUser.donee),
+  const [donations, donee] = await Promise.all([
+    getDonations(session.accessToken, session.realmId, user.date, user.items),
+    downloadImagesForDonee(user.donee),
   ])
 
-  if ("Fault" in salesReport)
-    return {
-      props: {
-        status: "error",
-        error: "",
-      },
-    }
-
-  const products = new Set(dbUser.items as number[])
-
-  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
-  const customerData = addBillingAddressesToDonations(
-    donationDataWithoutAddresses,
-    customerQueryResult
-  )
-  const subscribed = isUserSubscribed(dbUser)
+  const subscribed = isUserSubscribed(user)
 
   return {
     props: {
-      status: "success",
+      receiptsReady: true,
       session,
-      customerData: subscribed ? customerData : customerData.slice(0, 3),
+      donations: subscribed ? donations : donations.slice(0, 3),
       doneeInfo: donee,
       subscribed,
     },

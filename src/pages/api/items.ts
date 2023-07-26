@@ -1,7 +1,11 @@
 import { z } from "zod"
 
 import { user } from "@/lib/db"
-import { AuthorisedHandler, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
+import {
+  AuthorisedHandler,
+  createAuthorisedHandler,
+  parseRequestBody,
+} from "@/lib/util/request-server"
 
 export const parser = z.object({
   items: z.array(z.number()),

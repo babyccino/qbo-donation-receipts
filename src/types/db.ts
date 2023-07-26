@@ -1,4 +1,4 @@
-import { CompanyInfo } from "@/lib/qbo-api"
+import { CompanyInfo } from "@/types/qbo-api"
 import Stripe from "stripe"
 
 export type DoneeInfo = CompanyInfo & {

@@ -4,7 +4,7 @@ import { getServerSession, Session } from "next-auth"
 import { Button, Card } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { getImageUrl, user } from "@/lib/db"
+import { getImageUrl, getUserData } from "@/lib/db"
 import { Subscription } from "@/types/db"
 import { Svg } from "@/components/ui"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
@@ -225,17 +225,15 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const data = (await user.doc(session.user.id).get()).data()
-  if (!data) throw new Error("User signed in but was not found in db")
+  const user = await getUserData(session.user.id)
+  const subscribed = isUserSubscribed(user)
 
-  const subscribed = isUserSubscribed(data)
-
-  const { billingAddress, donee } = data
+  const { billingAddress, donee } = user
   const account = {
     country: donee?.country as string,
     companyName: donee?.companyName as string,
     logo: getImageUrl(donee?.smallLogo as string),
-    name: billingAddress?.name ?? data.name,
+    name: billingAddress?.name ?? user.name,
   }
   if (!subscribed)
     return {
@@ -246,7 +244,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
   // if isUserSubscribed returns true then subscription can not be undefined
-  const subscription = data.subscription as Subscription
+  const subscription = user.subscription as Subscription
 
   return {
     props: {

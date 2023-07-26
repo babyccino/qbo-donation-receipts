@@ -16,11 +16,13 @@ export const endOfPreviousYear = () => new Date(getThisYear() - 1, 11, 31)
 export const startOfThisYear = () => new Date(getThisYear(), 0, 1)
 export const endOfThisYear = () => new Date(getThisYear(), 11, 31)
 export const getCurrentDateHtml = () => formatDateHtml(new Date())
+export const utcEpoch = () => new Date(0)
 
 export enum DateRangeType {
   LastYear = "LastYear",
   ThisYear = "ThisYear",
   Ytd = "Ytd",
+  AllTime = "AllTime",
   Custom = "Custom",
 }
 

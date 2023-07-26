@@ -1,269 +1,25 @@
-import { Session } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 
-import { formatDateHtmlReverse } from "./util/date"
-import { fetchJsonData } from "./util/request"
-import { User } from "@/types/db"
-import { config } from "./util/config"
-
-export type QBOProfile = {
-  sub: string
-  aud: string[]
-  realmid: string
-  auth_time: number
-  iss: string
-  exp: number
-  iat: number
-}
-
-export type OpenIdUserInfo = {
-  sub: string
-  givenName: string
-  familyName: string
-  email: string
-  emailVerified: boolean
-  phoneNumber: string
-  phoneNumberVerified: boolean
-  address: {
-    streetAddress: string
-    locality: string
-    region: string
-    postalCode: string
-    country: string
-  }
-}
-
-export type ItemQueryResponseItem = {
-  Name: string
-  Description: string
-  Active: boolean
-  FullyQualifiedName: string
-  Taxable: boolean
-  UnitPrice: number
-  Type: string
-  IncomeAccountRef: {
-    value: string
-    name: string
-  }
-  PurchaseCost: number
-  TrackQtyOnHand: boolean
-  domain: string
-  sparse: boolean
-  Id: string
-  SyncToken: string
-  MetaData: {
-    CreateTime: string
-    LastUpdatedTime: string
-  }
-  SubItem?: boolean
-  ParentRef?: {
-    value: string
-    name: string
-  }
-  Level?: number
-}
-
-export type ItemQueryResponse = {
-  QueryResponse: {
-    Item: ItemQueryResponseItem[]
-    startPosition: number
-    maxResults: number
-  }
-  time: string
-}
-
-type Address = {
-  Id: string
-  Line1: string
-  City?: string
-  PostalCode?: string
-  Lat?: string
-  Long?: string
-  CountrySubDivisionCode?: string
-  Line2?: string
-  Line3?: string
-}
-
-type Customer = {
-  Taxable: boolean
-  Job: boolean
-  BillWithParent: boolean
-  Balance: number
-  BalanceWithJobs: number
-  CurrencyRef: {
-    value: string
-    name: string
-  }
-  PreferredDeliveryMethod: string
-  domain: "QBO"
-  sparse: boolean
-  Id: string
-  SyncToken: string
-  MetaData: {
-    CreateTime: string
-    LastUpdatedTime: string
-  }
-  GivenName: string
-  MiddleName: string
-  FamilyName: string
-  DisplayName: string
-  FullyQualifiedName: string
-  PrintOnCheckName: string
-  Active: boolean
-  PrimaryEmailAddr: {
-    Address: string
-  }
-  BillAddr?: Address
-  CompanyName?: string
-}
-
-export type CustomerQueryResult = {
-  QueryResponse: {
-    Customer: Customer[]
-    startPosition: number
-    maxResults: number
-  }
-  time: string
-}
-
-type ColData = {
-  value: string
-  id?: string
-}
-
-type Option = {
-  Name: string
-  Value: string
-}
-
-type MetaData = {
-  Name: string
-  Value: string
-}
-
-type Row = {
-  ColData: ColData[]
-}
-
-type CustomerSalesReportError = {
-  Fault: { Error: QboError[]; type: string }
-  time: string
-}
-type QboError = {
-  Message: string
-  Detail: string
-  code: string
-  element: string
-}
-
-export type CustomerSalesReport = {
-  Header: {
-    Time: string
-    ReportName: string
-    ReportBasis: string
-    StartPeriod: string
-    EndPeriod: string
-    SummarizeColumnsBy: string
-    Currency: string
-    Option: Option[]
-  }
-  Columns: {
-    Column: {
-      ColTitle: string
-      ColType: string
-      MetaData?: MetaData[]
-    }[]
-  }
-  Rows: {
-    Row: CustomerSalesReportRow[]
-  }
-}
-type CustomerSalesReportRow = SalesRow | SalesSectionRow | NotSpecifiedSalesRow | SalesTotalsRow
-export type SalesRow = {
-  ColData: ColData[]
-}
-type NotSpecifiedSalesRow = {
-  ColData: ColData[]
-  group: "**"
-}
-export type SalesSectionRow = {
-  Header: {
-    ColData: ColData[]
-  }
-  Rows: {
-    Row: (Row & { type: "data" })[]
-  }
-  Summary: Row
-  type: "Section"
-}
-// last row is of this shape showing the totals of all the respective items
-export type SalesTotalsRow = {
-  Summary: Row
-  type: "Section"
-  group: "GrandTotal"
-}
-
-export type Donation = {
-  name: string
-  id: number
-  total: number
-  products: { name: string; id: number; total: number }[]
-  address: string
-  email: string | null
-}
-export type DonationWithoutAddress = Omit<Donation, "address" | "email">
-
-export type Item = { name: string; id: number }
-
-type RowData = {
-  data: number[]
-  id: number
-  total: number
-  name: string
-}
-
-export type CompanyInfoQueryResult = {
-  QueryResponse: {
-    CompanyInfo: {
-      CompanyName: string
-      LegalName: string
-      CompanyAddr?: Address
-      CustomerCommunicationAddr: Address
-      LegalAddr?: Address
-      CustomerCommunicationEmailAddr: {
-        Address: string
-      }
-      PrimaryPhone: {}
-      CompanyStartDate: string
-      FiscalYearStartMonth: string
-      Country: string
-      Email: {
-        Address: string
-      }
-      WebAddr: {}
-      SupportedLanguages: string
-      NameValue: {
-        Name: string
-        Value: string
-      }[]
-      domain: "QBO"
-      sparse: boolean
-      Id: string
-      SyncToken: string
-      MetaData: {
-        CreateTime: string
-        LastUpdatedTime: string
-      }
-    }[]
-    maxResults: number
-  }
-  time: string
-}
-
-export type CompanyInfo = {
-  companyName: string
-  companyAddress: string
-  country: string
-}
+import { formatDateHtmlReverse } from "@/lib/util/date"
+import { fetchJsonData } from "@/lib/util/request"
+import { config } from "@/lib/util/config"
+import {
+  ItemQueryResponse,
+  Item,
+  SalesRow,
+  SalesSectionRow,
+  Donation,
+  DonationWithoutAddress,
+  CompanyInfoQueryResult,
+  CompanyInfo,
+  Address,
+  CustomerQueryResult,
+  CustomerSalesReport,
+  CustomerSalesReportRow,
+  CustomerSalesReportError,
+  ColData,
+  RowData,
+} from "@/types/qbo-api"
 
 const padIfExists = (str: string | null | undefined) => (str ? ` ${str}` : "")
 export const getAddressString = (address: Address): string =>
@@ -322,15 +78,16 @@ const notGroupedRow = (row: CustomerSalesReportRow): row is SalesRow | SalesSect
   !("group" in row)
 export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
-  selectedItemIds: Set<number>
+  selectedItemIds: number[]
 ): DonationWithoutAddress[] {
   const allItems = parseItemsFromReport(report)
 
   const allRows = report.Rows.Row
   const rowsToUse = allRows.filter<SalesRow | SalesSectionRow>(notGroupedRow)
+  const itemsSet = new Set(selectedItemIds)
 
   return rowsToUse
-    .map<DonationWithoutAddress>(row => createDonationFromRow(row, selectedItemIds, allItems))
+    .map<DonationWithoutAddress>(row => createDonationFromRow(row, itemsSet, allItems))
     .filter(donation => donation.total !== 0)
 }
 
@@ -341,13 +98,13 @@ function createDonationFromRow(
 ): DonationWithoutAddress {
   const { data, id, name } = getRowData(row)
 
-  const products = data
+  const items = data
     .map((total, index) => ({ total, ...allItems[index] }))
     .filter(({ total, id }) => total > 0 && selectedItemIds.has(id))
 
-  const total = products.reduce((sum, { total }) => sum + total, 0)
+  const total = items.reduce((sum, { total }) => sum + total, 0)
 
-  return { name, id, total, products }
+  return { name, id, total, items }
 }
 
 function skipFirstAndLast<T>(arr: T[]): T[] {
@@ -408,44 +165,56 @@ const baseApiRoute = nodeEnv && nodeEnv === "test" ? "test" : `${qboBaseApiRoute
 export const makeQueryUrl = (realmId: string, query: string) =>
   `${baseApiRoute}/${realmId}/query?query=${query}`
 
-async function getDates(dbUser: User): Promise<[string, string]> {
-  if (!dbUser.date) throw new Error("Date data not found in database")
+export async function getCustomerSalesReport(
+  accessToken: string,
+  realmId: string,
+  dates: { startDate: Date; endDate: Date }
+) {
+  const startDate = formatDateHtmlReverse(dates.startDate)
+  const endDate = formatDateHtmlReverse(dates.endDate)
 
-  return [formatDateHtmlReverse(dbUser.date.startDate), formatDateHtmlReverse(dbUser.date.endDate)]
-}
-
-export type QboConnectedSession = Session & { accessToken: string }
-
-export async function getCustomerSalesReport(session: QboConnectedSession, dbUser: User) {
-  const [startDate, endDate] = await getDates(dbUser)
-
-  const url = `${baseApiRoute}/${session.realmId}/reports/CustomerSales?\
+  const url = `${baseApiRoute}/${realmId}/reports/CustomerSales?\
 summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
 
-  return fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(url, session.accessToken)
+  const salesReport = await fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(
+    url,
+    accessToken
+  )
+  if ("Fault" in salesReport) {
+    const err = salesReport.Fault.Error[0]?.Message
+    throw new ApiError(
+      500,
+      "QBO did not return a sales report" + (err ? "\nQBO error: " + err : "")
+    )
+  }
+  return salesReport
 }
 
-export function getCustomerData(session: QboConnectedSession) {
-  const url = makeQueryUrl(session.realmId, "select * from Customer MAXRESULTS 1000")
+export function getCustomerData(accessToken: string, realmId: string) {
+  const url = makeQueryUrl(realmId, "select * from Customer MAXRESULTS 1000")
 
   // TODO may need to do multiple queries if the returned array is 1000, i.e. the query did not contain all customers
 
-  return fetchJsonData<CustomerQueryResult>(url, session.accessToken)
+  return fetchJsonData<CustomerQueryResult>(url, accessToken)
 }
 
-export async function getItems(session: QboConnectedSession) {
-  const url = makeQueryUrl(session.realmId, "select * from Item")
-  const itemQueryResponse = await fetchJsonData<ItemQueryResponse>(url, session.accessToken)
-  const items = itemQueryResponse.QueryResponse.Item
+export async function getItems(accessToken: string, realmId: string) {
+  const url = makeQueryUrl(realmId, "select * from Item")
+  const itemQuery = await fetchJsonData<ItemQueryResponse>(url, accessToken)
+  return formatItemQuery(itemQuery)
+}
+
+export function formatItemQuery(itemQuery: ItemQueryResponse) {
+  const items = itemQuery.QueryResponse.Item
   // TODO handle subitems
   return items
     .filter(item => !item.SubItem)
     .map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
 }
 
-export async function getCompanyInfo(session: QboConnectedSession) {
-  const url = makeQueryUrl(session.realmId, "select * from CompanyInfo")
-  const companyQueryResult = await fetchJsonData<CompanyInfoQueryResult>(url, session.accessToken)
+export async function getCompanyInfo(accessToken: string, realmId: string) {
+  const url = makeQueryUrl(realmId, "select * from CompanyInfo")
+  const companyQueryResult = await fetchJsonData<CompanyInfoQueryResult>(url, accessToken)
   return parseCompanyInfo(companyQueryResult)
 }
 
@@ -467,4 +236,19 @@ export function parseCompanyInfo({ QueryResponse }: CompanyInfoQueryResult): Com
     companyAddress: getValidAddress(LegalAddr, CompanyAddr),
     country: Country,
   }
+}
+
+export async function getDonations(
+  accessToken: string,
+  realmId: string,
+  dates: { startDate: Date; endDate: Date },
+  items: number[]
+) {
+  const [salesReport, customerQueryResult] = await Promise.all([
+    getCustomerSalesReport(accessToken, realmId, dates),
+    getCustomerData(accessToken, realmId),
+  ])
+
+  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, items)
+  return addBillingAddressesToDonations(donationDataWithoutAddresses, customerQueryResult)
 }

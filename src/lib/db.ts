@@ -1,4 +1,5 @@
 import admin from "firebase-admin"
+import { ApiError } from "next/dist/server/api-utils"
 
 import { Price, Product, User } from "@/types/db"
 import { config } from "@/lib/util/config"
@@ -75,6 +76,13 @@ const priceConverter = {
 }
 
 export const user = firestore.collection("user").withConverter(userConverter)
+export async function getUserData(id: string) {
+  const doc = await user.doc(id).get()
+  const dbUser = doc.data()
+  if (!dbUser) throw new ApiError(500, "user was not found in db")
+  return dbUser
+}
+
 export const product = firestore.collection("product").withConverter(productConverter)
 export const price = (id: string) =>
   product.doc(id).collection("price").withConverter(priceConverter)

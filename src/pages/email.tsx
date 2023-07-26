@@ -7,16 +7,11 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { postJsonData } from "@/lib/util/request"
 import { MissingData } from "@/components/ui"
 import { Fieldset, TextArea } from "@/components/form"
-import { user } from "@/lib/db"
-import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
-import { DoneeInfo, User } from "@/types/db"
-import {
-  addBillingAddressesToDonations,
-  createDonationsFromSalesReport,
-  getCustomerData,
-  getCustomerSalesReport,
-  QboConnectedSession,
-} from "@/lib/qbo-api"
+import { getUserData } from "@/lib/db"
+import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
+import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { DoneeInfo } from "@/types/db"
+import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { dummyEmailProps } from "@/emails/receipt"
 import { WithBody, WithBodyProps } from "@/components/receipt"
@@ -179,24 +174,6 @@ export default function Email(props: Props) {
   )
 }
 
-async function getUsersWithoutEmails(dbUser: User, session: QboConnectedSession) {
-  const [salesReport, customerQueryResult] = await Promise.all([
-    getCustomerSalesReport(session, dbUser),
-    getCustomerData(session),
-  ])
-
-  if ("Fault" in salesReport) throw new Error()
-
-  const products = new Set(dbUser.items as number[])
-  const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, products)
-  const customerData = addBillingAddressesToDonations(
-    donationDataWithoutAddresses,
-    customerQueryResult
-  )
-
-  return customerData.filter(entry => entry.email === null).map(entry => entry.name)
-}
-
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) throw new Error("Couldn't find session")
@@ -206,31 +183,28 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       props: {} as any,
     }
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
+  const user = await getUserData(session.user.id)
 
-  if (!dbUser) throw new Error("No user data found in database")
-
-  if (!isUserSubscribed(dbUser)) return { redirect: { permanent: false, destination: "/account" } }
-
-  const inDatabase = alreadyFilledIn(dbUser)
-  // if user has finished inputting necessary data then retrieve the list of donors who are missing emails
-  const readyToSend = inDatabase.items && inDatabase.doneeDetails
-  const donee = await downloadImagesForDonee(dbUser.donee)
-  if (!readyToSend)
+  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "/account" } }
+  if (!isUserDataComplete(user)) {
+    const { donee } = user
+    delete donee.signature
+    delete donee.smallLogo
     return {
       props: {
         status: AccountStatus.IncompleteData,
-        filledIn: inDatabase,
+        filledIn: checkUserDataCompletion(user),
         donee,
       },
     }
+  }
 
-  const noEmails = await getUsersWithoutEmails(dbUser, session)
+  const donations = await getDonations(session.accessToken, session.realmId, user.date, user.items)
+  const noEmails = donations.filter(entry => entry.email === null).map(entry => entry.name)
   return {
     props: {
       status: AccountStatus.Complete,
-      donee,
+      donee: await downloadImagesForDonee(user.donee),
       noEmails,
     },
   }
