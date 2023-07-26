@@ -98,13 +98,13 @@ function createDonationFromRow(
 ): DonationWithoutAddress {
   const { data, id, name } = getRowData(row)
 
-  const products = data
+  const items = data
     .map((total, index) => ({ total, ...allItems[index] }))
     .filter(({ total, id }) => total > 0 && selectedItemIds.has(id))
 
-  const total = products.reduce((sum, { total }) => sum + total, 0)
+  const total = items.reduce((sum, { total }) => sum + total, 0)
 
-  return { name, id, total, products }
+  return { name, id, total, items }
 }
 
 function skipFirstAndLast<T>(arr: T[]): T[] {

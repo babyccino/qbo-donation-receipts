@@ -142,20 +142,18 @@ export function DonationReceiptEmailInner({
         <Text style={sharedStyle.productsTitle}>Donations</Text>
       </Section>
       <Section>
-        {donation.products.map(
-          ({ name, total, id }: { name: string; id: number; total: number }) => (
-            <Row key={id}>
-              <Column style={{ paddingLeft: "22px" }}>
-                <Text style={sharedStyle.productTitle}>{name}</Text>
-                <Text style={sharedStyle.productDescription}>{""}</Text>
-              </Column>
+        {donation.items.map(({ name, total, id }: { name: string; id: number; total: number }) => (
+          <Row key={id}>
+            <Column style={{ paddingLeft: "22px" }}>
+              <Text style={sharedStyle.productTitle}>{name}</Text>
+              <Text style={sharedStyle.productDescription}>{""}</Text>
+            </Column>
 
-              <Column style={sharedStyle.productPriceWrapper} align="right">
-                <Text style={sharedStyle.productPrice}>{formatCurrency(total)}</Text>
-              </Column>
-            </Row>
-          )
-        )}
+            <Column style={sharedStyle.productPriceWrapper} align="right">
+              <Text style={sharedStyle.productPrice}>{formatCurrency(total)}</Text>
+            </Column>
+          </Row>
+        ))}
       </Section>
       <Hr style={sharedStyle.productPriceLine} />
       <Section align="right">
@@ -486,7 +484,7 @@ export function ReceiptPdfDocument({
           <PdfText style={styleSheet.productsTitle}>Donations</PdfText>
         </View>
         <View>
-          {donation.products.map(
+          {donation.items.map(
             ({ name, total, id }: { name: string; id: number; total: number }) => (
               <View
                 key={id}

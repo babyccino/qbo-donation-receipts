@@ -18,7 +18,7 @@ import {
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { getUserData } from "@/lib/db"
-import { DataType as ServicesApiDataType } from "@/pages/api/services"
+import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { checkUserDataCompletion } from "@/lib/db-helper"
@@ -57,7 +57,7 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
   return DateRangeType.Custom
 }
 
-export default function Services(props: Props) {
+export default function Items(props: Props) {
   const { items, detailsFilledIn } = props
   const propsDate = props.itemsFilledIn
     ? createDateRange(props.date.startDate, props.date.endDate)
@@ -114,8 +114,8 @@ export default function Services(props: Props) {
     event.preventDefault()
 
     const items = getItems()
-    const postData: ServicesApiDataType = { items, date: customDateState }
-    await postJsonData("/api/services", postData)
+    const postData: ItemsApiDataType = { items, date: customDateState }
+    await postJsonData("/api/items", postData)
 
     const destination = detailsFilledIn ? "/generate-receipts" : "/details"
     router.push({

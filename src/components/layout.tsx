@@ -48,7 +48,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         >
           <ul className="h-full space-y-2 overflow-y-auto bg-gray-50 px-3 py-4 font-medium dark:bg-gray-800">
             <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
-            <NavLink link="/services" logo={<Svg.Products />} label="Items" />
+            <NavLink link="/items" logo={<Svg.Products />} label="Items" />
             <NavLink link="/details" logo={<Svg.Components />} label="Details" />
             <NavLink link="/generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
             <NavLink link="/email" logo={<Svg.Envelope />} label="Email" />

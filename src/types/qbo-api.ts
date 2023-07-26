@@ -203,7 +203,7 @@ export type Donation = {
   name: string
   id: number
   total: number
-  products: { name: string; id: number; total: number }[]
+  items: { name: string; id: number; total: number }[]
   address: string
   email: string | null
 }

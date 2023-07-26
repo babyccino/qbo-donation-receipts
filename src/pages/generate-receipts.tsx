@@ -47,7 +47,7 @@ const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: b
       Some information necessary to generate your receipts is missing
     </span>
     <div className="flex justify-evenly gap-3">
-      {!filledIn.items && <Link href="/services">Fill in Qualifying Items</Link>}
+      {!filledIn.items && <Link href="/items">Fill in Qualifying Items</Link>}
       {!filledIn.doneeDetails && <Link href="/details">Fill in Donee Details</Link>}
     </div>
   </div>

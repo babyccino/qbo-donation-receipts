@@ -103,7 +103,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "John",
         id: 123,
         total: 100.0,
-        products: [
+        items: [
           {
             name: "Product A",
             id: 456,
@@ -220,7 +220,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Jeff",
         id: 22,
         total: 100.0,
-        products: [
+        items: [
           {
             name: "Product A",
             id: 456,
@@ -309,7 +309,7 @@ describe("createDonationsFromSalesReport", () => {
     expect(result).toEqual([])
   })
 
-  it("should convert a report with multiple products and customers correctly", () => {
+  it("should convert a report with multiple items and customers correctly", () => {
     const report: CustomerSalesReport = {
       Header,
       Columns: {
@@ -382,7 +382,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer A",
         id: 1,
         total: 30,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 10 },
           { name: "Widget C", id: 1003, total: 20 },
         ],
@@ -391,7 +391,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer B",
         id: 2,
         total: 40,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 15 },
           { name: "Widget B", id: 1002, total: 25 },
         ],
@@ -400,7 +400,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer C",
         id: 3,
         total: 55,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 20 },
           { name: "Widget C", id: 1003, total: 35 },
         ],
@@ -415,13 +415,13 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer A",
         id: 1,
         total: 10,
-        products: [{ name: "Widget A", id: 1001, total: 10 }],
+        items: [{ name: "Widget A", id: 1001, total: 10 }],
       },
       {
         name: "Customer B",
         id: 2,
         total: 40,
-        products: [
+        items: [
           { name: "Widget A", id: 1001, total: 15 },
           { name: "Widget B", id: 1002, total: 25 },
         ],
@@ -430,7 +430,7 @@ describe("createDonationsFromSalesReport", () => {
         name: "Customer C",
         id: 3,
         total: 20,
-        products: [{ name: "Widget A", id: 1001, total: 20 }],
+        items: [{ name: "Widget A", id: 1001, total: 20 }],
       },
     ]
 
@@ -677,7 +677,7 @@ describe("addAddressesToCustomerData", () => {
       name: "John",
       id: 123,
       total: 100,
-      products: [
+      items: [
         { name: "Product 1", id: 1, total: 50 },
         { name: "Product 2", id: 2, total: 50 },
       ],
@@ -686,7 +686,7 @@ describe("addAddressesToCustomerData", () => {
       name: "Jane",
       id: 456,
       total: 200,
-      products: [{ name: "Product 3", id: 3, total: 200 }],
+      items: [{ name: "Product 3", id: 3, total: 200 }],
     },
   ]
 
@@ -721,7 +721,7 @@ describe("addAddressesToCustomerData", () => {
         name: "John",
         id: 123,
         total: 100,
-        products: [
+        items: [
           { name: "Product 1", id: 1, total: 50 },
           { name: "Product 2", id: 2, total: 50 },
         ],
@@ -732,7 +732,7 @@ describe("addAddressesToCustomerData", () => {
         name: "Jane",
         id: 456,
         total: 200,
-        products: [{ name: "Product 3", id: 3, total: 200 }],
+        items: [{ name: "Product 3", id: 3, total: 200 }],
         address: "No billing address on file",
         email: null,
       },

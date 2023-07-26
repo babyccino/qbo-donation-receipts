@@ -55,7 +55,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
     const formData: DetailsApiDataType = await getFormData()
     await postJsonData("/api/details", formData)
 
-    const destination = itemsFilledIn ? "/generate-receipts" : "/services"
+    const destination = itemsFilledIn ? "/generate-receipts" : "/items"
     router.push({
       pathname: destination,
     })

@@ -56,7 +56,7 @@ const IndexPage = ({ filledIn }: Props) => (
         In just a few easy steps we can create and send your client{"'"}s donation receipts
       </p>
       {(!filledIn || (!filledIn.items && !filledIn.doneeDetails)) && (
-        <StyledLink href="/services" className="px-5 py-3 text-lg">
+        <StyledLink href="/items" className="px-5 py-3 text-lg">
           Get started
           <div className="-mb-1 ml-2 inline-block h-5 w-5">
             <Svg.RightArrow />
@@ -75,7 +75,7 @@ const IndexPage = ({ filledIn }: Props) => (
         <Svg.HandDrawnUpArrow />
       </div>
       <Card
-        href="/services"
+        href="/items"
         className="mt-4"
         title="Select your qualifying items"
         body="Select which of your QuickBooks sales constitute a gift"
