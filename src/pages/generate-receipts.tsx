@@ -11,7 +11,7 @@ import { Svg, Link, buttonStyling } from "@/components/ui"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { getDonations } from "@/lib/qbo-api"
 import { Donation } from "@/types/qbo-api"
-import { user } from "@/lib/db"
+import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -343,24 +343,23 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       props: {} as any,
     }
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
-  if (!dbUser) throw new Error("No user data found in database")
+  const user = await getUserData(session.user.id)
+  if (!user) throw new Error("No user data found in database")
 
-  if (!isUserDataComplete(dbUser))
+  if (!isUserDataComplete(user))
     return {
       props: {
         receiptsReady: false,
-        filledIn: checkUserDataCompletion(dbUser),
+        filledIn: checkUserDataCompletion(user),
       },
     }
 
   const [donations, donee] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, dbUser.date, dbUser.items),
-    downloadImagesForDonee(dbUser.donee),
+    getDonations(session.accessToken, session.realmId, user.date, user.items),
+    downloadImagesForDonee(user.donee),
   ])
 
-  const subscribed = isUserSubscribed(dbUser)
+  const subscribed = isUserSubscribed(user)
 
   return {
     props: {

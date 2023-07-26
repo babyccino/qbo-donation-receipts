@@ -1,7 +1,7 @@
 import { ApiError } from "next/dist/server/api-utils"
 import JSZip from "jszip"
 
-import { user } from "@/lib/db"
+import { getUserData } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
@@ -12,16 +12,14 @@ import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 
 const handler: AuthorisedHandler = async (req, res, session) => {
-  const doc = await user.doc(session.user.id).get()
   assertSessionIsQboConnected(session)
 
-  const dbUser = doc.data()
-  if (!dbUser) throw new ApiError(401, "No user data found in database")
-  if (!isUserDataComplete(dbUser)) throw new ApiError(401, "Data missing from user")
+  const user = await getUserData(session.user.id)
+  if (!isUserDataComplete(user)) throw new ApiError(401, "Data missing from user")
 
   const [donations, donee] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, dbUser.date, dbUser.items),
-    downloadImagesForDonee(dbUser.donee),
+    getDonations(session.accessToken, session.realmId, user.date, user.items),
+    downloadImagesForDonee(user.donee),
   ])
 
   const zip = new JSZip()

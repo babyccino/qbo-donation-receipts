@@ -5,7 +5,7 @@ import { Session, getServerSession } from "next-auth"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { buttonStyling } from "@/components/ui"
-import { user } from "@/lib/db"
+import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
@@ -130,15 +130,13 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
   if (!session) throw new Error("Couldn't find session")
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
-  if (!dbUser) throw new Error("User has no corresponding db entry")
+  const user = await getUserData(session.user.id)
 
   return {
     props: {
       session,
-      doneeInfo: dbUser.donee,
-      itemsFilledIn: checkUserDataCompletion(dbUser).items,
+      doneeInfo: user.donee,
+      itemsFilledIn: checkUserDataCompletion(user).items,
     },
   }
 }

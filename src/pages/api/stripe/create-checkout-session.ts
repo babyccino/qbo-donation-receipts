@@ -8,7 +8,7 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { user } from "@/lib/db"
+import { getUserData } from "@/lib/db"
 import { config } from "@/lib/util/config"
 
 export const parser = z.object({
@@ -21,8 +21,8 @@ const handler: AuthorisedHandler = async ({ body }, res, session) => {
   const data = parseRequestBody(parser, body)
   const { metadata, redirect } = data
 
-  const [dbSnap, stripeSession] = await Promise.all([
-    user.doc(session.user.id).get(),
+  const [user, stripeSession] = await Promise.all([
+    getUserData(session.user.id),
     stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       billing_address_collection: "required",
@@ -41,10 +41,8 @@ const handler: AuthorisedHandler = async ({ body }, res, session) => {
       cancel_url: `${getBaseUrl()}/`,
     }),
   ])
-
-  const dbUser = dbSnap.data()
-  if (!dbUser) throw new ApiError(500, "user record was not found in db")
-  if (isUserSubscribed(dbUser)) throw new ApiError(400, "user already subscribed")
+  if (!user) throw new ApiError(500, "user record was not found in db")
+  if (isUserSubscribed(user)) throw new ApiError(400, "user already subscribed")
 
   if (!stripeSession.url) throw new ApiError(502, "stripe did not send a redirect url")
 

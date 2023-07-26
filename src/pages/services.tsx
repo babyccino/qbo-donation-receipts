@@ -17,7 +17,7 @@ import {
 } from "@/lib/util/date"
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "./api/auth/[...nextauth]"
-import { user } from "@/lib/db"
+import { getUserData } from "@/lib/db"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
@@ -197,19 +197,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
       props: {} as any,
     }
 
-  const [doc, items] = await Promise.all([
-    user.doc(session.user.id).get(),
+  const [user, items] = await Promise.all([
+    getUserData(session.user.id),
     getItems(session.accessToken, session.realmId),
   ])
-  const dbUser = doc.data()
-  if (!dbUser) throw new Error("User has no corresponding db entry")
-  const detailsFilledIn = checkUserDataCompletion(dbUser).doneeDetails
+  if (!user) throw new Error("User has no corresponding db entry")
+  const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
 
-  if (dbUser.date && dbUser.items) {
-    const selectedItems = dbUser.items
+  if (user.date && user.items) {
+    const selectedItems = user.items
     const date = {
-      startDate: dbUser.date.startDate.toISOString(),
-      endDate: dbUser.date.endDate.toISOString(),
+      startDate: user.date.startDate.toISOString(),
+      endDate: user.date.endDate.toISOString(),
     }
 
     return {

@@ -7,7 +7,7 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { postJsonData } from "@/lib/util/request"
 import { MissingData } from "@/components/ui"
 import { Fieldset, TextArea } from "@/components/form"
-import { user } from "@/lib/db"
+import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { DoneeInfo } from "@/types/db"
@@ -183,36 +183,28 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       props: {} as any,
     }
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
+  const user = await getUserData(session.user.id)
 
-  if (!dbUser) throw new Error("No user data found in database")
-
-  if (!isUserSubscribed(dbUser)) return { redirect: { permanent: false, destination: "/account" } }
-  if (!isUserDataComplete(dbUser)) {
-    const { donee } = dbUser
+  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "/account" } }
+  if (!isUserDataComplete(user)) {
+    const { donee } = user
     delete donee.signature
     delete donee.smallLogo
     return {
       props: {
         status: AccountStatus.IncompleteData,
-        filledIn: checkUserDataCompletion(dbUser),
+        filledIn: checkUserDataCompletion(user),
         donee,
       },
     }
   }
 
-  const donations = await getDonations(
-    session.accessToken,
-    session.realmId,
-    dbUser.date,
-    dbUser.items
-  )
+  const donations = await getDonations(session.accessToken, session.realmId, user.date, user.items)
   const noEmails = donations.filter(entry => entry.email === null).map(entry => entry.name)
   return {
     props: {
       status: AccountStatus.Complete,
-      donee: await downloadImagesForDonee(dbUser.donee),
+      donee: await downloadImagesForDonee(user.donee),
       noEmails,
     },
   }

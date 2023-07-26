@@ -6,8 +6,8 @@ import Link from "next/link"
 
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Svg, Link as StyledLink } from "@/components/ui"
-import { user } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
+import { getUserData } from "@/lib/db"
 
 const Card = ({
   title,
@@ -123,10 +123,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const doc = await user.doc(session.user.id).get()
-  const dbUser = doc.data()
-
-  const filledIn = checkUserDataCompletion(dbUser)
+  const user = await getUserData(session.user.id)
+  const filledIn = checkUserDataCompletion(user)
 
   return {
     props: {

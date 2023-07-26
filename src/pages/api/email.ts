@@ -13,7 +13,7 @@ import {
 import { isUserDataComplete } from "@/lib/db-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
-import { user } from "@/lib/db"
+import { getUserData } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
 import { Donation } from "@/types/qbo-api"
 import { getThisYear } from "@/lib/util/date"
@@ -37,17 +37,14 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const data = parseRequestBody(parser, req.body)
   const { emailBody } = data
 
-  const doc = await user.doc(session.user.id).get()
+  const user = await getUserData(session.user.id)
+  if (!isUserDataComplete(user)) throw new ApiError(401, "User data incomplete")
 
-  const dbUser = doc.data()
-  if (!dbUser) throw new ApiError(401, "No user data found in database")
-  if (!isUserDataComplete(dbUser)) throw new ApiError(401, "User data incomplete")
-
-  const { donee, date } = dbUser
+  const { donee, date } = user
 
   const [donations, doneeWithImages] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, date, dbUser.items),
-    downloadImagesForDonee(dbUser.donee),
+    getDonations(session.accessToken, session.realmId, date, user.items),
+    downloadImagesForDonee(user.donee),
   ])
 
   let counter = getThisYear()
@@ -92,7 +89,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     )
 
     await transporter.sendMail({
-      from: { address: dbUser.email, name: companyName },
+      from: { address: user.email, name: companyName },
       to: recipient,
       subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
       attachments: [
