@@ -191,11 +191,60 @@ type Props =
     }
 
 // ----- PAGE ----- //
+
+enum Sort {
+  Default = 0,
+  NameAsc,
+  NameDesc,
+  TotalAsc,
+  TotalDesc,
+}
+
+function getSortedDonations(donations: Donation[], sort: Sort) {
+  switch (sort) {
+    case Sort.NameAsc:
+      return donations.sort((a, b) => a.name.localeCompare(b.name))
+    case Sort.NameDesc:
+      return donations.sort((a, b) => b.name.localeCompare(a.name))
+    case Sort.TotalAsc:
+      return donations.sort((a, b) => a.total - b.total)
+    case Sort.TotalDesc:
+      return donations.sort((a, b) => b.total - a.total)
+    case Sort.Default:
+    default:
+      return donations
+  }
+}
+
+const unsortedSymbol = (
+  <span className="relative">
+    <span className="absolute translate-y-[0.21rem]">▾</span>
+    <span className="absolute translate-y-[-0.21rem]">▴</span>
+    <span className="opacity-0">▾</span>
+  </span>
+)
+function getSortSymbols(sort: Sort): { name: ReactNode; total: ReactNode } {
+  switch (sort) {
+    case Sort.NameAsc:
+      return { name: "▾", total: unsortedSymbol }
+    case Sort.NameDesc:
+      return { name: "▴", total: unsortedSymbol }
+    case Sort.TotalAsc:
+      return { total: "▴", name: unsortedSymbol }
+    case Sort.TotalDesc:
+      return { total: "▾", name: unsortedSymbol }
+    default:
+      return { name: unsortedSymbol, total: unsortedSymbol }
+  }
+}
 export default function IndexPage(props: Props) {
+  const [sort, setSort] = useState<Sort>(Sort.Default)
+
   if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
   const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "CAD" })
-  const { donations: customerData, doneeInfo, subscribed } = props
+  const { doneeInfo, subscribed } = props
+  const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
   const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
@@ -225,7 +274,6 @@ export default function IndexPage(props: Props) {
     )
   }
 
-  // TODO add sort by total donation/name
   return (
     <section className="flex h-full w-full flex-col p-8">
       {subscribed && (
@@ -252,11 +300,19 @@ export default function IndexPage(props: Props) {
         <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
           <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
             <tr>
-              <th scope="col" className="px-6 py-3">
-                Donor Name
+              <th
+                scope="col"
+                className="cursor-pointer px-6 py-3"
+                onClick={() => setSort(sort === Sort.NameAsc ? Sort.NameDesc : Sort.NameAsc)}
+              >
+                Donor Name {getSortSymbols(sort).name}
               </th>
-              <th scope="col" className="px-6 py-3">
-                Total
+              <th
+                scope="col"
+                className="cursor-pointer px-6 py-3"
+                onClick={() => setSort(sort === Sort.TotalDesc ? Sort.TotalAsc : Sort.TotalDesc)}
+              >
+                Total {getSortSymbols(sort).total}
               </th>
               <th scope="col" className="px-6 py-3">
                 Show Receipt
@@ -267,7 +323,7 @@ export default function IndexPage(props: Props) {
             </tr>
           </thead>
           <tbody>
-            {customerData.map(mapCustomerToTableRow)}
+            {donations.map(mapCustomerToTableRow)}
             {!subscribed && <BlurredRows />}
           </tbody>
         </table>
