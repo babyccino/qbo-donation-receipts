@@ -1,16 +1,18 @@
 import {
   combineCustomerQueries,
   getAddressString,
-  CustomerSalesReport,
-  CompanyInfoQueryResult,
-  CustomerQueryResult,
-  DonationWithoutAddress,
   createDonationsFromSalesReport,
   addBillingAddressesToDonations,
   formatItemQuery,
   parseCompanyInfo,
-  ItemQueryResponse,
 } from "@/lib/qbo-api"
+import {
+  CustomerSalesReport,
+  CompanyInfoQueryResult,
+  CustomerQueryResult,
+  DonationWithoutAddress,
+  ItemQueryResponse,
+} from "@/types/qbo-api"
 import { DeepPartial } from "@/lib/util/etc"
 
 const Header = Object.freeze({

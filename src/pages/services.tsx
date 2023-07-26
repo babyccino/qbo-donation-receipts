@@ -6,7 +6,8 @@ import Datepicker from "react-tailwindcss-datepicker"
 import { Alert, Button } from "flowbite-react"
 
 import { buttonStyling, Svg } from "@/components/ui"
-import { Item, getItems } from "@/lib/qbo-api"
+import { getItems } from "@/lib/qbo-api"
+import { Item } from "@/types/qbo-api"
 import {
   DateRangeType,
   endOfPreviousYear,
