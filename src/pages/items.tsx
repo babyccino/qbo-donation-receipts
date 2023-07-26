@@ -14,6 +14,7 @@ import {
   endOfThisYear,
   startOfPreviousYear,
   startOfThisYear,
+  utcEpoch,
 } from "@/lib/util/date"
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "./api/auth/[...nextauth]"
@@ -90,6 +91,9 @@ export default function Items(props: Props) {
         return setCustomDateState({ startDate: startOfThisYear(), endDate: endOfThisYear() })
       case DateRangeType.Ytd:
         return setCustomDateState({ startDate: startOfThisYear(), endDate: new Date() })
+      case DateRangeType.AllTime:
+        // TODO update before 2049/12/31
+        return setCustomDateState({ startDate: utcEpoch(), endDate: new Date("2050/1/1") })
       case DateRangeType.LastYear:
       case DateRangeType.Custom:
       default:
@@ -166,6 +170,7 @@ export default function Items(props: Props) {
           <option value={DateRangeType.LastYear}>Last year</option>
           <option value={DateRangeType.ThisYear}>This year</option>
           <option value={DateRangeType.Ytd}>This year to date</option>
+          <option value={DateRangeType.AllTime}>All time</option>
           <option value={DateRangeType.Custom}>Custom range</option>
         </Select>
         <p className="mt-2 space-y-1">
