@@ -1,6 +1,5 @@
 import { ReactNode, useState } from "react"
 import { GetServerSideProps } from "next"
-import { ApiError } from "next/dist/server/api-utils"
 import { getServerSession, Session } from "next-auth"
 import { twMerge } from "tailwind-merge"
 import download from "downloadjs"
@@ -12,12 +11,13 @@ import { Svg, Link, buttonStyling } from "@/components/ui"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { Donation, getDonations } from "@/lib/qbo-api"
 import { user } from "@/lib/db"
-import { alreadyFilledIn, isSessionQboConnected, receiptReady } from "@/lib/app-api"
-import { getThisYear } from "@/lib/util/date"
+import { alreadyFilledIn, receiptReady } from "@/lib/db-helper"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { DoneeInfo } from "@/types/db"
+import { getThisYear } from "@/lib/util/date"
+import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)

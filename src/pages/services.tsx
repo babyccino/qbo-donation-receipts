@@ -17,9 +17,10 @@ import {
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { user } from "@/lib/db"
-import { alreadyFilledIn, isSessionQboConnected } from "@/lib/app-api"
 import { DataType as ServicesApiDataType } from "@/pages/api/services"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
+import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { alreadyFilledIn } from "@/lib/db-helper"
 
 type DateRange = { startDate: Date; endDate: Date }
 type StringDateRange = { startDate: string; endDate: string }
@@ -195,7 +196,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
       props: {} as any,
     }
 
-  const [doc, items] = await Promise.all([user.doc(session.user.id).get(), getItems(session)])
+  const [doc, items] = await Promise.all([
+    user.doc(session.user.id).get(),
+    getItems(session.accessToken, session.realmId),
+  ])
   const dbUser = doc.data()
   if (!dbUser) throw new Error("User has no corresponding db entry")
   const detailsFilledIn = alreadyFilledIn(dbUser).doneeDetails

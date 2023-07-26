@@ -1,7 +1,8 @@
 import Stripe from "stripe"
-import { user } from "./db"
+
+import { user } from "@/lib/db"
 import { User } from "@/types/db"
-import { config } from "./util/config"
+import { config } from "@/lib/util/config"
 
 export const stripe = new Stripe(config.stripePrivateKey ?? "", { apiVersion: "2022-11-15" })
 

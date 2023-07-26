@@ -6,12 +6,9 @@ import { getDonations } from "@/lib/qbo-api"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { getThisYear } from "@/lib/util/date"
-import {
-  assertSessionIsQboConnected,
-  AuthorisedHandler,
-  createAuthorisedHandler,
-  receiptReady,
-} from "@/lib/app-api"
+import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/util/request-server"
+import { receiptReady } from "@/lib/db-helper"
+import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 
 const handler: AuthorisedHandler = async (req, res, session) => {

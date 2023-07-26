@@ -7,7 +7,7 @@ import Link from "next/link"
 import { authOptions } from "./api/auth/[...nextauth]"
 import { Svg, Link as StyledLink } from "@/components/ui"
 import { user } from "@/lib/db"
-import { alreadyFilledIn } from "@/lib/app-api"
+import { alreadyFilledIn } from "@/lib/db-helper"
 
 const Card = ({
   title,

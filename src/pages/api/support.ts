@@ -2,7 +2,7 @@ import * as aws from "@aws-sdk/client-ses"
 import nodemailer from "nodemailer"
 import { z } from "zod"
 
-import { parseRequestBody } from "@/lib/app-api"
+import { parseRequestBody } from "@/lib/util/request-server"
 import { NextApiHandler } from "next"
 
 const sesClient = new aws.SESClient({ apiVersion: "2010-12-01", region: "us-east-2" })

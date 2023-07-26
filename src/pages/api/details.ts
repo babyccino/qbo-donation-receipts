@@ -1,8 +1,12 @@
 import { z } from "zod"
 
 import { storageBucket, user } from "@/lib/db"
-import { AuthorisedHandler, createAuthorisedHandler, parseRequestBody } from "@/lib/app-api"
 import { isJpegOrPngDataURL } from "@/lib/util/request"
+import {
+  AuthorisedHandler,
+  createAuthorisedHandler,
+  parseRequestBody,
+} from "@/lib/util/request-server"
 
 async function uploadImage(dataUrl: string, path: string, pub: boolean): Promise<string> {
   const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
