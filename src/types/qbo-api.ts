@@ -1,11 +1,23 @@
 export type QBOProfile = {
   sub: string
   aud: string[]
-  realmid: string
   auth_time: number
   iss: string
   exp: number
   iat: number
+  realmid?: string
+}
+
+export type QboAccount = {
+  provider: string
+  type: string
+  providerAccountId: string
+  access_token: string
+  token_type: string
+  x_refresh_token_expires_in: number
+  id_token: string
+  refresh_token: string
+  expires_at: number
 }
 
 export type OpenIdUserInfo = {

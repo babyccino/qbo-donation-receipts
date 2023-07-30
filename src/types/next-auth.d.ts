@@ -12,8 +12,9 @@ declare module "next-auth" {
       email: string
     }
     expires: string
-    accessToken: string | null
-    realmId: string
+    accessToken: string
+    connected: boolean
+    realmId: string | null
   }
 
   interface Profile {

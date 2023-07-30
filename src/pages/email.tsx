@@ -9,7 +9,7 @@ import { MissingData } from "@/components/ui"
 import { Fieldset, TextArea } from "@/components/form"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
-import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { DoneeInfo } from "@/types/db"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -177,13 +177,10 @@ export default function Email(props: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session))
-    return {
-      redirect: { destination: "/auth/disconnected" },
-      props: {} as any,
-    }
+  if (!isSessionQboConnected(session)) return disconnectedRedirect
 
   const user = await getUserData(session.user.id)
+  if (!user.donee) return disconnectedRedirect
 
   if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "/account" } }
   if (!isUserDataComplete(user)) {

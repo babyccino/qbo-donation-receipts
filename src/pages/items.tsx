@@ -21,7 +21,7 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { getUserData } from "@/lib/db"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
-import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 
 type DateRange = { startDate: Date; endDate: Date }
@@ -196,11 +196,7 @@ export default function Items(props: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
   if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session))
-    return {
-      redirect: { destination: "/auth/disconnected" },
-      props: {} as any,
-    }
+  if (!isSessionQboConnected(session)) return disconnectedRedirect
 
   const [user, items] = await Promise.all([
     getUserData(session.user.id),

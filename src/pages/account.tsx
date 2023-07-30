@@ -7,7 +7,7 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { getImageUrl, getUserData } from "@/lib/db"
 import { Subscription } from "@/types/db"
 import { Svg } from "@/components/ui"
-import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
+import { fetchJsonData, postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import Image from "next/image"
 import { useRouter } from "next/router"
 import { DataType } from "./api/stripe/update-subscription"
@@ -15,6 +15,7 @@ import { getDaysBetweenDates } from "@/lib/util/date"
 import { isUserSubscribed } from "@/lib/stripe"
 import { signIn, useSession } from "next-auth/react"
 import { Connect } from "@/components/qbo"
+import { DisconnectBody } from "./api/auth/disconnect"
 
 type Account = { country: string; name: string; logo: string; companyName: string }
 type PropsSubscription = {
@@ -156,8 +157,9 @@ function ProfileCard({
           color="light"
           className="flex-shrink"
           onClick={async () => {
-            await postJsonData("/api/auth/disconnect")
-            router.push("/auth/disconnected")
+            const body: DisconnectBody = { redirect: false }
+            const res = await postJsonData("/api/auth/disconnect?revoke=true", body)
+            router.push(res.redirect)
           }}
         >
           Disconnect

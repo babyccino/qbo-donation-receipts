@@ -1,4 +1,4 @@
-import { NextApiResponse, NextApiRequest } from "next"
+import { NextApiResponse, NextApiRequest, Redirect } from "next"
 import { ApiError } from "next/dist/server/api-utils"
 import { getCsrfToken } from "next-auth/react"
 import { encode, JWT } from "next-auth/jwt"
@@ -6,10 +6,8 @@ import { Session } from "next-auth"
 import crypto from "@/lib/crypto"
 
 import { getBaseUrl } from "@/lib/util/request"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { config } from "@/lib/util/config"
 
-const defaultProviderId = authOptions.providers[0].id
 const { nextauthSecret, vercelEnv } = config
 
 const sessionCookie = (vercelEnv ? "__Secure-" : "") + "next-auth.session-token"
@@ -60,6 +58,7 @@ function splitCookies(cookie: string): string[] {
 }
 
 export async function serverSignIn(
+  provider: string,
   req: NextApiRequest,
   res: NextApiResponse,
   redirect: boolean,
@@ -69,7 +68,7 @@ export async function serverSignIn(
     req.cookies["next-auth.csrf-token"]
   )
   const cookie = `${csrfCookie}=${csrfToken}|${csrfTokenHash}`
-  const url = `${getBaseUrl()}api/auth/signin/${defaultProviderId}`
+  const url = `${getBaseUrl()}api/auth/signin/${provider}`
   const opt = {
     method: "post",
     headers: {
@@ -106,11 +105,15 @@ export async function updateServerSession(res: NextApiResponse, token: JWT) {
   )
 }
 
-type QboConnectedSession = Session & { accessToken: string }
+type QboConnectedSession = Session & { realmId: string; connected: true }
 export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
-  Boolean(session.accessToken)
+  session.connected
 export function assertSessionIsQboConnected(
   session: Session
 ): asserts session is QboConnectedSession {
-  if (!session.accessToken) throw new ApiError(401, "user not qbo connected")
+  if (!isSessionQboConnected(session)) throw new ApiError(401, "user not qbo connected")
+}
+
+export const disconnectedRedirect: { redirect: Redirect } = {
+  redirect: { permanent: false, destination: "/auth/disconnected" },
 }

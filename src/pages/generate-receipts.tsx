@@ -18,7 +18,7 @@ import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { DoneeInfo } from "@/types/db"
 import { getThisYear } from "@/lib/util/date"
-import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -337,11 +337,7 @@ export default function IndexPage(props: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session))
-    return {
-      redirect: { destination: "/auth/disconnected" },
-      props: {} as any,
-    }
+  if (!isSessionQboConnected(session)) return disconnectedRedirect
 
   const user = await getUserData(session.user.id)
   if (!user) throw new Error("No user data found in database")

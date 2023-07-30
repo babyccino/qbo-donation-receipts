@@ -12,6 +12,6 @@ const handler: NextApiHandler = async (req, res) => {
   const session = await getServerSession(req, res, authOptions)
   if (session) return res.redirect(302, "/")
 
-  void serverSignIn(req, res, true)
+  void serverSignIn("QBO", req, res, true)
 }
 export default handler

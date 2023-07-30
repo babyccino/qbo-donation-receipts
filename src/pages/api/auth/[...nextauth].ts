@@ -5,7 +5,7 @@ import { CallbacksOptions } from "next-auth"
 
 import { user as firestoreUser } from "@/lib/db"
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { QBOProfile, OpenIdUserInfo } from "@/types/qbo-api"
+import { QBOProfile, OpenIdUserInfo, QboAccount, CompanyInfo } from "@/types/qbo-api"
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 import { ApiError } from "next/dist/server/api-utils"
@@ -20,7 +20,7 @@ const {
 } = config
 const MS_IN_HOUR = 3600000
 
-export const customProvider: OAuthConfig<QBOProfile> = {
+export const qboProvider: OAuthConfig<QBOProfile> = {
   id: "QBO",
   name: "QBO",
   clientId: qboClientId,
@@ -36,6 +36,15 @@ export const customProvider: OAuthConfig<QBOProfile> = {
   profile: profile => ({
     id: profile.sub,
   }),
+}
+
+export const qboProviderDisconnected: OAuthConfig<QBOProfile> = {
+  ...qboProvider,
+  id: "QBO-disconnected",
+  name: "QBO-disconnected",
+  authorization: {
+    params: { scope: "openid profile address email phone" },
+  },
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
@@ -65,12 +74,14 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   }
 }
 
-type QboCBOptions = CallbacksOptions<QBOProfile, Account>
-const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
+type QboCallbacksOptions = CallbacksOptions<QBOProfile, QboAccount>
+const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile }) => {
   if (!account || !profile) return "/404"
 
   const { access_token: accessToken, providerAccountId: id } = account
   if (!accessToken) throw new ApiError(500, "access token not provided")
+
+  // realmId will be undefined if the user is not connected
   const { realmid: realmId } = profile
   const doc = firestoreUser.doc(id)
 
@@ -82,11 +93,11 @@ const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
       `${qboAccountsBaseRoute}/openid_connect/userinfo`,
       accessToken as string
     ),
-    getCompanyInfo(accessToken, realmId),
+    realmId ? getCompanyInfo(accessToken, realmId) : null,
     doc.get(),
   ])
 
-  if (companyInfo?.country !== "CA") return "/terms/country"
+  if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
   if (!userInfo.emailVerified) return "/terms/email-verified"
 
   const { email, givenName: name } = userInfo
@@ -94,12 +105,28 @@ const signIn: QboCBOptions["signIn"] = async ({ user, account, profile }) => {
   user.name = name
 
   const dbUserData = dbUser.data()
-  if (!dbUserData) doc.set({ id, name, email, realmId, donee: companyInfo }, { merge: true })
+  if (!dbUserData) {
+    const data = realmId
+      ? { id, name, email, realmId, donee: companyInfo as CompanyInfo }
+      : { id, name, email, realmId }
+    doc.set(data, { merge: true })
+  }
+  // in the case where the user previously signed in without connecting but has now been connected
+  // the company info can now be inserted into the db
+  else if (realmId && !dbUserData.donee)
+    doc.set({ donee: companyInfo as CompanyInfo }, { merge: true })
 
   return true
 }
 
-const jwt: QboCBOptions["jwt"] = async ({ token, account, profile, user, trigger, session }) => {
+const jwt: QboCallbacksOptions["jwt"] = async ({
+  token,
+  account,
+  profile,
+  user,
+  trigger,
+  session,
+}) => {
   if (account && profile) {
     const {
       access_token: accessToken,
@@ -119,7 +146,8 @@ const jwt: QboCBOptions["jwt"] = async ({ token, account, profile, user, trigger
       refreshToken,
       accessTokenExpires,
       id,
-      realmId,
+      realmId: realmId ?? null,
+      connected: Boolean(realmId),
       name: user.name as string,
       email: user.email as string,
     }
@@ -137,7 +165,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/auth/signin",
   },
-  providers: [customProvider],
+  providers: [qboProvider, qboProviderDisconnected],
   theme: {
     colorScheme: "dark",
   },
@@ -150,6 +178,7 @@ export const authOptions: NextAuthOptions = {
       ...session,
       accessToken: token.accessToken as string,
       realmId: token.realmId as string,
+      connected: token.connected as boolean,
       user: {
         id: token.id as string,
         name: token.name as string,
