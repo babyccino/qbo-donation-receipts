@@ -15,7 +15,7 @@ export const parser = z.object({
   redirect: z.string().optional(),
   metadata: z.record(z.string(), z.any()).default({}),
 })
-export type DataType = Partial<z.infer<typeof parser>>
+export type DataType = z.input<typeof parser>
 
 const handler: AuthorisedHandler = async ({ body }, res, session) => {
   const data = parseRequestBody(parser, body)
