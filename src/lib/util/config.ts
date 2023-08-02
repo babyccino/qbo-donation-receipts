@@ -14,10 +14,11 @@ function getVitalEnvVariable(environmentVariable: string): string {
   }
 }
 
-type Config<T> = {
+type ConfigInput = Record<string, boolean>
+type Config<T extends ConfigInput> = {
   [K in keyof T as SnakeToCamelCase<K & string>]: T[K] extends true ? string : string | undefined
 }
-function getConfig<T extends Record<string, boolean>>(conf: T): Config<T> {
+function getConfig<T extends ConfigInput>(conf: T): Config<T> {
   const keys = Object.keys(conf)
   const ret = {} as any
   for (const key of keys) {
