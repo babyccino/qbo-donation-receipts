@@ -1,4 +1,4 @@
-import NextAuth, { Account, NextAuthOptions } from "next-auth"
+import NextAuth, { NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
 import { CallbacksOptions } from "next-auth"
@@ -9,6 +9,7 @@ import { QBOProfile, OpenIdUserInfo, QboAccount, CompanyInfo } from "@/types/qbo
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 import { ApiError } from "next/dist/server/api-utils"
+import { QboPermission } from "@/types/next-auth-helper"
 
 const {
   qboClientId,
@@ -81,7 +82,7 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   const { access_token: accessToken, providerAccountId: id } = account
   if (!accessToken) throw new ApiError(500, "access token not provided")
 
-  // realmId will be undefined if the user is not connected
+  // realmId will be undefined if the user doesn't have qbo accounting permission
   const { realmid: realmId } = profile
   const doc = firestoreUser.doc(id)
 
@@ -147,7 +148,7 @@ const jwt: QboCallbacksOptions["jwt"] = async ({
       accessTokenExpires,
       id,
       realmId: realmId ?? null,
-      connected: Boolean(realmId),
+      connected: realmId ? QboPermission.Accounting : QboPermission.Profile,
       name: user.name as string,
       email: user.email as string,
     }
@@ -176,8 +177,8 @@ export const authOptions: NextAuthOptions = {
     jwt,
     session: async ({ session, token }) => ({
       ...session,
-      accessToken: token.accessToken as string,
-      realmId: token.realmId as string,
+      accessToken: token.accessToken as string | null,
+      realmId: token.realmId as string | null,
       connected: token.connected as boolean,
       user: {
         id: token.id as string,

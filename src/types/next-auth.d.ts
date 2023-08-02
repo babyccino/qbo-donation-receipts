@@ -1,5 +1,7 @@
 import NextAuth from "next-auth"
 
+import { QboPermission } from "./next-auth-helper"
+
 declare module "next-auth" {
   /**
    * Returned by `useSession`, `getSession` and received as a prop on the `SessionProvider` React Context
@@ -12,8 +14,8 @@ declare module "next-auth" {
       email: string
     }
     expires: string
-    accessToken: string
-    connected: boolean
+    accessToken: string | null
+    qboPermission: QboPermission
     realmId: string | null
   }
 
