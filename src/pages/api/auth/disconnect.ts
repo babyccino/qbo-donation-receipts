@@ -48,7 +48,7 @@ async function disconnectClient(req: NextApiRequest, res: NextApiResponse) {
 
   token.accessToken = null
   token.realmId = null
-  token.connected = QboPermission.None
+  token.qboPermission = QboPermission.None
   return updateServerSession(res, token)
 }
 
@@ -64,13 +64,16 @@ const handler: NextApiHandler = async (req, res) => {
   const session = await getServerSession(req, res, authOptions)
 
   // if the user is signed in already and disconnected just redirect to the information page
-  if (session && isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
+  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
+
   const shouldRevokeAccessToken = req.query["revoke"] === "true"
   if (session && session.accessToken && shouldRevokeAccessToken)
     await revokeAccessToken(session.accessToken)
 
-  const { redirect, reconnect } = parseRequestBody(parser, req.body)
-  if (reconnect) {
+  const { redirect, reconnect } = req.body
+    ? parseRequestBody(parser, req.body)
+    : { redirect: true, reconnect: false }
+  if (reconnect || !session) {
     const redirectUrl = await serverSignIn(
       "QBO-disconnected",
       req,

@@ -148,7 +148,7 @@ const jwt: QboCallbacksOptions["jwt"] = async ({
       accessTokenExpires,
       id,
       realmId: realmId ?? null,
-      connected: realmId ? QboPermission.Accounting : QboPermission.Profile,
+      qboPermission: realmId ? QboPermission.Accounting : QboPermission.Profile,
       name: user.name as string,
       email: user.email as string,
     }
@@ -160,6 +160,20 @@ const jwt: QboCallbacksOptions["jwt"] = async ({
 
   if (Date.now() >= (token.accessTokenExpires as number)) return refreshAccessToken(token)
   else return token
+}
+
+const session: QboCallbacksOptions["session"] = async ({ session, token }) => {
+  return {
+    ...session,
+    accessToken: token.accessToken as string | null,
+    realmId: token.realmId as string | null,
+    qboPermission: token.qboPermission as QboPermission,
+    user: {
+      id: token.id as string,
+      name: token.name as string,
+      email: token.email as string,
+    },
+  }
 }
 
 export const authOptions: NextAuthOptions = {
@@ -175,17 +189,7 @@ export const authOptions: NextAuthOptions = {
     signIn,
     // @ts-ignore
     jwt,
-    session: async ({ session, token }) => ({
-      ...session,
-      accessToken: token.accessToken as string | null,
-      realmId: token.realmId as string | null,
-      connected: token.connected as boolean,
-      user: {
-        id: token.id as string,
-        name: token.name as string,
-        email: token.email as string,
-      },
-    }),
+    session,
   },
   session: { maxAge: 60 * 30 },
   secret: nextauthSecret,
