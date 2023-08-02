@@ -2,7 +2,7 @@ import { NextApiHandler } from "next"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { serverSignIn } from "@/lib/util/next-auth-helper"
+import { serverSignIn } from "@/lib/util/next-auth-helper-server"
 
 const handler: NextApiHandler = async (req, res) => {
   if (req.method !== "GET") {
