@@ -1,12 +1,16 @@
+import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
+import { getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
+import { z } from "zod"
+
 import { base64EncodeString, getResponseContent } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
-import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper"
-import { getToken } from "next-auth/jwt"
-import { ApiError } from "next/dist/server/api-utils"
-import { NextApiHandler } from "next"
-import { getServerSession } from "next-auth"
+import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { parseRequestBody } from "@/lib/util/request-server"
+import { getToken } from "next-auth/jwt"
+import { QboPermission } from "@/types/next-auth-helper"
 
 const {
   qboClientId,
@@ -31,28 +35,60 @@ async function revokeAccessToken(token: string): Promise<void> {
   })
 
   if (!response.ok) {
-    throw new Error(`access token could not be revoked: ${await getResponseContent(response)}`)
+    throw new ApiError(
+      500,
+      `access token could not be revoked: ${await getResponseContent(response)}`
+    )
   }
 }
+
+async function disconnectClient(req: NextApiRequest, res: NextApiResponse) {
+  const token = await getToken({ req, secret, secureCookie: Boolean(vercelEnv) })
+  if (!token) throw new ApiError(500, "Client has session but session token was not found")
+
+  token.accessToken = null
+  token.realmId = null
+  token.qboPermission = QboPermission.None
+  return updateServerSession(res, token)
+}
+
+export const parser = z.object({
+  redirect: z.boolean().default(true),
+  reconnect: z.boolean().default(false),
+})
+export type DisconnectBody = z.input<typeof parser>
 
 const handler: NextApiHandler = async (req, res) => {
   if (!(req.method === "GET" || req.method === "POST")) return res.status(405).end()
 
   const session = await getServerSession(req, res, authOptions)
 
-  // if user is not signed in, sign them in, then return to this route
-  if (!session) return serverSignIn(req, res, true, "/api/auth/disconnect")
+  // if the user is signed in already and disconnected just redirect to the information page
+  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
 
-  if (!isSessionQboConnected(session)) {
-    return res.redirect(302, "/auth/disconnected")
+  const shouldRevokeAccessToken = req.query["revoke"] === "true"
+  if (session && session.accessToken && shouldRevokeAccessToken)
+    await revokeAccessToken(session.accessToken)
+
+  const { redirect, reconnect } = req.body
+    ? parseRequestBody(parser, req.body)
+    : { redirect: true, reconnect: false }
+  if (reconnect || !session) {
+    const redirectUrl = await serverSignIn(
+      "QBO-disconnected",
+      req,
+      res,
+      redirect,
+      "/auth/disconnected"
+    )
+
+    if (redirect) return
+    else res.status(200).json({ redirect: redirectUrl })
+  } else {
+    await disconnectClient(req, res)
+
+    if (redirect) res.redirect(302, "/auth/disconnected")
+    else res.status(200).json({ redirect: "/auth/disconnected" })
   }
-
-  const token = await getToken({ req, secret, secureCookie: Boolean(vercelEnv) })
-  if (!token) throw new ApiError(500, "Client has session but session token was not found")
-
-  token.accessToken = null
-  await Promise.all([revokeAccessToken(session.accessToken), updateServerSession(res, token)])
-
-  res.redirect(302, "/auth/disconnected")
 }
 export default handler

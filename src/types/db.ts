@@ -19,7 +19,7 @@ export type User = {
     startDate: Date
     endDate: Date
   }
-  donee: DoneeInfo
+  donee?: DoneeInfo
   subscription?: Subscription
   billingAddress?: BillingAddress
 }

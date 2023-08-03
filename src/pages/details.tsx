@@ -11,6 +11,7 @@ import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
+import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -129,8 +130,10 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
   if (!session) throw new Error("Couldn't find session")
+  if (!isSessionQboConnected(session)) return disconnectedRedirect
 
   const user = await getUserData(session.user.id)
+  if (!user.donee) return disconnectedRedirect
 
   return {
     props: {

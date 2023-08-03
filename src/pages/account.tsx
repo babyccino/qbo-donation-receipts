@@ -1,4 +1,4 @@
-import { MouseEventHandler, ReactNode } from "react"
+import { ReactNode } from "react"
 import { GetServerSideProps } from "next"
 import { getServerSession, Session } from "next-auth"
 import { Button, Card } from "flowbite-react"
@@ -15,8 +15,10 @@ import { getDaysBetweenDates } from "@/lib/util/date"
 import { isUserSubscribed } from "@/lib/stripe"
 import { signIn, useSession } from "next-auth/react"
 import { Connect } from "@/components/qbo"
+import { DisconnectBody } from "./api/auth/disconnect"
+import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 
-type Account = { country: string; name: string; logo: string; companyName: string }
+type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
   cancelAtPeriodEnd: boolean
   periodEnd: number
@@ -88,7 +90,7 @@ const formatDate = (date: Date) =>
   date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
 
 function ProfileCard({
-  account: { companyName, logo, name, country },
+  account: { companyName, logo, name },
   subscription,
 }: {
   account: Account
@@ -97,28 +99,34 @@ function ProfileCard({
   const router = useRouter()
   const { data: session } = useSession()
 
+  if (!session) throw new Error("User accessed account page while not signed in")
+
   return (
     <Card className="w-72">
-      <Image
-        src={logo}
-        alt={`${companyName}'s logo`}
-        height={50}
-        width={50}
-        className="rounded-md"
-      />
+      {logo && (
+        <Image
+          src={logo}
+          alt={`${companyName}'s logo`}
+          height={50}
+          width={50}
+          className="rounded-md"
+        />
+      )}
       <h5 className="text-xl font-medium text-gray-500 dark:text-white">{name}</h5>
       <div className="space-y-1">
-        <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
-          <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
-            <Svg.Briefcase />
-          </div>
-          {companyName}
-        </p>
+        {companyName && (
+          <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
+            <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
+              <Svg.Briefcase />
+            </div>
+            {companyName}
+          </p>
+        )}
         <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
           <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
             <Svg.MapPin />
           </div>
-          {country}
+          CA
         </p>
       </div>
       {subscription && (
@@ -151,13 +159,15 @@ function ProfileCard({
           </Button>
         </>
       )}
-      {session?.accessToken ? (
+      {isSessionQboConnected(session) ? (
         <Button
           color="light"
           className="flex-shrink"
           onClick={async () => {
-            await postJsonData("/api/auth/disconnect")
+            const body: DisconnectBody = { redirect: false }
+            const res = await postJsonData("/api/auth/disconnect?revoke=true", body)
             router.push("/auth/disconnected")
+            // router.push(res.redirect)
           }}
         >
           Disconnect
@@ -230,9 +240,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
 
   const { billingAddress, donee } = user
   const account = {
-    country: donee?.country as string,
-    companyName: donee?.companyName as string,
-    logo: getImageUrl(donee?.smallLogo as string),
+    companyName: donee?.companyName ?? null,
+    logo: donee?.smallLogo ? getImageUrl(donee.smallLogo) : null,
     name: billingAddress?.name ?? user.name,
   }
   if (!subscribed)
