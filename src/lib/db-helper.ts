@@ -32,52 +32,37 @@ type UserDataComplete = User & {
 }
 export function isUserDataComplete(user: User): user is UserDataComplete {
   const { items, donee, date } = user
-  const {
-    companyAddress,
-    companyName,
-    country,
-    registrationNumber,
-    signatoryName,
-    signature,
-    smallLogo,
-  } = donee || {}
+  if (!donee) return false
 
   return Boolean(
     items &&
       date &&
-      companyAddress &&
-      companyName &&
-      country &&
-      registrationNumber &&
-      signatoryName &&
-      signature &&
-      smallLogo
+      donee.companyAddress &&
+      donee.companyName &&
+      donee.country &&
+      donee.registrationNumber &&
+      donee.signatoryName &&
+      donee.signature &&
+      donee.smallLogo
   )
 }
 export function checkUserDataCompletion({ items, donee, date }: User): {
   items: boolean
   doneeDetails: boolean
 } {
-  const {
-    companyAddress,
-    companyName,
-    country,
-    registrationNumber,
-    signatoryName,
-    signature,
-    smallLogo,
-  } = donee || {}
+  const itemsComplete = Boolean(items && date)
+  if (!donee) return {items: itemsComplete, doneeDetails: false}
 
   return {
-    items: Boolean(items && date),
+    items: itemsComplete,
     doneeDetails: Boolean(
-      companyAddress &&
-        companyName &&
-        country &&
-        registrationNumber &&
-        signatoryName &&
-        signature &&
-        smallLogo
+      donee.companyAddress &&
+        donee.companyName &&
+        donee.country &&
+        donee.registrationNumber &&
+        donee.signatoryName &&
+        donee.signature &&
+        donee.smallLogo
     ),
   }
 }
