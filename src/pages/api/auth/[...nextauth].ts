@@ -84,6 +84,7 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
 
   // realmId will be undefined if the user doesn't have qbo accounting permission
   const { realmid: realmId } = profile
+  const connectUser = Boolean(realmId)
   const doc = firestoreUser.doc(id)
 
   // all the fetch/database requests are done at the same time for performance
@@ -94,7 +95,7 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
       `${qboAccountsBaseRoute}/openid_connect/userinfo`,
       accessToken as string
     ),
-    realmId ? getCompanyInfo(accessToken, realmId) : null,
+    connectUser ? getCompanyInfo(accessToken, realmId as string) : null,
     doc.get(),
   ])
 
@@ -106,16 +107,25 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   user.name = name
 
   const dbUserData = dbUser.data()
+  // new user
   if (!dbUserData) {
-    const data = realmId
-      ? { id, name, email, realmId, donee: companyInfo as CompanyInfo }
-      : { id, name, email, realmId }
+    const data = connectUser
+      ? { id, name, email, realmId, connected: connectUser, donee: companyInfo as CompanyInfo }
+      : { id, name, email, connected: connectUser }
     doc.set(data, { merge: true })
+
+    return true
   }
+
+  // if user has previously been connected but has signed in without accounting permission
+  // then sign them in with accounting permissions
+  if (dbUserData.connected && !connectUser) return "/api/auth/sso"
+
   // in the case where the user previously signed in without connecting but has now been connected
   // the company info can now be inserted into the db
-  else if (realmId && !dbUserData.donee)
-    doc.set({ donee: companyInfo as CompanyInfo }, { merge: true })
+  if (connectUser && !dbUserData.donee)
+    doc.set({ connected: connectUser, donee: companyInfo as CompanyInfo }, { merge: true })
+  else doc.set({ connected: connectUser }, { merge: true })
 
   return true
 }

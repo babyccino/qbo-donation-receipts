@@ -13,7 +13,7 @@ export default function SignInPage() {
 
   const handler: MouseEventHandler<HTMLButtonElement> = e => {
     e.preventDefault()
-    signIn("QBO")
+    signIn("QBO-disconnected")
   }
 
   return (

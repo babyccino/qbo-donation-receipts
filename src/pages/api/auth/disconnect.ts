@@ -11,6 +11,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { getToken } from "next-auth/jwt"
 import { QboPermission } from "@/types/next-auth-helper"
+import { user } from "@/lib/db"
 
 const {
   qboClientId,
@@ -63,16 +64,25 @@ const handler: NextApiHandler = async (req, res) => {
 
   const session = await getServerSession(req, res, authOptions)
 
-  // if the user is signed in already and disconnected just redirect to the information page
-  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
+  if (session) user.doc(session.user.id).set({ connected: false }, { merge: true })
 
+  // the caller can specify whether or not they want their access token to be disconnected
+  // this is because if the user has been disconnected from within QBO then they will have
+  // already revoked their tokens
+  // if the user is disconnecting from within the application the tokens will need to be
+  // revoked by us
   const shouldRevokeAccessToken = req.query["revoke"] === "true"
   if (session && session.accessToken && shouldRevokeAccessToken)
     await revokeAccessToken(session.accessToken)
 
-  const { redirect, reconnect } = req.body
-    ? parseRequestBody(parser, req.body)
-    : { redirect: true, reconnect: false }
+  // if the user is signed in already and disconnected there is nothing for us to do
+  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
+
+  const { redirect, reconnect } = parseRequestBody(parser, req.body)
+
+  // if reconnect is specified user will be re-signed in, without the accounting permissions
+  // i.e. signed in, in the `disconnected` state
+  // if the user is not signed in they will also need to be signed in, in this state
   if (reconnect || !session) {
     const redirectUrl = await serverSignIn(
       "QBO-disconnected",
@@ -85,6 +95,7 @@ const handler: NextApiHandler = async (req, res) => {
     if (redirect) return
     else res.status(200).json({ redirect: redirectUrl })
   } else {
+    // no longer valid access tokens need to be removed from the user's session
     await disconnectClient(req, res)
 
     if (redirect) res.redirect(302, "/auth/disconnected")

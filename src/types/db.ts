@@ -13,7 +13,8 @@ export type User = {
   email: string
   id: string
   name: string
-  realmId: string
+  connected: boolean
+  realmId?: string
   items?: number[]
   date?: {
     startDate: Date
