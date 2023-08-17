@@ -1,4 +1,5 @@
 import type { Bucket } from "@google-cloud/storage"
+import { Timestamp } from "@google-cloud/firestore"
 
 import { DoneeInfo, User } from "@/types/db"
 import { config } from "@/lib/util/config"
@@ -75,4 +76,24 @@ export function checkUserDataCompletion({ items, donee, date }: User): {
         donee.smallLogo
     ),
   }
+}
+
+type TimestampToDate<T> = T extends Timestamp
+  ? Date
+  : T extends object
+  ? {
+      [K in keyof T]: TimestampToDate<T[K]>
+    }
+  : T
+export function timestampToDate<T>(obj: T): TimestampToDate<T> {
+  if (typeof obj !== "object") return obj as TimestampToDate<T>
+
+  if (obj instanceof Timestamp) return obj.toDate() as TimestampToDate<T>
+
+  if (Array.isArray(obj)) return obj.map(val => timestampToDate(val)) as TimestampToDate<T>
+
+  for (const key in obj) {
+    obj[key] = timestampToDate(obj[key]) as any
+  }
+  return obj as TimestampToDate<T>
 }
