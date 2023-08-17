@@ -1,5 +1,5 @@
 import { DateRange } from "@/lib/util/date"
-import { CompanyInfo } from "@/types/qbo-api"
+import { CompanyInfo, Donation } from "@/types/qbo-api"
 import Stripe from "stripe"
 
 export type DoneeInfo = CompanyInfo & {
@@ -18,6 +18,7 @@ export type User = {
   realmId?: string
   items?: number[]
   dateRange?: DateRange
+  emailHistory?: EmailHistoryItem[]
   donee?: DoneeInfo
   subscription?: Subscription
   billingAddress?: BillingAddress
@@ -27,6 +28,15 @@ type BillingAddress = {
   phone: string
   address: Stripe.Address
   name: string
+}
+
+type DonationWithEmail = Donation & { email: string }
+type NotSent = Pick<Donation, "name" | "id">
+export type EmailHistoryItem = {
+  timeStamp: Date
+  dateRange: DateRange
+  donations: DonationWithEmail[]
+  notSent: NotSent[]
 }
 
 export type Subscription = {

@@ -1,10 +1,11 @@
 import admin from "firebase-admin"
+import type { Timestamp } from "@google-cloud/firestore"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { Price, Product, User } from "@/types/db"
 import { config } from "@/lib/util/config"
-const { firebaseProjectId, firebaseClientEmail, firebasePrivateKey, firebaseStorageEmulatorHost } =
-  config
+import { timestampToDate } from "./db-helper"
+const { firebaseProjectId, firebaseClientEmail, firebasePrivateKey } = config
 
 // set env variable FIRESTORE_EMULATOR_HOST to use firebase emulator
 
@@ -39,30 +40,20 @@ try {
   firestore.settings({ ignoreUndefinedProperties: true })
 } catch {}
 
+// firestore converts dates to its own timestamp type
+type DateToTimestamp<T> = T extends Date
+  ? Timestamp
+  : T extends object
+  ? {
+      [K in keyof T]: DateToTimestamp<T[K]>
+    }
+  : T
+type FirebaseSnap = FirebaseFirestore.QueryDocumentSnapshot<DateToTimestamp<User>>
 const userConverter = {
   toFirestore: (data: User) => data,
-  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => {
-    const data = snap.data()
-    const rawDate = data.date
-    const dateRange = rawDate
-      ? {
-          startDate: rawDate.startDate.toDate(),
-          endDate: rawDate.endDate.toDate(),
-        }
-      : undefined
-    const rawSubscription = data.subscription
-    const subscription = rawSubscription
-      ? {
-          ...rawSubscription,
-          created: rawSubscription.created.toDate(),
-          currentPeriodStart: rawSubscription.currentPeriodStart.toDate(),
-          currentPeriodEnd: rawSubscription.currentPeriodEnd.toDate(),
-          endedAt: rawSubscription.endedAt?.toDate(),
-          cancelAt: rawSubscription.cancelAt?.toDate(),
-          canceledAt: rawSubscription.canceledAt?.toDate(),
-        }
-      : undefined
-    return { ...data, dateRange, subscription } as User
+  fromFirestore: (snap: FirebaseSnap) => {
+    const rawData = snap.data()
+    return timestampToDate(rawData) satisfies User
   },
 }
 
@@ -87,3 +78,4 @@ export const product = firestore.collection("product").withConverter(productConv
 export const price = (id: string) =>
   product.doc(id).collection("price").withConverter(priceConverter)
 export const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
+export type Bucket = typeof storageBucket
