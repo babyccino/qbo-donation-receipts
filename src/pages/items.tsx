@@ -25,8 +25,8 @@ import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { checkUserDataCompletion } from "@/lib/db-helper"
+import { deSerialiseDates, serialiseDates, SerialiseDates } from "@/lib/util/nextjs-helper"
 
-type StringDateRange = { startDate: string; endDate: string }
 type Props = {
   items: Item[]
   session: Session
@@ -36,9 +36,10 @@ type Props = {
   | {
       itemsFilledIn: true
       selectedItems: number[]
-      date: StringDateRange
+      dateRange: DateRange
     }
 )
+type SerialisedProps = SerialiseDates<Props>
 
 type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
 
@@ -54,22 +55,20 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
   return DateRangeType.Custom
 }
 
-export default function Items(props: Props) {
+export default function Items(serialisedProps: SerialisedProps) {
+  const props = deSerialiseDates(serialisedProps)
   const { items, detailsFilledIn } = props
-  const propsDate = props.itemsFilledIn
-    ? createDateRange(props.date.startDate, props.date.endDate)
-    : null
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
 
   const [dateRangeState, setDateRangeState] = useState<DateRangeType>(
-    props.itemsFilledIn ? getDateRangeType(propsDate as DateRange) : DateRangeType.LastYear
+    props.itemsFilledIn ? getDateRangeType(props.dateRange) : DateRangeType.LastYear
   )
   const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
   const [customDateState, setCustomDateState] = useState(
-    props.itemsFilledIn ? (propsDate as DateRange) : defaultDateState
+    props.itemsFilledIn ? props.dateRange : defaultDateState
   )
   const onDateChange = (date: DateValueType) => {
     if (!date || !date.endDate || !date.startDate) return
@@ -189,7 +188,7 @@ export default function Items(props: Props) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<Props> = async context => {
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async context => {
   const session = await getServerSession(context.req, context.res, authOptions)
   if (!session) throw new Error("Couldn't find session")
   if (!isSessionQboConnected(session)) return disconnectedRedirect
@@ -202,30 +201,26 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
 
   if (user.dateRange && user.items) {
-    const selectedItems = user.items
-    const date = {
-      startDate: user.dateRange.startDate.toISOString(),
-      endDate: user.dateRange.endDate.toISOString(),
-    }
-
-    return {
-      props: {
-        itemsFilledIn: true,
-        session,
-        items,
-        detailsFilledIn,
-        selectedItems,
-        date,
-      },
-    }
-  }
-
-  return {
-    props: {
-      itemsFilledIn: false,
+    const props = {
+      itemsFilledIn: true,
       session,
       items,
       detailsFilledIn,
-    },
+      selectedItems: user.items,
+      dateRange: user.dateRange,
+    } satisfies Props
+    return {
+      props: serialiseDates(props),
+    }
+  }
+
+  const props = {
+    itemsFilledIn: false,
+    session,
+    items,
+    detailsFilledIn,
+  } satisfies Props
+  return {
+    props: serialiseDates(props),
   }
 }
