@@ -9,6 +9,8 @@ import { buttonStyling, Svg } from "@/components/ui"
 import { getItems } from "@/lib/qbo-api"
 import { Item } from "@/types/qbo-api"
 import {
+  createDateRange,
+  DateRange,
   DateRangeType,
   endOfPreviousYear,
   endOfThisYear,
@@ -24,7 +26,6 @@ import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
 import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 
-type DateRange = { startDate: Date; endDate: Date }
 type StringDateRange = { startDate: string; endDate: string }
 type Props = {
   items: Item[]
@@ -40,11 +41,6 @@ type Props = {
 )
 
 type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
-
-const createDateRange = (startDateString: string, endDateString: string) => ({
-  startDate: new Date(startDateString),
-  endDate: new Date(endDateString),
-})
 
 const previousYear = new Date().getFullYear() - 1
 const defaultDateState = createDateRange(`${previousYear}/01/01`, `${previousYear}/12/31`)
@@ -205,11 +201,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   if (!user) throw new Error("User has no corresponding db entry")
   const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
 
-  if (user.date && user.items) {
+  if (user.dateRange && user.items) {
     const selectedItems = user.items
     const date = {
-      startDate: user.date.startDate.toISOString(),
-      endDate: user.date.endDate.toISOString(),
+      startDate: user.dateRange.startDate.toISOString(),
+      endDate: user.dateRange.endDate.toISOString(),
     }
 
     return {

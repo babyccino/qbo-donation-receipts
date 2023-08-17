@@ -1,3 +1,4 @@
+import { DateRange } from "@/lib/util/date"
 import { CompanyInfo } from "@/types/qbo-api"
 import Stripe from "stripe"
 
@@ -16,10 +17,7 @@ export type User = {
   connected: boolean
   realmId?: string
   items?: number[]
-  date?: {
-    startDate: Date
-    endDate: Date
-  }
+  dateRange?: DateRange
   donee?: DoneeInfo
   subscription?: Subscription
   billingAddress?: BillingAddress

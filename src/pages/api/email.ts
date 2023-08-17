@@ -13,7 +13,7 @@ import {
 import { isUserDataComplete } from "@/lib/db-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
-import { getUserData } from "@/lib/db"
+import { getUserData, storageBucket } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
 import { Donation } from "@/types/qbo-api"
 import { getThisYear } from "@/lib/util/date"
@@ -40,11 +40,11 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const user = await getUserData(session.user.id)
   if (!isUserDataComplete(user)) throw new ApiError(401, "User data incomplete")
 
-  const { donee, date } = user
+  const { donee, dateRange } = user
 
   const [donations, doneeWithImages] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, date, user.items),
-    downloadImagesForDonee(user.donee),
+    getDonations(session.accessToken, session.realmId, dateRange, user.items),
+    downloadImagesForDonee(user.donee, storageBucket),
   ])
 
   let counter = getThisYear()
@@ -57,7 +57,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       currency: "CAD",
       currentDate: new Date(),
       donation: entry,
-      donationDate: date.endDate,
+      donationDate: dateRange.endDate,
       donee: doneeWithImages,
       receiptNo: counter++,
     }

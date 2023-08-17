@@ -11,7 +11,7 @@ import { Svg, Link, buttonStyling } from "@/components/ui"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { getDonations } from "@/lib/qbo-api"
 import { Donation } from "@/types/qbo-api"
-import { getUserData } from "@/lib/db"
+import { getUserData, storageBucket } from "@/lib/db"
 import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
 import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -351,8 +351,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     }
 
   const [donations, donee] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, user.date, user.items),
-    downloadImagesForDonee(user.donee),
+    getDonations(session.accessToken, session.realmId, user.dateRange, user.items),
+    downloadImagesForDonee(user.donee, storageBucket),
   ])
 
   const subscribed = isUserSubscribed(user)

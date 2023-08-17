@@ -32,3 +32,17 @@ export function getDaysBetweenDates(date1: Date, date2: Date) {
   const days = Math.ceil(timeDiffMs / MS_IN_DAY)
   return days
 }
+
+export type DateRange = {
+  startDate: Date
+  endDate: Date
+}
+export function doDateRangesIntersect(date1: DateRange, date2: DateRange): boolean {
+  if (date1.endDate.getTime() > date2.startDate.getTime())
+    return date1.startDate.getTime() < date2.endDate.getTime()
+  return false
+}
+export const createDateRange = (startDateString: string, endDateString: string): DateRange => ({
+  startDate: new Date(startDateString),
+  endDate: new Date(endDateString),
+})

@@ -39,15 +39,15 @@ export async function downloadImagesForDonee(
 export type UserDataComplete = User & {
   items: Required<User>["items"]
   donee: Required<DoneeInfo>
-  date: Required<User>["date"]
+  dateRange: Required<User>["dateRange"]
 }
 export function isUserDataComplete(user: User): user is UserDataComplete {
-  const { items, donee, date } = user
+  const { items, donee, dateRange } = user
   if (!donee) return false
 
   return Boolean(
     items &&
-      date &&
+      dateRange &&
       donee.companyAddress &&
       donee.companyName &&
       donee.country &&
@@ -57,11 +57,11 @@ export function isUserDataComplete(user: User): user is UserDataComplete {
       donee.smallLogo
   )
 }
-export function checkUserDataCompletion({ items, donee, date }: User): {
+export function checkUserDataCompletion({ items, donee, dateRange }: User): {
   items: boolean
   doneeDetails: boolean
 } {
-  const itemsComplete = Boolean(items && date)
+  const itemsComplete = Boolean(items && dateRange)
   if (!donee) return { items: itemsComplete, doneeDetails: false }
 
   return {

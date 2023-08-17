@@ -44,7 +44,7 @@ const userConverter = {
   fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => {
     const data = snap.data()
     const rawDate = data.date
-    const date = rawDate
+    const dateRange = rawDate
       ? {
           startDate: rawDate.startDate.toDate(),
           endDate: rawDate.endDate.toDate(),
@@ -62,7 +62,7 @@ const userConverter = {
           canceledAt: rawSubscription.canceledAt?.toDate(),
         }
       : undefined
-    return { ...data, date, subscription } as User
+    return { ...data, dateRange, subscription } as User
   },
 }
 
@@ -87,10 +87,3 @@ export const product = firestore.collection("product").withConverter(productConv
 export const price = (id: string) =>
   product.doc(id).collection("price").withConverter(priceConverter)
 export const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
-export type Bucket = typeof storageBucket
-
-export function getImageUrl(path: string) {
-  if (firebaseStorageEmulatorHost)
-    return `http://${firebaseStorageEmulatorHost}/${firebaseProjectId}.appspot.com/${path}`
-  return `https://storage.googleapis.com/${firebaseProjectId}.appspot.com/${path}`
-}
