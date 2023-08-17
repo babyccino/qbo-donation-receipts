@@ -1,7 +1,10 @@
-import { storageBucket } from "@/lib/db"
-import { DoneeInfo, User } from "@/types/db"
+import type { Bucket } from "@google-cloud/storage"
 
-export async function getImageAsDataUrl(url: string) {
+import { DoneeInfo, User } from "@/types/db"
+import { config } from "@/lib/util/config"
+const { firebaseProjectId, firebaseStorageEmulatorHost } = config
+
+export async function getImageAsDataUrl(storageBucket: Bucket, url: string) {
   const file = await storageBucket.file(url).download()
   const fileString = file[0].toString("base64")
   const match = url.match(/[^.]+$/)
@@ -10,12 +13,19 @@ export async function getImageAsDataUrl(url: string) {
   return `data:image/${extension};base64,${fileString}`
 }
 
+export function getImageUrl(path: string) {
+  if (firebaseStorageEmulatorHost)
+    return `http://${firebaseStorageEmulatorHost}/${firebaseProjectId}.appspot.com/${path}`
+  return `https://storage.googleapis.com/${firebaseProjectId}.appspot.com/${path}`
+}
+
 export async function downloadImagesForDonee(
-  donee: Required<DoneeInfo>
+  donee: Required<DoneeInfo>,
+  storageBucket: Bucket
 ): Promise<Required<DoneeInfo>> {
   const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
-    getImageAsDataUrl(donee.signature),
-    getImageAsDataUrl(donee.smallLogo),
+    getImageAsDataUrl(storageBucket, donee.signature),
+    getImageAsDataUrl(storageBucket, donee.smallLogo),
   ])
 
   return {
@@ -25,7 +35,7 @@ export async function downloadImagesForDonee(
   }
 }
 
-type UserDataComplete = User & {
+export type UserDataComplete = User & {
   items: Required<User>["items"]
   donee: Required<DoneeInfo>
   date: Required<User>["date"]
@@ -51,7 +61,7 @@ export function checkUserDataCompletion({ items, donee, date }: User): {
   doneeDetails: boolean
 } {
   const itemsComplete = Boolean(items && date)
-  if (!donee) return {items: itemsComplete, doneeDetails: false}
+  if (!donee) return { items: itemsComplete, doneeDetails: false }
 
   return {
     items: itemsComplete,
