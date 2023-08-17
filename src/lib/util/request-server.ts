@@ -20,15 +20,19 @@ export function parseRequestBody<T extends ZodRawShape>(
   return response.data
 }
 
-export type AuthorisedHandler = (
+export type AuthorisedHandler<T = any> = (
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<T>,
   session: Session
 ) => Promise<unknown>
 type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
-export const createAuthorisedHandler =
-  (handler: AuthorisedHandler, methods: HttpVerb[], redirect?: string): NextApiHandler =>
-  async (req, res) => {
+type ErrorTypes = { message: string } | ApiError
+export function createAuthorisedHandler<T>(
+  handler: AuthorisedHandler<T>,
+  methods: HttpVerb[],
+  redirect?: string
+): NextApiHandler<T | ErrorTypes> {
+  return async (req, res) => {
     console.log(`${req.method} request made to ${req.url}`)
     if (!req.method || !methods.includes(req.method as HttpVerb)) {
       return res.status(405).end()
@@ -52,3 +56,4 @@ export const createAuthorisedHandler =
       res.status(error.statusCode).json(error)
     }
   }
+}
