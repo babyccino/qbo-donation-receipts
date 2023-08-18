@@ -26,7 +26,11 @@ export default function SignInPage() {
       </div>
       <form className="flex w-full max-w-md flex-col items-center rounded-lg bg-white p-6 shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md sm:p-8 md:mt-0">
         <div className="flex items-center gap-2">
-          <Checkbox id="agree" onChange={e => setChecked(e.currentTarget.checked)} />
+          <Checkbox
+            defaultChecked={false}
+            id="agree"
+            onChange={e => setChecked(e.currentTarget.checked)}
+          />
           <Label className="flex" htmlFor="agree">
             I agree with the&nbsp;
             <a className="text-primary-600 hover:underline dark:text-primary-500" href="/forms">
