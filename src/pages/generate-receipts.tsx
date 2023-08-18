@@ -148,7 +148,7 @@ const Td = ({ children }: { children?: ReactNode }) => <td className="px-6 py-2"
 
 const BlurredRows = () => (
   <>
-    <tr className="relative z-50 border-b bg-white dark:border-gray-700 dark:bg-gray-800">
+    <tr className="relative border-b bg-white dark:border-gray-700 dark:bg-gray-800">
       <Th>{getRandomName()}</Th>
       <Td>{getRandomBalance()}</Td>
       <Td>
@@ -157,7 +157,7 @@ const BlurredRows = () => (
       <Td>
         <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
       </Td>
-      <div className="absolute left-0 top-[2px] z-40 h-full w-full backdrop-blur-sm">
+      <div className="absolute left-0 top-[2px] z-10 h-full w-full backdrop-blur-sm">
         <ReceiptLimitCard />
       </div>
     </tr>
@@ -171,7 +171,7 @@ const BlurredRows = () => (
         <Td>
           <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
         </Td>
-        <div className="absolute left-0 top-[2px] z-40 h-full w-full backdrop-blur-sm" />
+        <div className="absolute left-0 top-[2px] h-full w-full backdrop-blur-sm" />
       </Tr>
     ))}
   </>
