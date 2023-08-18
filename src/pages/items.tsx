@@ -1,4 +1,4 @@
-import { ChangeEventHandler, FormEventHandler, MouseEventHandler, useRef, useState } from "react"
+import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
 import { Session, getServerSession } from "next-auth"
@@ -56,7 +56,7 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
 }
 
 export default function Items(serialisedProps: SerialisedProps) {
-  const props = deSerialiseDates(serialisedProps)
+  const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   const { items, detailsFilledIn } = props
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
@@ -113,7 +113,7 @@ export default function Items(serialisedProps: SerialisedProps) {
     event.preventDefault()
 
     const items = getItems()
-    const postData: ItemsApiDataType = { items, date: customDateState }
+    const postData: ItemsApiDataType = { items, dateRange: customDateState }
     await postJsonData("/api/items", postData)
 
     const destination = detailsFilledIn ? "/generate-receipts" : "/details"
