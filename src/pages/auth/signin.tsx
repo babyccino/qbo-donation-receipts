@@ -3,9 +3,9 @@ import { GetServerSideProps } from "next"
 import { signIn } from "next-auth/react"
 import { getServerSession } from "next-auth"
 import Image from "next/image"
+import { Checkbox, Label } from "flowbite-react"
 
 import { authOptions } from "../api/auth/[...nextauth]"
-import { Checkbox, Label } from "@/components/form"
 import { SignIn } from "@/components/qbo"
 
 export default function SignInPage() {
