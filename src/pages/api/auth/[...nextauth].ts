@@ -112,7 +112,7 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
     const data = connectUser
       ? { id, name, email, realmId, connected: connectUser, donee: companyInfo as CompanyInfo }
       : { id, name, email, connected: connectUser }
-    doc.set(data, { merge: true })
+    await doc.set(data, { merge: true })
 
     return true
   }
@@ -124,8 +124,8 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   // in the case where the user previously signed in without connecting but has now been connected
   // the company info can now be inserted into the db
   if (connectUser && !dbUserData.donee)
-    doc.set({ connected: connectUser, donee: companyInfo as CompanyInfo }, { merge: true })
-  else doc.set({ connected: connectUser }, { merge: true })
+    await doc.set({ connected: connectUser, donee: companyInfo as CompanyInfo }, { merge: true })
+  else await doc.set({ connected: connectUser }, { merge: true })
 
   return true
 }
