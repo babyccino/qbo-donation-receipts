@@ -10,19 +10,16 @@ import {
 } from "react"
 import {
   FileInput,
-  Label as FlowbiteLabel,
+  Label,
   TextInput as FlowbiteTextInput,
   Textarea as FlowbiteTextArea,
 } from "flowbite-react"
-export { Select, Checkbox } from "flowbite-react"
 
 import { twMerge } from "tailwind-merge"
 
 // components from flowbite.com
 // svg from heroicons.dev
 // hand drawn arrows from svgrepo.com
-
-export const Label = FlowbiteLabel
 
 type ToggleProps = {
   className?: string
@@ -77,9 +74,9 @@ export const TextInput = ({
   type?: HTMLInputTypeAttribute
 }) => (
   <p className={className}>
-    <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
+    <Label className="mb-2 inline-block" htmlFor={id}>
       {label}
-    </FlowbiteLabel>
+    </Label>
     <FlowbiteTextInput
       name={id}
       id={id}
@@ -114,9 +111,9 @@ export const TextArea = ({
   onChange?: ChangeEventHandler<HTMLTextAreaElement>
 }) => (
   <p className={className}>
-    <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
+    <Label className="mb-2 inline-block" htmlFor={id}>
       {label}
-    </FlowbiteLabel>
+    </Label>
     <FlowbiteTextArea
       name={id}
       id={id}
@@ -184,9 +181,9 @@ export function ImageInput({
 
   return (
     <p>
-      <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
+      <Label className="mb-2 inline-block" htmlFor={id}>
         {label}
-      </FlowbiteLabel>
+      </Label>
       <FileInput
         id={id}
         name={id}
