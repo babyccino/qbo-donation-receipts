@@ -5,6 +5,7 @@ import Link from "next/link"
 
 import { Svg } from "@/components/ui"
 import { subscribe } from "@/lib/util/request"
+import { Show } from "@/lib/util/react"
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter()
@@ -32,12 +33,12 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Svg.Sidebar />
           </div>
         </button>
-        {showSidebar && (
+        <Show when={showSidebar}>
           <div
             className="fixed inset-0 z-20 animate-fadeIn bg-black/40"
             onClick={() => setShowSidebar(false)}
           />
-        )}
+        </Show>
         <nav
           id="separator-sidebar"
           className={

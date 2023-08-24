@@ -3,6 +3,7 @@
 import NextLink from "next/link"
 import { twMerge } from "tailwind-merge"
 import { ComponentProps } from "react"
+import { Show } from "@/lib/util/react"
 
 export const buttonStyling =
   "text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-primary-600 dark:hover:bg-primary-700 focus:outline-none dark:focus:ring-primary-800"
@@ -560,22 +561,26 @@ export namespace Svg {
     </svg>
   )
 }
-export const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
+export const MissingData = ({
+  filledIn,
+}: {
+  filledIn: { items: boolean; doneeDetails: boolean }
+}) => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
       Some information necessary to generate your receipts is missing
     </span>
     <div className="flex justify-evenly gap-3">
-      {!filledIn.items && (
+      <Show when={!filledIn.items}>
         <Link className={buttonStyling} href="/items">
           Fill in Qualifying Sales Items
         </Link>
-      )}
-      {!filledIn.doneeDetails && (
+      </Show>
+      <Show when={!filledIn.doneeDetails}>
         <Link className={buttonStyling} href="/details">
           Fill in Donee Details
         </Link>
-      )}
+      </Show>
     </div>
   </div>
 )

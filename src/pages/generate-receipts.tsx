@@ -19,6 +19,7 @@ import { downloadImagesForDonee } from "@/lib/db-helper"
 import { DoneeInfo } from "@/types/db"
 import { getThisYear } from "@/lib/util/date"
 import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { Show } from "@/lib/util/react"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -276,7 +277,7 @@ export default function IndexPage(props: Props) {
 
   return (
     <section className="flex h-full w-full flex-col p-8">
-      {subscribed && (
+      <Show when={subscribed}>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
           <DownloadAllFiles />
           <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
@@ -284,7 +285,7 @@ export default function IndexPage(props: Props) {
             <Link href="/email">Email</Link>
           </div>
         </div>
-      )}
+      </Show>
       <Alert
         color="info"
         className="mb-4 sm:hidden"

@@ -3,6 +3,7 @@ import { ReactNode } from "react"
 import { ErrorBoundary as _ErrorBoundary, FallbackProps } from "react-error-boundary"
 
 import { Link } from "@/components/ui"
+import { Show } from "@/lib/util/react"
 
 export const Fallback = ({ error }: FallbackProps) => (
   <>
@@ -17,11 +18,11 @@ export const Fallback = ({ error }: FallbackProps) => (
         <p className="mb-4 text-lg font-light text-gray-500 dark:text-gray-400">
           If this error persists, please contact an administrator.
         </p>
-        {error.message && (
+        <Show when={error.message}>
           <p className="mb-4 text-lg font-light text-gray-500 dark:text-gray-400">
             Error: {error.message}
           </p>
-        )}
+        </Show>
         <Link href="/support">Contact support</Link>
       </div>
     </section>

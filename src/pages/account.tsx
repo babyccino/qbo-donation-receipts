@@ -18,6 +18,7 @@ import { signIn, useSession } from "next-auth/react"
 import { Connect } from "@/components/qbo"
 import { DisconnectBody } from "./api/auth/disconnect"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { Show } from "@/lib/util/react"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
@@ -104,25 +105,25 @@ function ProfileCard({
 
   return (
     <Card className="w-72">
-      {logo && (
+      <Show when={Boolean(logo)}>
         <Image
-          src={logo}
+          src={logo as string}
           alt={`${companyName}'s logo`}
           height={50}
           width={50}
           className="rounded-md"
         />
-      )}
+      </Show>
       <h5 className="text-xl font-medium text-gray-500 dark:text-white">{name}</h5>
       <div className="space-y-1">
-        {companyName && (
+        <Show when={Boolean(companyName)}>
           <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
             <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
               <Svg.Briefcase />
             </div>
             {companyName}
           </p>
-        )}
+        </Show>
         <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
           <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
             <Svg.MapPin />
@@ -130,36 +131,34 @@ function ProfileCard({
           CA
         </p>
       </div>
-      {subscription && (
-        <>
-          <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
-            Subscribed since:{" "}
-            <span className="text-gray-900 dark:text-white">
-              {formatDate(new Date(subscription.createdAt))}
-            </span>
-          </p>
-          <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
-            Your subscription will {subscription.cancelAtPeriodEnd ? "end" : "automatically renew"}{" "}
-            in{" "}
-            <span className="text-gray-900 dark:text-white">
-              {getDaysBetweenDates(new Date(), new Date(subscription.periodEnd))}
-            </span>{" "}
-            days
-          </p>
-          <Button
-            color={subscription.cancelAtPeriodEnd ? undefined : "light"}
-            className="flex-shrink"
-            onClick={async e => {
-              e.preventDefault()
-              const data: DataType = { cancelAtPeriodEnd: !subscription.cancelAtPeriodEnd }
-              await putJsonData("/api/stripe/update-subscription", data)
-              router.push(router.asPath)
-            }}
-          >
-            {subscription.cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
-          </Button>
-        </>
-      )}
+      <Show when={Boolean(subscription)}>
+        <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
+          Subscribed since:{" "}
+          <span className="text-gray-900 dark:text-white">
+            {formatDate(new Date(subscription!.createdAt))}
+          </span>
+        </p>
+        <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
+          Your subscription will {subscription!.cancelAtPeriodEnd ? "end" : "automatically renew"}{" "}
+          in{" "}
+          <span className="text-gray-900 dark:text-white">
+            {getDaysBetweenDates(new Date(), new Date(subscription!.periodEnd))}
+          </span>{" "}
+          days
+        </p>
+        <Button
+          color={subscription!.cancelAtPeriodEnd ? undefined : "light"}
+          className="flex-shrink"
+          onClick={async e => {
+            e.preventDefault()
+            const data: DataType = { cancelAtPeriodEnd: !subscription!.cancelAtPeriodEnd }
+            await putJsonData("/api/stripe/update-subscription", data)
+            router.push(router.asPath)
+          }}
+        >
+          {subscription!.cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
+        </Button>
+      </Show>
       {isSessionQboConnected(session) ? (
         <Button
           color="light"
