@@ -2,14 +2,15 @@ import NextAuth, { NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
 import { CallbacksOptions } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 
 import { user as firestoreUser } from "@/lib/db"
 import { getCompanyInfo } from "@/lib/qbo-api"
 import { QBOProfile, OpenIdUserInfo, QboAccount, CompanyInfo } from "@/types/qbo-api"
 import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
-import { ApiError } from "next/dist/server/api-utils"
 import { QboPermission } from "@/types/next-auth-helper"
+import { User } from "@/types/db"
 
 const {
   qboClientId,
@@ -107,26 +108,19 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   user.name = name
 
   const dbUserData = dbUser.data()
-  // new user
-  if (!dbUserData) {
-    const data = connectUser
-      ? { id, name, email, realmId, connected: connectUser, donee: companyInfo as CompanyInfo }
-      : { id, name, email, connected: connectUser }
-    doc.set(data, { merge: true })
-
-    return true
-  }
 
   // if user has previously been connected but has signed in without accounting permission
   // then sign them in with accounting permissions
-  if (dbUserData.connected && !connectUser) return "/api/auth/sso"
+  if (dbUserData?.connected && !connectUser) return "/api/auth/sso"
 
-  // in the case where the user previously signed in without connecting but has now been connected
-  // the company info can now be inserted into the db
-  if (connectUser && !dbUserData.donee)
-    doc.set({ connected: connectUser, donee: companyInfo as CompanyInfo }, { merge: true })
-  else doc.set({ connected: connectUser }, { merge: true })
+  const set: Partial<User> = { id, name, email, connected: connectUser }
+  if (realmId) set.realmId = realmId
 
+  // if the user is new or they have no donee info we can save the data
+  if (connectUser && (!dbUserData || (dbUserData && !dbUserData.donee)))
+    set.donee = companyInfo as CompanyInfo
+
+  await doc.set(set, { merge: true })
   return true
 }
 
