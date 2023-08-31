@@ -7,9 +7,10 @@
     "test": "jest --watch",
     "test:ci": "jest",
     "patch": "patch-package",
-    "stripe-forward": "stripe listen --forward-to localhost:3000/api/stripe/webhooks",
     "prettier": "prettier --write .",
-    "email-dev": "email dev --port 3001 --dir ./src/emails"
+    "email-dev": "email dev --port 3001 --dir ./src/emails",
+    "stripe-forward": "stripe listen --forward-to localhost:3000/api/stripe/webhooks",
+    "firebase-emulator": "cd firebase && firebase emulators:start --import=./data --export-on-exit=./data"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.347.1",
