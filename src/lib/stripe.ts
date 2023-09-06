@@ -3,8 +3,9 @@ import Stripe from "stripe"
 import { user } from "@/lib/db"
 import { User } from "@/types/db"
 import { config } from "@/lib/util/config"
+import { RequiredField } from "@/lib/util/etc"
 
-export const stripe = new Stripe(config.stripePrivateKey ?? "", { apiVersion: "2022-11-15" })
+export const stripe = new Stripe(config.stripePrivateKey, { apiVersion: "2022-11-15" })
 
 function getDate(timeStamp: number): Date
 function getDate(timeStamp: number | null | undefined): Date | undefined
@@ -35,7 +36,8 @@ export async function manageSubscriptionStatusChange(subscription: Stripe.Subscr
   )
 }
 
-export function isUserSubscribed({ subscription }: User) {
+export function isUserSubscribed(user: User): user is RequiredField<User, "subscription"> {
+  const { subscription } = user
   if (!subscription) return false
   if (subscription.status) return subscription.status === "active"
   return subscription.currentPeriodEnd.getTime() >= new Date().getTime()

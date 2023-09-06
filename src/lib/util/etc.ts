@@ -4,6 +4,8 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
+export type RequiredField<T, K extends keyof T> = T & Required<Pick<T, K>>
+
 export type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
   ? `${Lowercase<T>}${Capitalize<SnakeToCamelCase<U>>}`
   : Lowercase<S>
