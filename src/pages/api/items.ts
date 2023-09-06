@@ -14,6 +14,7 @@ export const parser = z.object({
     endDate: z.coerce.date(),
   }),
 })
+
 export type DataType = z.infer<typeof parser>
 
 const handler: AuthorisedHandler = async (req, res, session) => {
@@ -22,7 +23,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const data = parseRequestBody(parser, req.body)
   await user.doc(id).set(data, { merge: true })
 
-  res.status(200).json(data)
+  res.status(200).json({ok: true})
 }
 
 export default createAuthorisedHandler(handler, ["POST"])
