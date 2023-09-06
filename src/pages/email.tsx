@@ -212,7 +212,7 @@ function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
             />
             <Label htmlFor="customRecipients">Select recipients manually</Label>
           </div>
-          <Show when={customRecipients}>
+          {customRecipients && (
             <div className="mt-4 sm:grid sm:grid-cols-2">
               {recipients.map(({ id, name, status }) => (
                 <Toggle
@@ -230,27 +230,29 @@ function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
                 />
               ))}
             </div>
-          </Show>
-          <Show when={!customRecipients && defaultRecipients.length < recipients.length}>
-            <hr className="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
-            <div className="flex flex-col justify-center gap-6">
-              <p className="text-gray-500 dark:text-gray-400">
-                {recipientIds.size > 0 ? "Some" : "All"} of your users are missing emails. Please
-                add emails to these users on QuickBooks if you wish to send receipts to all your
-                donor.
-              </p>
-              <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
-              <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
-                {recipients
-                  .filter(recipient => recipient.status === RecipientStatus.NoEmail)
-                  .map(recipient => (
-                    <li className="truncate" key={recipient.id}>
-                      {recipient.name}
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          </Show>
+          )}
+          {!customRecipients && defaultRecipients.length < recipients.length && (
+            <>
+              <hr className="my-8 h-px border-0 bg-gray-200 dark:bg-gray-700" />
+              <div className="flex flex-col justify-center gap-6">
+                <p className="text-gray-500 dark:text-gray-400">
+                  {recipientIds.size > 0 ? "Some" : "All"} of your users are missing emails. Please
+                  add emails to these users on QuickBooks if you wish to send receipts to all your
+                  donor.
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
+                <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
+                  {recipients
+                    .filter(recipient => recipient.status === RecipientStatus.NoEmail)
+                    .map(recipient => (
+                      <li className="truncate" key={recipient.id}>
+                        {recipient.name}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            </>
+          )}
         </Fieldset>
       </form>
       <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
