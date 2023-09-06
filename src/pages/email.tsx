@@ -20,8 +20,8 @@ import { EmailDataType } from "@/pages/api/email"
 import { doDateRangesIntersect, getThisYear } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
+import { formatEmailBody, templateDonorName } from "@/lib/email"
 
-const templateDonorName = "FULL_NAME"
 const makeDefaultEmailBody = (orgName: string) => `Dear ${templateDonorName},
 
 We hope this message finds you in good health and high spirits. On behalf of ${orgName}, we would like to extend our heartfelt gratitude for your recent contribution. Your generosity and support play a vital role in our mission to [state the mission or purpose of the organization].
@@ -99,9 +99,6 @@ function EmailPreview({ donee }: { donee: DoneeInfo }) {
     </>
   )
 }
-
-const formatEmailBody = (str: string, donorName: string) =>
-  str.replaceAll(templateDonorName, donorName)
 
 function SendEmails({ recipients }: { recipients: Set<number> }) {
   const [showModal, setShowModal] = useState(false)
@@ -240,8 +237,9 @@ function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
               <p className="text-gray-500 dark:text-gray-400">
                 {recipientIds.size > 0 ? "Some" : "All"} of your users are missing emails. Please
                 add emails to these users on QuickBooks if you wish to send receipts to all your
-                donors. Users missing emails:
+                donor.
               </p>
+              <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
               <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
                 {recipients
                   .filter(recipient => recipient.status === RecipientStatus.NoEmail)

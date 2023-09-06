@@ -11,15 +11,15 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { isUserDataComplete } from "@/lib/db-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
+import { getThisYear } from "@/lib/util/date"
+import { isUserDataComplete, downloadImagesForDonee } from "@/lib/db-helper"
+import { config } from "@/lib/util/config"
 import { getUserData, storageBucket, user } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
+import { formatEmailBody } from "@/lib/email"
+import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
 import { Donation } from "@/types/qbo-api"
-import { getThisYear } from "@/lib/util/date"
-import { downloadImagesForDonee } from "@/lib/db-helper"
-import { config } from "@/lib/util/config"
 import { EmailHistoryItem } from "@/types/db"
 
 const { testEmail } = config
@@ -76,6 +76,8 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     }
     const receiptBuffer = renderToBuffer(ReceiptPdfDocument(props))
 
+    const body = formatEmailBody(emailBody, entry.name)
+
     const signatureCid = "signature"
     const signatureAttachment = {
       filename: getFileNameFromImagePath(donee.signature as string),
@@ -97,7 +99,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       WithBody({
         ...props,
         donee: doneeWithCidImages,
-        body: emailBody,
+        body,
       })
     )
 
