@@ -1,5 +1,6 @@
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
 import { getServerSession } from "next-auth"
+import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
@@ -9,7 +10,6 @@ import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { parseRequestBody } from "@/lib/util/request-server"
-import { getToken } from "next-auth/jwt"
 import { QboPermission } from "@/types/next-auth-helper"
 import { user } from "@/lib/db"
 
@@ -53,6 +53,13 @@ async function disconnectClient(req: NextApiRequest, res: NextApiResponse) {
   return updateServerSession(res, token)
 }
 
+async function disconnectUserByRealmId(realmId: string) {
+  const query = await user.where("realmId", "==", realmId).get()
+  if (query.empty) return
+  const promises = query.docs.map(doc => doc.ref.set({ connected: false }, { merge: true }))
+  await Promise.all(promises)
+}
+
 export const parser = z.object({
   redirect: z.boolean().default(true),
   reconnect: z.boolean().default(false),
@@ -64,7 +71,9 @@ const handler: NextApiHandler = async (req, res) => {
 
   const session = await getServerSession(req, res, authOptions)
 
+  const realmId = req.query["realmId"]
   if (session) user.doc(session.user.id).set({ connected: false }, { merge: true })
+  else if (typeof realmId === "string") disconnectUserByRealmId(realmId)
 
   // the caller can specify whether or not they want their access token to be disconnected
   // this is because if the user has been disconnected from within QBO then they will have
@@ -78,12 +87,13 @@ const handler: NextApiHandler = async (req, res) => {
   // if the user is signed in already and disconnected there is nothing for us to do
   if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
 
-  const { redirect, reconnect } = parseRequestBody(parser, req.body)
+  const { redirect, reconnect } = parseRequestBody(parser, req.body || {})
 
   // if reconnect is specified user will be re-signed in, without the accounting permissions
   // i.e. signed in, in the `disconnected` state
   // if the user is not signed in they will also need to be signed in, in this state
   if (reconnect || !session) {
+    console.log("...reconnecting")
     const redirectUrl = await serverSignIn(
       "QBO-disconnected",
       req,
