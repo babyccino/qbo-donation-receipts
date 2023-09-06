@@ -1,4 +1,3 @@
-import { ReactNode } from "react"
 import { GetServerSideProps } from "next"
 import Image from "next/image"
 import { useRouter } from "next/router"
@@ -16,7 +15,7 @@ import { Show } from "@/lib/util/react"
 import { getUserData } from "@/lib/db"
 import { getImageUrl } from "@/lib/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
-import { Svg } from "@/components/ui"
+import { PricingCard, Svg } from "@/components/ui"
 import { Connect } from "@/components/qbo"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
@@ -33,59 +32,6 @@ type Props =
       subscription: PropsSubscription
       account: Account
     }
-
-function PricingCard({
-  plan,
-  title: propsTitle,
-  button,
-}: {
-  plan: "pro" | "free"
-  title?: string
-  button?: ReactNode
-}) {
-  const isPro = plan === "pro"
-  const features = isPro ? paidFeatures : freeFeatures
-  const price = isPro ? 20 : 0
-
-  const title = propsTitle ?? (isPro ? "Pro Plan" : "Free Plan")
-
-  return (
-    <Card>
-      <h5 className="mb-4 text-xl font-medium text-gray-500 dark:text-gray-400">{title}</h5>
-      <div className="flex items-baseline text-gray-900 dark:text-white">
-        <span className="text-3xl font-semibold">CAD</span>
-        <span className="text-5xl font-extrabold tracking-tight">{price}</span>
-        <span className="ml-1 text-xl font-normal text-gray-500 dark:text-gray-400">/year</span>
-      </div>
-      <ul className="my-7 space-y-5">
-        {features.map((feature, idx) => (
-          <li
-            key={idx}
-            className="flex space-x-3 text-base font-normal leading-tight text-gray-500 dark:text-gray-400"
-          >
-            <div className="-mb-1 mr-4 inline-block w-5 text-green-300">
-              <Svg.Tick />
-            </div>
-            {feature}
-          </li>
-        ))}
-        {!isPro &&
-          freeNonFeatures.map((nonFeature, idx) => (
-            <li
-              key={idx}
-              className="flex space-x-3 text-base font-normal leading-tight text-gray-500 line-through decoration-gray-500"
-            >
-              <div className="-mb-1 mr-4 inline-block w-5 text-red-300">
-                <Svg.Cross />
-              </div>
-              {nonFeature}
-            </li>
-          ))}
-      </ul>
-      {button}
-    </Card>
-  )
-}
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
@@ -182,15 +128,6 @@ function ProfileCard({
   )
 }
 
-const freeFeatures = ["Individual configuration", "No setup, or hidden fees", "3 free receipts"]
-const freeNonFeatures = ["Unlimited receipts", "Automatic emailing"]
-
-const paidFeatures = [
-  "Individual configuration",
-  "No setup, or hidden fees",
-  "Unlimited receipts",
-  "Automatic emailing",
-]
 export default function AccountPage(props: Props) {
   const { subscribed } = props
   return (
