@@ -1,15 +1,13 @@
 import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
 import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
 import { Alert, Button, Checkbox, Label, Modal } from "flowbite-react"
 
-import { authOptions } from "./api/auth/[...nextauth]"
 import { postJsonData, subscribe } from "@/lib/util/request"
 import { MissingData, PricingCard, Svg } from "@/components/ui"
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { getUserData, storageBucket } from "@/lib/db"
 import { UserDataComplete, checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
-import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { disconnectedRedirect } from "@/lib/util/next-auth-helper-server"
 import { DoneeInfo, EmailHistoryItem } from "@/types/db"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -21,6 +19,10 @@ import { doDateRangesIntersect } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { formatEmailBody, makeDefaultEmailBody, templateDonorName } from "@/lib/email"
+import {
+  assertSessionIsQboConnected,
+  getServerSessionOrThrow,
+} from "@/lib/util/next-auth-helper-server"
 
 type EmailContext = {
   emailBody: string
@@ -133,76 +135,23 @@ enum AccountStatus {
   Complete,
 }
 
-type NotSubscribedProps = {
-  accountStatus: AccountStatus.NotSubscribed
-}
-const NotSubscribed = () => (
-  <section className="p-4 sm:flex sm:min-h-screen sm:flex-row sm:justify-center sm:p-10">
-    <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
-      <PricingCard title="Your selected plan" plan="free" />
-    </div>
-    <div className="pt-8 text-white sm:p-14">
-      <PricingCard
-        title="Subscribe to use this feature"
-        plan="pro"
-        button={
-          <Button
-            onClick={e => {
-              e.preventDefault()
-              subscribe("/email")
-            }}
-          >
-            Go pro
-          </Button>
-        }
-      />
-    </div>
-  </section>
-)
-
-type IncompleteAccountProps = {
-  accountStatus: AccountStatus.IncompleteData
-  filledIn: { items: boolean; doneeDetails: boolean }
-  donee: DoneeInfo
-}
-function IncompleteAccountEmail({ filledIn }: IncompleteAccountProps) {
-  return (
-    <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
-      <MissingData filledIn={filledIn} />
-      <form>
-        <EmailInput />
-      </form>
-    </section>
-  )
-}
-
-enum EmailHistoryStatus {
-  NoIntersection = 0,
-  HasIntersection,
-}
+const defaultCustomRecipientsState = false
 enum RecipientStatus {
   Valid = 0,
   NoEmail,
 }
-type EmailHistory =
-  | {
-      status: EmailHistoryStatus.NoIntersection
-    }
-  | { status: EmailHistoryStatus.HasIntersection; relevantEmailHistory: EmailHistoryItem[] }
 type Recipient = { name: string; id: number; status: RecipientStatus }
 type CompleteAccountProps = {
   accountStatus: AccountStatus.Complete
   donee: DoneeInfo
   recipients: Recipient[]
-  emailHistory: EmailHistory
+  emailHistory: EmailHistoryItem[] | null
 }
-const defaultCustomRecipientsState = false
-const isRecipientValid = (
-  recipient: Recipient
-): recipient is Recipient & { status: RecipientStatus.Valid } =>
-  recipient.status === RecipientStatus.Valid
 function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
-  const defaultRecipients = useMemo(() => recipients.filter(isRecipientValid), [recipients])
+  const defaultRecipients = useMemo(
+    () => recipients.filter(recipient => recipient.status === RecipientStatus.Valid),
+    [recipients]
+  )
   const [customRecipients, setCustomRecipients] = useState(defaultCustomRecipientsState)
   const [recipientIds, setRecipientIds] = useState<Set<number>>(
     new Set(defaultRecipients.map(({ id }) => id))
@@ -285,20 +234,60 @@ function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
   )
 }
 
-type Props = NotSubscribedProps | IncompleteAccountProps | CompleteAccountProps
+type IncompleteAccountProps = {
+  accountStatus: AccountStatus.IncompleteData
+  filledIn: { items: boolean; doneeDetails: boolean }
+  donee: DoneeInfo
+}
+type Props =
+  | { accountStatus: AccountStatus.NotSubscribed }
+  | IncompleteAccountProps
+  | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
-
 export default function Email(serialisedProps: SerialisedProps) {
-  const props: Props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
-
-  if (props.accountStatus === AccountStatus.NotSubscribed) return <NotSubscribed />
-
+  if (serialisedProps.accountStatus === AccountStatus.NotSubscribed)
+    return (
+      <section className="p-4 sm:flex sm:min-h-screen sm:flex-row sm:justify-center sm:p-10">
+        <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
+          <PricingCard title="Your selected plan" plan="free" />
+        </div>
+        <div className="pt-8 text-white sm:p-14">
+          <PricingCard
+            title="Subscribe to use this feature"
+            plan="pro"
+            button={
+              <Button
+                onClick={e => {
+                  e.preventDefault()
+                  subscribe("/email")
+                }}
+              >
+                Go pro
+              </Button>
+            }
+          />
+        </div>
+      </section>
+    )
+  else return <EmailDynamic {...serialisedProps} />
+}
+// all the dyamic components are separated so we are not using hooks for the NotSubscribed component
+// since it is completely static
+function EmailDynamic(
+  serialisedProps: SerialiseDates<IncompleteAccountProps | CompleteAccountProps>
+) {
+  const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   const defaultEmailBody = makeDefaultEmailBody(props.donee.companyName)
   const [emailBody, setEmailBody] = useState(defaultEmailBody)
   return (
     <EmailContext.Provider value={{ emailBody, setEmailBody }}>
       {props.accountStatus === AccountStatus.IncompleteData ? (
-        <IncompleteAccountEmail {...props} />
+        <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
+          <MissingData filledIn={props.filledIn} />
+          <form>
+            <EmailInput />
+          </form>
+        </section>
       ) : (
         <CompleteAccountEmail {...props} />
       )}
@@ -308,20 +297,19 @@ export default function Email(serialisedProps: SerialisedProps) {
 
 // --- server-side props ---
 
-function getEmailHistory(user: UserDataComplete): EmailHistory {
-  if (!user.emailHistory) return { status: EmailHistoryStatus.NoIntersection }
+function getEmailHistory(user: UserDataComplete): EmailHistoryItem[] | null {
+  if (!user.emailHistory) return null
 
   const relevantEmailHistory = user.emailHistory.filter(entry =>
     doDateRangesIntersect(entry.dateRange, user.dateRange)
   )
-  if (relevantEmailHistory.length === 0) return { status: EmailHistoryStatus.NoIntersection }
-  else return { status: EmailHistoryStatus.HasIntersection, relevantEmailHistory }
+  if (relevantEmailHistory.length === 0) return null
+  else return relevantEmailHistory
 }
 
 export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
-  const session = await getServerSession(req, res, authOptions)
-  if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session)) return disconnectedRedirect
+  const session = await getServerSessionOrThrow(req, res)
+  assertSessionIsQboConnected(session)
 
   const user = await getUserData(session.user.id)
   if (!user.donee) return disconnectedRedirect

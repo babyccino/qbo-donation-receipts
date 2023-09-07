@@ -1,11 +1,10 @@
 import { ReactNode, useState } from "react"
 import { GetServerSideProps } from "next"
-import { getServerSession, Session } from "next-auth"
+import { Session } from "next-auth"
 import { twMerge } from "tailwind-merge"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 
-import { authOptions } from "./api/auth/[...nextauth]"
 import { ReceiptPdfDocument } from "@/components/receipt"
 import { Svg, Link, buttonStyling } from "@/components/ui"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
@@ -18,8 +17,11 @@ import { isUserSubscribed } from "@/lib/stripe"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { DoneeInfo } from "@/types/db"
 import { getThisYear } from "@/lib/util/date"
-import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { Show } from "@/lib/util/react"
+import {
+  assertSessionIsQboConnected,
+  getServerSessionOrThrow,
+} from "@/lib/util/next-auth-helper-server"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -336,9 +338,8 @@ export default function IndexPage(props: Props) {
 // --- server-side props ---
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
-  const session = await getServerSession(req, res, authOptions)
-  if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session)) return disconnectedRedirect
+  const session = await getServerSessionOrThrow(req, res)
+  assertSessionIsQboConnected(session)
 
   const user = await getUserData(session.user.id)
   if (!user) throw new Error("No user data found in database")

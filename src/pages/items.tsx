@@ -1,7 +1,7 @@
 import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
-import { Session, getServerSession } from "next-auth"
+import { Session } from "next-auth"
 import Datepicker from "react-tailwindcss-datepicker"
 import { Alert, Button, Label, Select } from "flowbite-react"
 
@@ -19,13 +19,15 @@ import {
   utcEpoch,
 } from "@/lib/util/date"
 import { postJsonData } from "@/lib/util/request"
-import { authOptions } from "./api/auth/[...nextauth]"
 import { getUserData } from "@/lib/db"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Fieldset, Legend, Toggle } from "@/components/form"
-import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 import { deSerialiseDates, serialiseDates, SerialiseDates } from "@/lib/util/nextjs-helper"
+import {
+  assertSessionIsQboConnected,
+  getServerSessionOrThrow,
+} from "@/lib/util/next-auth-helper-server"
 
 type Props = {
   items: Item[]
@@ -188,10 +190,9 @@ export default function Items(serialisedProps: SerialisedProps) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async context => {
-  const session = await getServerSession(context.req, context.res, authOptions)
-  if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session)) return disconnectedRedirect
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
+  const session = await getServerSessionOrThrow(req, res)
+  assertSessionIsQboConnected(session)
 
   const [user, items] = await Promise.all([
     getUserData(session.user.id),

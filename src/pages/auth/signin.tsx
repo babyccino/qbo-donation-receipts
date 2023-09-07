@@ -1,11 +1,8 @@
 import { MouseEventHandler, useState } from "react"
-import { GetServerSideProps } from "next"
 import { signIn } from "next-auth/react"
-import { getServerSession } from "next-auth"
 import Image from "next/image"
 import { Checkbox, Label } from "flowbite-react"
 
-import { authOptions } from "../api/auth/[...nextauth]"
 import { SignIn } from "@/components/qbo"
 
 export default function SignInPage() {
@@ -44,15 +41,4 @@ export default function SignInPage() {
       </form>
     </div>
   )
-}
-
-export const getServerSideProps: GetServerSideProps<{}> = async ({ req, res }) => {
-  const session = await getServerSession(req, res, authOptions)
-  if (session)
-    return {
-      redirect: { destination: "/" },
-      props: {},
-    }
-
-  return { props: {} }
 }

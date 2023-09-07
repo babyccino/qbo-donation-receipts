@@ -2,12 +2,14 @@ import { NextApiResponse, NextApiRequest, Redirect } from "next"
 import { ApiError } from "next/dist/server/api-utils"
 import { getCsrfToken } from "next-auth/react"
 import { encode, JWT } from "next-auth/jwt"
-import { Session } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 import crypto from "@/lib/crypto"
 
 import { getBaseUrl } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 import { QboPermission } from "@/types/next-auth-helper"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { IncomingMessage, ServerResponse } from "http"
 
 const { nextauthSecret, vercelEnv } = config
 
@@ -104,6 +106,17 @@ export async function updateServerSession(res: NextApiResponse, token: JWT) {
       vercelEnv ? "Secure; " : ""
     }SameSite=Lax`
   )
+}
+
+type Request = IncomingMessage & {
+  cookies: Partial<{
+    [key: string]: string
+  }>
+}
+export async function getServerSessionOrThrow(req: Request, res: ServerResponse) {
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) throw new ApiError(500, "Couldn't find session")
+  return session
 }
 
 type QboConnectedSession = Session & {

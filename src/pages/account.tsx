@@ -17,6 +17,7 @@ import { getImageUrl } from "@/lib/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { PricingCard, Svg } from "@/components/ui"
 import { Connect } from "@/components/qbo"
+import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
@@ -163,15 +164,7 @@ export default function AccountPage(props: Props) {
 // --- server-side props ---
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
-  const session = await getServerSession(req, res, authOptions)
-
-  if (!session)
-    return {
-      redirect: {
-        destination: "/api/auth/signin",
-        permanent: false,
-      },
-    }
+  const session = await getServerSessionOrThrow(req, res)
 
   const user = await getUserData(session.user.id)
   const subscribed = isUserSubscribed(user)

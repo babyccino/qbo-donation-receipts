@@ -16,7 +16,3 @@ export function assertSessionIsQboConnected(
 ): asserts session is QboConnectedSession {
   if (!isSessionQboConnected(session)) throw new ApiError(401, "user not qbo connected")
 }
-
-export const disconnectedRedirect: { redirect: Redirect } = {
-  redirect: { permanent: false, destination: "/auth/disconnected" },
-}

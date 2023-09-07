@@ -1,9 +1,8 @@
 import { FormEventHandler, useRef } from "react"
 import { GetServerSideProps } from "next"
 import { useRouter } from "next/router"
-import { Session, getServerSession } from "next-auth"
+import { Session } from "next-auth"
 
-import { authOptions } from "./api/auth/[...nextauth]"
 import { buttonStyling } from "@/components/ui"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
@@ -11,7 +10,11 @@ import { base64EncodeFile, postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
-import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import {
+  assertSessionIsQboConnected,
+  disconnectedRedirect,
+  getServerSessionOrThrow,
+} from "@/lib/util/next-auth-helper-server"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -127,10 +130,9 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session = await getServerSession(context.req, context.res, authOptions)
-  if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session)) return disconnectedRedirect
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+  const session = await getServerSessionOrThrow(req, res)
+  assertSessionIsQboConnected(session)
 
   const user = await getUserData(session.user.id)
   if (!user.donee) return disconnectedRedirect
