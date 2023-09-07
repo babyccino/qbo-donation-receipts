@@ -4,8 +4,8 @@ import { getServerSession } from "next-auth"
 import { Alert, Button, Checkbox, Label, Modal } from "flowbite-react"
 
 import { authOptions } from "./api/auth/[...nextauth]"
-import { postJsonData } from "@/lib/util/request"
-import { MissingData, Svg } from "@/components/ui"
+import { postJsonData, subscribe } from "@/lib/util/request"
+import { MissingData, PricingCard, Svg } from "@/components/ui"
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { getUserData, storageBucket } from "@/lib/db"
 import { UserDataComplete, checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
@@ -127,18 +127,45 @@ function SendEmails({ recipients }: { recipients: Set<number> }) {
   )
 }
 
-// Rust enums would be v nice
 enum AccountStatus {
-  IncompleteData = 0,
+  NotSubscribed = 0,
+  IncompleteData,
   Complete,
 }
+
+type NotSubscribedProps = {
+  accountStatus: AccountStatus.NotSubscribed
+}
+const NotSubscribed = () => (
+  <section className="p-4 sm:flex sm:min-h-screen sm:flex-row sm:justify-center sm:p-10">
+    <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
+      <PricingCard title="Your selected plan" plan="free" />
+    </div>
+    <div className="pt-8 text-white sm:p-14">
+      <PricingCard
+        title="Subscribe to use this feature"
+        plan="pro"
+        button={
+          <Button
+            onClick={e => {
+              e.preventDefault()
+              subscribe("/email")
+            }}
+          >
+            Go pro
+          </Button>
+        }
+      />
+    </div>
+  </section>
+)
+
 type IncompleteAccountProps = {
   accountStatus: AccountStatus.IncompleteData
   filledIn: { items: boolean; doneeDetails: boolean }
   donee: DoneeInfo
 }
-
-function IncompleteAccountEmail({ donee, filledIn }: IncompleteAccountProps) {
+function IncompleteAccountEmail({ filledIn }: IncompleteAccountProps) {
   return (
     <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
       <MissingData filledIn={filledIn} />
@@ -260,10 +287,12 @@ function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
   )
 }
 
-type Props = IncompleteAccountProps | CompleteAccountProps
+type Props = NotSubscribedProps | IncompleteAccountProps | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
 
 export default function Email(serialisedProps: SerialisedProps) {
+  if (serialisedProps.accountStatus === AccountStatus.NotSubscribed) return <NotSubscribed />
+
   const props: Props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   const defaultEmailBody = makeDefaultEmailBody(props.donee.companyName)
   const [emailBody, setEmailBody] = useState(defaultEmailBody)
@@ -298,7 +327,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const user = await getUserData(session.user.id)
   if (!user.donee) return disconnectedRedirect
 
-  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "/account" } }
+  if (!isUserSubscribed(user)) return { props: { accountStatus: AccountStatus.NotSubscribed } }
   if (!isUserDataComplete(user)) {
     const { donee } = user
     delete donee.signature
