@@ -289,9 +289,10 @@ type Props = NotSubscribedProps | IncompleteAccountProps | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
 
 export default function Email(serialisedProps: SerialisedProps) {
-  if (serialisedProps.accountStatus === AccountStatus.NotSubscribed) return <NotSubscribed />
-
   const props: Props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
+
+  if (props.accountStatus === AccountStatus.NotSubscribed) return <NotSubscribed />
+
   const defaultEmailBody = makeDefaultEmailBody(props.donee.companyName)
   const [emailBody, setEmailBody] = useState(defaultEmailBody)
   return (
