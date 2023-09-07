@@ -317,8 +317,9 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   if (!isUserSubscribed(user)) return { props: { accountStatus: AccountStatus.NotSubscribed } }
   if (!isUserDataComplete(user)) {
     const { donee } = user
-    delete donee.signature
-    delete donee.smallLogo
+    for (const key in donee) {
+      if (donee[key as keyof DoneeInfo] === undefined) delete donee[key as keyof DoneeInfo]
+    }
     return {
       props: {
         accountStatus: AccountStatus.IncompleteData,
