@@ -5,13 +5,12 @@ import { Checkbox, Label } from "flowbite-react"
 
 import { SignIn } from "@/components/qbo"
 
+const signInHandler: MouseEventHandler<HTMLButtonElement> = e => {
+  e.preventDefault()
+  signIn("QBO-disconnected")
+}
 export default function SignInPage() {
   const [checked, setChecked] = useState(false)
-
-  const handler: MouseEventHandler<HTMLButtonElement> = e => {
-    e.preventDefault()
-    signIn("QBO-disconnected")
-  }
 
   return (
     <div className="flex h-full flex-grow flex-col justify-center gap-8 align-middle">
@@ -35,7 +34,7 @@ export default function SignInPage() {
             </a>
           </Label>
         </div>
-        <button className="mx-auto mt-4 inline-block" onClick={handler}>
+        <button className="mx-auto mt-4 inline-block" onClick={signInHandler}>
           <SignIn disabled={!checked} />
         </button>
       </form>
