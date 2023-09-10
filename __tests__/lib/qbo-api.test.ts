@@ -1,3 +1,5 @@
+import { test, describe, expect } from "bun:test"
+
 import {
   combineCustomerQueries,
   getAddressString,
@@ -27,7 +29,7 @@ const Header = Object.freeze({
 })
 
 describe("createDonationsFromSalesReport", () => {
-  it("should convert a report with one customer and one product correctly", () => {
+  test("should convert a report with one customer and one product correctly", () => {
     const report: CustomerSalesReport = {
       Header,
       Columns: {
@@ -117,7 +119,7 @@ describe("createDonationsFromSalesReport", () => {
     expect(result).toEqual(expected)
   })
 
-  it("should convert a report with one customer section and one product correctly", () => {
+  test("should convert a report with one customer section and one product correctly", () => {
     const report: CustomerSalesReport = {
       Header,
       Columns: {
@@ -234,7 +236,7 @@ describe("createDonationsFromSalesReport", () => {
     expect(result).toEqual(expected)
   })
 
-  it("selecting item which is not in customer's data gives empty array", () => {
+  test("selecting item which is not in customer's data gives empty array", () => {
     const report: CustomerSalesReport = {
       Header,
       Columns: {
@@ -309,7 +311,7 @@ describe("createDonationsFromSalesReport", () => {
     expect(result).toEqual([])
   })
 
-  it("should convert a report with multiple items and customers correctly", () => {
+  test("should convert a report with multiple items and customers correctly", () => {
     const report: CustomerSalesReport = {
       Header,
       Columns: {
@@ -440,7 +442,7 @@ describe("createDonationsFromSalesReport", () => {
 })
 
 describe("getAddress", () => {
-  it("should return the correct address string when all fields are present", () => {
+  test("should return the correct address string when all fields are present", () => {
     const address = {
       Id: "1",
       Line1: "123 Main St",
@@ -455,7 +457,7 @@ describe("getAddress", () => {
     expect(result).toEqual("123 Main St Suite 456, San Francisco 94105 CA")
   })
 
-  it("should return the correct address string when some fields are missing", () => {
+  test("should return the correct address string when some fields are missing", () => {
     const address = {
       Id: "1",
       Line1: "123 Main St",
@@ -469,7 +471,7 @@ describe("getAddress", () => {
 })
 
 describe("combineCustomerQueries", () => {
-  it("should combine multiple customer queries into one", () => {
+  test("should combine multiple customer queries into one", () => {
     const query1: CustomerQueryResult = {
       QueryResponse: {
         Customer: [
@@ -714,7 +716,7 @@ describe("addAddressesToCustomerData", () => {
     time: "2022-03-23T00:02:43.682-07:00",
   }
 
-  it("should add addresses to each donation object", () => {
+  test("should add addresses to each donation object", () => {
     const result = addBillingAddressesToDonations(donations, customers as CustomerQueryResult)
     expect(result).toEqual([
       {
@@ -741,7 +743,7 @@ describe("addAddressesToCustomerData", () => {
 })
 
 describe("formatItemQuery", () => {
-  it("should fetch item data and return an array of item objects", async () => {
+  test("should fetch item data and return an array of item objects", async () => {
     const itemQueryResponse: DeepPartial<ItemQueryResponse> = {
       QueryResponse: {
         Item: [
@@ -761,7 +763,7 @@ describe("formatItemQuery", () => {
 })
 
 describe("parseCompanyInfo", () => {
-  it("should parse company info with legal name and legal address", () => {
+  test("should parse company info with legal name and legal address", () => {
     const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
       QueryResponse: {
         CompanyInfo: [
@@ -797,7 +799,7 @@ describe("parseCompanyInfo", () => {
     })
   })
 
-  it("should parse company info with company name and company address", () => {
+  test("should parse company info with company name and company address", () => {
     const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
       QueryResponse: {
         CompanyInfo: [
@@ -825,19 +827,19 @@ describe("parseCompanyInfo", () => {
     })
   })
 
-  it("should throw an error if no company info is found", () => {
+  test("should throw an error if no company info is found", () => {
     const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
       QueryResponse: {
         CompanyInfo: [],
       },
     }
 
-    expect(() => parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toThrowError(
+    expect(() => parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toThrow(
       "No company info found"
     )
   })
 
-  it("should parse the company info object correctly when LegalAddr is defined", () => {
+  test("should parse the company info object correctly when LegalAddr is defined", () => {
     const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
       QueryResponse: {
         CompanyInfo: [
@@ -869,7 +871,7 @@ describe("parseCompanyInfo", () => {
     )
   })
 
-  it("should parse the company info object correctly when LegalAddr is undefined", () => {
+  test("should parse the company info object correctly when LegalAddr is undefined", () => {
     const companyInfoQueryResult: DeepPartial<CompanyInfoQueryResult> = {
       QueryResponse: {
         CompanyInfo: [
@@ -894,7 +896,7 @@ describe("parseCompanyInfo", () => {
     )
   })
 
-  it("should throw an error if no company info is found", () => {
+  test("should throw an error if no company info is found", () => {
     const companyInfoQueryResult = {
       QueryResponse: {
         CompanyInfo: [],
@@ -905,6 +907,6 @@ describe("parseCompanyInfo", () => {
 
     expect(() => {
       parseCompanyInfo(companyInfoQueryResult)
-    }).toThrowError("No company info found")
+    }).toThrow("No company info found")
   })
 })

@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    // "types": ["bun-types"], // this is necessary
     "baseUrl": ".",
     "paths": {
       "@/lib/*": ["src/lib/*"],
@@ -23,12 +24,6 @@
     "jsx": "preserve",
     "incremental": true
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "jest.setup.js",
-    "lib/pdfviewer/index.js"
-  ],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "jest.setup.js", "lib/pdfviewer/index.js"],
   "exclude": ["node_modules"]
 }

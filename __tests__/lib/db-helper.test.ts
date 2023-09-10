@@ -1,8 +1,10 @@
+import { test, describe, expect } from "bun:test"
+
 import { timestampToDate } from "@/lib/db-helper"
 import { Timestamp } from "@google-cloud/firestore"
 
 describe("timestampToDate", () => {
-  it("should convert timestamps correctly for different types", () => {
+  test("should convert timestamps correctly for different types", () => {
     const firestoreResponse = {
       string: "string",
       number: 1,

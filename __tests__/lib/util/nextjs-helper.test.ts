@@ -1,3 +1,5 @@
+import { test, describe, expect } from "bun:test"
+
 import {
   DeSerialiseDates,
   SerialiseDates,
@@ -6,7 +8,7 @@ import {
 } from "@/lib/util/nextjs-helper"
 
 describe("serialiseDates", () => {
-  const originalObj = it("should serialise an object correctly", () => {
+  test("should serialise an object correctly", () => {
     const obj = {
       string: "string",
       number: 1,
@@ -38,7 +40,7 @@ describe("serialiseDates", () => {
 })
 
 describe("deSerialiseDates", () => {
-  it("should de-serialise an object correctly", () => {
+  test("should de-serialise an object correctly", () => {
     const obj = {
       string: "string",
       number: 1,

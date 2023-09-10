@@ -1,4 +1,3 @@
-import { MouseEvent } from "react"
 import { GetServerSideProps } from "next"
 import Image from "next/image"
 import { useRouter } from "next/router"
@@ -6,18 +5,18 @@ import { signIn, useSession } from "next-auth/react"
 import { Session } from "next-auth"
 import { Button, Card } from "flowbite-react"
 
-import { DataType } from "./api/stripe/update-subscription"
-import { DisconnectBody } from "./api/auth/disconnect"
+import { DataType } from "@/pages/api/stripe/update-subscription"
+import { DisconnectBody } from "@/pages/api/auth/disconnect"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { getDaysBetweenDates } from "@/lib/util/date"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { Show } from "@/lib/util/react"
+import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { getUserData } from "@/lib/db"
 import { getImageUrl } from "@/lib/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { PricingCard, Svg } from "@/components/ui"
 import { Connect } from "@/components/qbo"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
@@ -96,7 +95,7 @@ function ProfileCard({
           <Button
             color={subscription!.cancelAtPeriodEnd ? undefined : "light"}
             className="flex-shrink"
-            onClick={async (e: MouseEvent<HTMLButtonElement, MouseEvent>) => {
+            onClick={async e => {
               e.preventDefault()
               const data: DataType = { cancelAtPeriodEnd: !subscription!.cancelAtPeriodEnd }
               await putJsonData("/api/stripe/update-subscription", data)
@@ -140,7 +139,7 @@ export default function AccountPage(props: Props) {
           button={
             !subscribed ? (
               <Button
-                onClick={(e: MouseEvent<HTMLButtonElement, MouseEvent>) => {
+                onClick={e => {
                   e.preventDefault()
                   subscribe("/account")
                 }}
