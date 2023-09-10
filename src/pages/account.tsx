@@ -1,11 +1,11 @@
+import { MouseEvent } from "react"
 import { GetServerSideProps } from "next"
 import Image from "next/image"
 import { useRouter } from "next/router"
 import { signIn, useSession } from "next-auth/react"
-import { getServerSession, Session } from "next-auth"
+import { Session } from "next-auth"
 import { Button, Card } from "flowbite-react"
 
-import { authOptions } from "./api/auth/[...nextauth]"
 import { DataType } from "./api/stripe/update-subscription"
 import { DisconnectBody } from "./api/auth/disconnect"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
@@ -96,7 +96,7 @@ function ProfileCard({
           <Button
             color={subscription!.cancelAtPeriodEnd ? undefined : "light"}
             className="flex-shrink"
-            onClick={async e => {
+            onClick={async (e: MouseEvent<HTMLButtonElement, MouseEvent>) => {
               e.preventDefault()
               const data: DataType = { cancelAtPeriodEnd: !subscription!.cancelAtPeriodEnd }
               await putJsonData("/api/stripe/update-subscription", data)
@@ -140,7 +140,7 @@ export default function AccountPage(props: Props) {
           button={
             !subscribed ? (
               <Button
-                onClick={e => {
+                onClick={(e: MouseEvent<HTMLButtonElement, MouseEvent>) => {
                   e.preventDefault()
                   subscribe("/account")
                 }}
