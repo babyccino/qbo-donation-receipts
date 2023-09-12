@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    // "types": ["bun-types"], // this is necessary
+    "types": ["bun-types"], // this is necessary
     "baseUrl": ".",
     "paths": {
       "@/lib/*": ["src/lib/*"],

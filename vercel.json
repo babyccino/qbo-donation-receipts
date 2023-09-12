@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install && npm run patch",
+  "installCommand": "bun install && bun run patch",
   "headers": [
     {
       "source": "/:path*",
@@ -7,10 +7,6 @@
         {
           "key": "Cache-Control",
           "value": "no-cache"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
         }
       ]
     }

@@ -1,3 +1,6 @@
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
+
 import "./globals.scss"
 
 import { SessionProvider } from "next-auth/react"
