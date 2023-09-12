@@ -1,4 +1,7 @@
-import { getThisYear } from "./util/date"
+import { Donation } from "@/types/qbo-api"
+import { UserDataComplete } from "@/lib/db-helper"
+import { doDateRangesIntersect, getThisYear } from "@/lib/util/date"
+import { EmailHistoryItem } from "@/types/db"
 
 export const templateDonorName = "FULL_NAME"
 export const formatEmailBody = (str: string, donorName: string) =>
@@ -21,3 +24,22 @@ Thank you once again for your generosity, compassion, and belief in our mission.
 Attached is your Income Tax Receipt for the ${getThisYear()} taxation year.
 
 With gratitude,`
+
+export function getEmailHistory(
+  user: UserDataComplete,
+  donations: Donation[],
+): EmailHistoryItem[] | null {
+  if (!user.emailHistory) return null
+
+  const recipientIds = new Set<number>(donations.map(({ id }) => id))
+  const relevantEmailHistory: EmailHistoryItem[] = []
+  for (const entry of user.emailHistory) {
+    if (!doDateRangesIntersect(entry.dateRange, user.dateRange)) continue
+    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.id))
+    if (customerOverlap.length === 0) continue
+    entry.donations = customerOverlap
+    relevantEmailHistory.push(entry)
+  }
+  if (relevantEmailHistory.length === 0) return null
+  else return relevantEmailHistory
+}

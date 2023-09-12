@@ -47,5 +47,9 @@ describe("doDateRangesIntersect", () => {
     expect(doDateRangesIntersect(date4, date1)).toBeTruthy()
     expect(doDateRangesIntersect(date1, date5)).toBeTruthy()
     expect(doDateRangesIntersect(date5, date1)).toBeTruthy()
+
+    const date6: DateRange = { startDate: new Date("2022-07-01"), endDate: new Date("2023-06-30") }
+    const date7: DateRange = { startDate: new Date("2023-01-01"), endDate: new Date("2023-12-31") }
+    expect(doDateRangesIntersect(date6, date7)).toBeTruthy()
   })
 })
