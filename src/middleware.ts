@@ -29,5 +29,6 @@ export const config = {
     "/items",
     "/account",
     "/email",
+    "/subscribe",
   ],
 }

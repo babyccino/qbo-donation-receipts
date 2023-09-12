@@ -23,6 +23,7 @@ import {
   assertSessionIsQboConnected,
   getServerSessionOrThrow,
 } from "@/lib/util/next-auth-helper-server"
+import { ApiError } from "next/dist/server/api-utils"
 
 type EmailContext = {
   emailBody: string
@@ -150,11 +151,11 @@ type CompleteAccountProps = {
 function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
   const defaultRecipients = useMemo(
     () => recipients.filter(recipient => recipient.status === RecipientStatus.Valid),
-    [recipients]
+    [recipients],
   )
   const [customRecipients, setCustomRecipients] = useState(defaultCustomRecipientsState)
   const [recipientIds, setRecipientIds] = useState<Set<number>>(
-    new Set(defaultRecipients.map(({ id }) => id))
+    new Set(defaultRecipients.map(({ id }) => id)),
   )
 
   return (
@@ -182,7 +183,7 @@ function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
                   disabled={status === RecipientStatus.NoEmail}
                   onChange={e =>
                     setRecipientIds(set =>
-                      e.currentTarget.checked ? set.add(id) : (set.delete(id), set)
+                      e.currentTarget.checked ? set.add(id) : (set.delete(id), set),
                     )
                   }
                   size="sm"
@@ -239,43 +240,9 @@ type IncompleteAccountProps = {
   filledIn: { items: boolean; doneeDetails: boolean }
   donee: DoneeInfo
 }
-type Props =
-  | { accountStatus: AccountStatus.NotSubscribed }
-  | IncompleteAccountProps
-  | CompleteAccountProps
+type Props = IncompleteAccountProps | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
 export default function Email(serialisedProps: SerialisedProps) {
-  if (serialisedProps.accountStatus === AccountStatus.NotSubscribed)
-    return (
-      <section className="p-4 sm:flex sm:min-h-screen sm:flex-row sm:justify-center sm:p-10">
-        <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
-          <PricingCard title="Your selected plan" plan="free" />
-        </div>
-        <div className="pt-8 text-white sm:p-14">
-          <PricingCard
-            title="Subscribe to use this feature"
-            plan="pro"
-            button={
-              <Button
-                onClick={e => {
-                  e.preventDefault()
-                  subscribe("/email")
-                }}
-              >
-                Go pro
-              </Button>
-            }
-          />
-        </div>
-      </section>
-    )
-  else return <EmailDynamic {...serialisedProps} />
-}
-// all the dyamic components are separated so we are not using hooks for the NotSubscribed component
-// since it is completely static
-function EmailDynamic(
-  serialisedProps: SerialiseDates<IncompleteAccountProps | CompleteAccountProps>
-) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   const defaultEmailBody = makeDefaultEmailBody(props.donee.companyName)
   const [emailBody, setEmailBody] = useState(defaultEmailBody)
@@ -301,7 +268,7 @@ function getEmailHistory(user: UserDataComplete): EmailHistoryItem[] | null {
   if (!user.emailHistory) return null
 
   const relevantEmailHistory = user.emailHistory.filter(entry =>
-    doDateRangesIntersect(entry.dateRange, user.dateRange)
+    doDateRangesIntersect(entry.dateRange, user.dateRange),
   )
   if (relevantEmailHistory.length === 0) return null
   else return relevantEmailHistory
@@ -312,9 +279,9 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   assertSessionIsQboConnected(session)
 
   const user = await getUserData(session.user.id)
-  if (!user.donee) return disconnectedRedirect
+  if (!user.donee) throw new ApiError(500, "User is connected but is missing donee info in db")
 
-  if (!isUserSubscribed(user)) return { props: { accountStatus: AccountStatus.NotSubscribed } }
+  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }
   if (!isUserDataComplete(user)) {
     const { donee } = user
     for (const key in donee) {
@@ -333,7 +300,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
     session.accessToken,
     session.realmId,
     user.dateRange,
-    user.items
+    user.items,
   )
   const recipients = donations.map(({ id, name, email }) => ({
     id,
