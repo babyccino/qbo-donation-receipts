@@ -6,6 +6,7 @@ import {
   deSerialiseDates,
   serialiseDates,
 } from "@/lib/util/nextjs-helper"
+import { createDateRange } from "@/lib/util/date"
 
 describe("serialiseDates", () => {
   test("should serialise an object correctly", () => {
@@ -34,6 +35,45 @@ describe("serialiseDates", () => {
         timestamp: { __serialised_date__: 2 },
         array: [{ __serialised_date__: 3 }, { __serialised_date__: 4 }],
       },
+    } satisfies SerialiseDates<typeof obj>
+    expect(res).toEqual(expected)
+  })
+
+  test("failed real value should serialise correctly", () => {
+    const obj = {
+      dateRange: createDateRange("2023-01-01", "2023-12-31"),
+      donations: [
+        {
+          address: "",
+          email: "",
+          id: 22,
+          items: [{ id: 1, name: "hi", total: 100 }],
+          name: "Jeff",
+          total: 100,
+        },
+      ],
+      notSent: [],
+      timeStamp: new Date("2023-01-01"),
+    }
+
+    const res = serialiseDates(obj)
+    const expected = {
+      dateRange: {
+        startDate: { __serialised_date__: new Date("2023-01-01").getTime() },
+        endDate: { __serialised_date__: new Date("2023-12-31").getTime() },
+      },
+      donations: [
+        {
+          address: "",
+          email: "",
+          id: 22,
+          items: [{ id: 1, name: "hi", total: 100 }],
+          name: "Jeff",
+          total: 100,
+        },
+      ],
+      notSent: [],
+      timeStamp: { __serialised_date__: new Date("2023-01-01").getTime() },
     } satisfies SerialiseDates<typeof obj>
     expect(res).toEqual(expected)
   })

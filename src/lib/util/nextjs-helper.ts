@@ -44,8 +44,9 @@ export function deSerialiseDates<T>(obj: T): DeSerialiseDates<T> {
 
   if (Array.isArray(obj)) return obj.map(val => deSerialiseDates(val)) as DeSerialiseDates<T>
 
+  const newObj: any = {}
   for (const key in obj) {
-    obj[key] = deSerialiseDates(obj[key]) as any
+    newObj[key] = deSerialiseDates(obj[key]) as any
   }
-  return obj as DeSerialiseDates<T>
+  return newObj as DeSerialiseDates<T>
 }
