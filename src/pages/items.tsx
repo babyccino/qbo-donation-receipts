@@ -1,13 +1,15 @@
-import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
-import { GetServerSideProps } from "next"
-import { useRouter } from "next/router"
-import { Session } from "next-auth"
-import Datepicker from "react-tailwindcss-datepicker"
 import { Alert, Button, Label, Select } from "flowbite-react"
+import { GetServerSideProps } from "next"
+import { Session } from "next-auth"
+import { useRouter } from "next/router"
+import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
+import Datepicker from "react-tailwindcss-datepicker"
 
-import { buttonStyling, Svg } from "@/components/ui"
+import { Fieldset, Legend, Toggle } from "@/components/form"
+import { buttonStyling } from "@/components/ui"
+import { getUserData } from "@/lib/db"
+import { checkUserDataCompletion } from "@/lib/db-helper"
 import { getItems } from "@/lib/qbo-api"
-import { Item } from "@/types/qbo-api"
 import {
   createDateRange,
   DateRange,
@@ -18,16 +20,15 @@ import {
   startOfThisYear,
   utcEpoch,
 } from "@/lib/util/date"
-import { postJsonData } from "@/lib/util/request"
-import { getUserData } from "@/lib/db"
-import { DataType as ItemsApiDataType } from "@/pages/api/items"
-import { Fieldset, Legend, Toggle } from "@/components/form"
-import { checkUserDataCompletion } from "@/lib/db-helper"
-import { deSerialiseDates, serialiseDates, SerialiseDates } from "@/lib/util/nextjs-helper"
 import {
   assertSessionIsQboConnected,
   getServerSessionOrThrow,
 } from "@/lib/util/next-auth-helper-server"
+import { deSerialiseDates, serialiseDates, SerialiseDates } from "@/lib/util/nextjs-helper"
+import { postJsonData } from "@/lib/util/request"
+import { DataType as ItemsApiDataType } from "@/pages/api/items"
+import { Item } from "@/types/qbo-api"
+import { InformationCircleIcon } from "@heroicons/react/24/solid"
 
 type Props = {
   items: Item[]
@@ -65,12 +66,12 @@ export default function Items(serialisedProps: SerialisedProps) {
   const formRef = useRef<HTMLFormElement>(null)
 
   const [dateRangeState, setDateRangeState] = useState<DateRangeType>(
-    props.itemsFilledIn ? getDateRangeType(props.dateRange) : DateRangeType.LastYear
+    props.itemsFilledIn ? getDateRangeType(props.dateRange) : DateRangeType.LastYear,
   )
   const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
   const [customDateState, setCustomDateState] = useState(
-    props.itemsFilledIn ? props.dateRange : defaultDateState
+    props.itemsFilledIn ? props.dateRange : defaultDateState,
   )
   const onDateChange = (date: DateValueType) => {
     if (!date || !date.endDate || !date.startDate) return
@@ -131,11 +132,7 @@ export default function Items(serialisedProps: SerialisedProps) {
         <Alert
           color="info"
           className="mb-4"
-          icon={() => (
-            <div className="mr-2 h-6 w-6">
-              <Svg.Info />
-            </div>
-          )}
+          icon={() => <InformationCircleIcon className="mr-2 h-6 w-6" />}
         >
           Make sure to only choose your QuickBooks sales items which qualify as donations
         </Alert>

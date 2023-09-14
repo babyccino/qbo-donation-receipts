@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.409.0",
+    "@heroicons/react": "^2.0.18",
     "@react-email/components": "^0.0.7",
     "@react-email/render": "^0.0.7",
     "@react-pdf/renderer": "^3.1.12",

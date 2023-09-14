@@ -1,27 +1,36 @@
-import { ReactNode, useState } from "react"
-import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
-import { twMerge } from "tailwind-merge"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
+import { GetServerSideProps } from "next"
+import { Session } from "next-auth"
+import { ReactNode, useState } from "react"
+import { twMerge } from "tailwind-merge"
 
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { Svg, Link, buttonStyling } from "@/components/ui"
+import { Link, Svg, buttonStyling } from "@/components/ui"
+import { getUserData, storageBucket } from "@/lib/db"
+import {
+  checkUserDataCompletion,
+  downloadImagesForDonee,
+  isUserDataComplete,
+} from "@/lib/db-helper"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { getDonations } from "@/lib/qbo-api"
-import { Donation } from "@/types/qbo-api"
-import { getUserData, storageBucket } from "@/lib/db"
-import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
-import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
-import { downloadImagesForDonee } from "@/lib/db-helper"
-import { DoneeInfo } from "@/types/db"
 import { getThisYear } from "@/lib/util/date"
-import { Show } from "@/lib/util/react"
 import {
   assertSessionIsQboConnected,
   getServerSessionOrThrow,
 } from "@/lib/util/next-auth-helper-server"
+import { Show } from "@/lib/util/react"
+import { subscribe } from "@/lib/util/request"
+import { DoneeInfo } from "@/types/db"
+import { Donation } from "@/types/qbo-api"
+import {
+  ArrowDownTrayIcon,
+  ArrowRightIcon,
+  PlusCircleIcon,
+  PlusIcon,
+} from "@heroicons/react/24/solid"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -73,16 +82,14 @@ const ReceiptLimitCard = () => (
 const showReceiptInner = (
   <>
     <span className="hidden sm:inline">Show Receipt</span>
-    <span className="inline-block h-5 w-5 sm:ml-2">
-      <Svg.Plus />
-    </span>
+    <PlusIcon className="inline-block h-5 w-5 sm:ml-2" />
   </>
 )
 function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
   const [show, setShow] = useState(false)
   const containerClassName = twMerge(
     show ? "flex" : "hidden",
-    "fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
+    "fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40",
   )
 
   return (
@@ -96,7 +103,7 @@ function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
           className="fixed right-4 top-4 z-40 h-14 w-14 rounded-lg bg-blue-700 text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
           onClick={() => setShow(false)}
         >
-          <Svg.CircledPlus />
+          <PlusCircleIcon />
         </button>
       </div>
     </>
@@ -106,9 +113,7 @@ function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
 const downloadReceiptInner = (
   <>
     <span className="hidden sm:inline">Download</span>
-    <span className="-mb-1 inline-block h-5 w-5 sm:ml-2">
-      <Svg.Download />
-    </span>
+    <ArrowDownTrayIcon className="-mb-1 inline-block h-5 w-5 sm:ml-2" />
   </>
 )
 const DownloadReceipt = ({
@@ -291,11 +296,7 @@ export default function IndexPage(props: Props) {
       <Alert
         color="info"
         className="mb-4 sm:hidden"
-        icon={() => (
-          <div className="mr-2 h-6 w-6">
-            <Svg.RightArrow />
-          </div>
-        )}
+        icon={() => <ArrowRightIcon className="mr-2 h-6 w-6" />}
       >
         Scroll right to view/download individual receipts
       </Alert>

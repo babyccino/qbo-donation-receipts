@@ -1,16 +1,17 @@
-import { ReactNode } from "react"
 import { GetServerSideProps } from "next"
 import { getServerSession, Session } from "next-auth"
-import { twMerge } from "tailwind-merge"
 import Link from "next/link"
+import { ReactNode } from "react"
+import { twMerge } from "tailwind-merge"
 
-import { authOptions } from "./api/auth/[...nextauth]"
-import { Svg, Link as StyledLink } from "@/components/ui"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { Link as StyledLink, Svg } from "@/components/ui"
 import { getUserData } from "@/lib/db"
-import { useSession } from "next-auth/react"
-import { QboPermission } from "@/types/next-auth-helper"
+import { checkUserDataCompletion } from "@/lib/db-helper"
 import { Show } from "@/lib/util/react"
+import { QboPermission } from "@/types/next-auth-helper"
+import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
+import { useSession } from "next-auth/react"
+import { authOptions } from "./api/auth/[...nextauth]"
 
 const _Card = ({
   href,
@@ -25,7 +26,7 @@ const _Card = ({
     href={href}
     className={twMerge(
       "relative max-w-sm rounded-lg border border-gray-200 bg-white p-6 shadow hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700",
-      className
+      className,
     )}
   >
     {children}
@@ -39,11 +40,7 @@ const Title = ({ children }: { children?: ReactNode }) => (
     {children}
   </h6>
 )
-const Tick = () => (
-  <div className="absolute right-2 top-4 h-8 w-8 text-green-400">
-    <Svg.Tick />
-  </div>
-)
+const Tick = () => <CheckIcon className="absolute right-2 top-4 h-8 w-8 text-green-400" />
 const Note = ({ children }: { children?: ReactNode }) => (
   <p className="mt-4 font-bold text-green-400">{children}</p>
 )
@@ -73,9 +70,7 @@ export default function IndexPage({ filledIn }: Props) {
         <Show when={!filledIn || (!filledIn.items && !filledIn.doneeDetails)}>
           <StyledLink href="/items" className="px-5 py-3 text-lg">
             Get started
-            <div className="-mb-1 ml-2 inline-block h-5 w-5">
-              <Svg.RightArrow />
-            </div>
+            <ArrowRightIcon className="-mt-1 ml-2 inline-block h-5 w-5" />
           </StyledLink>
         </Show>
       </div>

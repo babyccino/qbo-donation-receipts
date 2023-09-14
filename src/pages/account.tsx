@@ -1,22 +1,23 @@
+import { Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
+import { Session } from "next-auth"
+import { signIn, useSession } from "next-auth/react"
 import Image from "next/image"
 import { useRouter } from "next/router"
-import { signIn, useSession } from "next-auth/react"
-import { Session } from "next-auth"
-import { Button, Card } from "flowbite-react"
 
-import { DataType } from "@/pages/api/stripe/update-subscription"
-import { DisconnectBody } from "@/pages/api/auth/disconnect"
-import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
-import { getDaysBetweenDates } from "@/lib/util/date"
-import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
-import { Show } from "@/lib/util/react"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
+import { Connect } from "@/components/qbo"
+import { PricingCard } from "@/components/ui"
 import { getUserData } from "@/lib/db"
 import { getImageUrl } from "@/lib/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
-import { PricingCard, Svg } from "@/components/ui"
-import { Connect } from "@/components/qbo"
+import { getDaysBetweenDates } from "@/lib/util/date"
+import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
+import { Show } from "@/lib/util/react"
+import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
+import { DisconnectBody } from "@/pages/api/auth/disconnect"
+import { DataType } from "@/pages/api/stripe/update-subscription"
+import { BriefcaseIcon, MapPinIcon } from "@heroicons/react/24/solid"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
@@ -64,14 +65,14 @@ function ProfileCard({
         <Show when={Boolean(companyName)}>
           <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
             <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
-              <Svg.Briefcase />
+              <BriefcaseIcon />
             </div>
             {companyName}
           </p>
         </Show>
         <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
           <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
-            <Svg.MapPin />
+            <MapPinIcon />
           </div>
           CA
         </p>
