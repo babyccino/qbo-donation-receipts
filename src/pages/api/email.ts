@@ -60,7 +60,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     throw new ApiError(
       400,
       `${ids.length} IDs were found in the request body which were not present in the calculated donations for this date range` +
-        ids
+        ids,
     )
 
   let counter = getThisYear()
@@ -100,7 +100,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
         ...props,
         donee: doneeWithCidImages,
         body,
-      })
+      }),
     )
 
     await transporter.sendMail({
@@ -136,7 +136,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     else notSentData.push({ id: donation.id, name: donation.name })
   }
 
-  if (receiptsSentPromises.length === 0) throw new ApiError(400, "No receipts were sent")
+  if (receiptsSentPromises.length === 0) throw new ApiError(500, "No receipts were sent")
 
   const receiptsSent = await Promise.all(receiptsSentPromises)
 

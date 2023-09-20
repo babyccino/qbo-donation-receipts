@@ -1,29 +1,38 @@
 import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
-import { GetServerSideProps } from "next"
 import { Alert, Button, Checkbox, Label, Modal } from "flowbite-react"
+import { GetServerSideProps } from "next"
+import { ApiError } from "next/dist/server/api-utils"
+import { ChevronUpIcon as UpArrow, InformationCircleIcon as Info } from "@heroicons/react/24/solid"
 
-import { postJsonData, subscribe } from "@/lib/util/request"
-import { MissingData, PricingCard, Svg } from "@/components/ui"
 import { Fieldset, TextArea, Toggle } from "@/components/form"
+import { WithBody, WithBodyProps } from "@/components/receipt"
+import { MissingData, EmailSentToast } from "@/components/ui"
+import { dummyEmailProps } from "@/emails/receipt"
 import { getUserData, storageBucket } from "@/lib/db"
-import { UserDataComplete, checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
-import { disconnectedRedirect } from "@/lib/util/next-auth-helper-server"
-import { DoneeInfo, EmailHistoryItem } from "@/types/db"
+import {
+  checkUserDataCompletion,
+  downloadImagesForDonee,
+  isUserDataComplete,
+} from "@/lib/db-helper"
+import {
+  formatEmailBody,
+  makeDefaultEmailBody,
+  templateDonorName,
+  trimHistoryById,
+  trimHistoryByIdAndDateRange,
+} from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
-import { dummyEmailProps } from "@/emails/receipt"
-import { WithBody, WithBodyProps } from "@/components/receipt"
-import { downloadImagesForDonee } from "@/lib/db-helper"
-import { EmailDataType } from "@/pages/api/email"
-import { doDateRangesIntersect } from "@/lib/util/date"
-import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
-import { Show } from "@/lib/util/react"
-import { formatEmailBody, makeDefaultEmailBody, templateDonorName } from "@/lib/email"
+import { formatDateHtml } from "@/lib/util/date"
 import {
   assertSessionIsQboConnected,
   getServerSessionOrThrow,
 } from "@/lib/util/next-auth-helper-server"
-import { ApiError } from "next/dist/server/api-utils"
+import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
+import { Show } from "@/lib/util/react"
+import { postJsonData } from "@/lib/util/request"
+import { EmailDataType } from "@/pages/api/email"
+import { DoneeInfo, EmailHistoryItem } from "@/types/db"
 
 type EmailContext = {
   emailBody: string
@@ -81,12 +90,65 @@ function EmailPreview({ donee }: { donee: DoneeInfo }) {
           <Button onClick={() => setShowModal(false)}>Close</Button>
         </Modal.Footer>
       </Modal>
+      <button onClick={e => e.currentTarget.value}></button>
     </>
   )
 }
 
-function SendEmails({ recipients }: { recipients: Set<number> }) {
+const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistoryItem[] }) => (
+  <details className="flex items-center justify-between w-full p-3 font-medium text-left text-gray-500 border border-gray-200 rounded-xl   dark:border-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 open:bg-gray-100 open:p-5 dark:open:bg-gray-800 group">
+    <summary className="flex items-center justify-between mb-2 gap-2">
+      <Info className="mr-2 h-8 w-8" />
+      Your selection of donees and date range overlaps with previous campaigns
+      <UpArrow className="w-5 h-5 shrink-0 group-open:text-gray-700 dark:group-open:text-gray-200 group-open:rotate-180" />
+    </summary>
+    <p className="font-light">
+      <div className="mb-2">
+        Please verify you are not receipting the same donations twice. The following campaigns have
+        overlap with the current:
+      </div>
+      <ul>
+        {emailHistory.map((entry, index) => (
+          <li className="border-b last:border-none border-gray-200 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 ">
+            <details
+              key={index}
+              className="flex items-center justify-between w-full p-5 font-medium text-left text-gray-500 group/item"
+            >
+              <summary className="flex items-center justify-between gap-2">
+                {formatDateHtml(entry.timeStamp)}
+                <UpArrow className="w-3 h-3 shrink-0 group-open/item:rotate-180" />
+              </summary>
+              <div className="font-light mt-2">
+                <p className="mb-2">
+                  This campaign spanned donations from{" "}
+                  <i>{formatDateHtml(entry.dateRange.startDate)}</i> to{" "}
+                  <i>{formatDateHtml(entry.dateRange.endDate)}</i>
+                </p>
+                Donors:
+                <br />
+                <ul className="list-disc list-inside">
+                  {entry.donations.map(donation => (
+                    <li>{donation.name}</li>
+                  ))}
+                </ul>
+              </div>
+            </details>
+          </li>
+        ))}
+      </ul>
+    </p>
+  </details>
+)
+
+function SendEmails({
+  recipients,
+  emailHistory,
+}: {
+  recipients: Set<number>
+  emailHistory: EmailHistoryItem[] | null
+}) {
   const [showModal, setShowModal] = useState(false)
+  const [showEmailSentToast, setShowEmailSentToast] = useState(false)
   const { emailBody } = useContext(EmailContext)
 
   const handler = async () => {
@@ -99,34 +161,35 @@ function SendEmails({ recipients }: { recipients: Set<number> }) {
   }
 
   return (
-    <>
-      <Button
-        className={recipients.size > 0 ? "" : "line-through"}
-        onClick={() => setShowModal(true)}
-      >
-        Send Emails
-      </Button>
-      <Modal show={showModal} size="md" popup onClose={() => setShowModal(false)}>
+    <Button
+      className={recipients.size > 0 ? "" : "line-through"}
+      onClick={() => setShowModal(true)}
+    >
+      Send Emails
+      <Modal show={showModal} size="lg" popup onClose={() => setShowModal(false)}>
         <Modal.Header />
         <Modal.Body>
-          <div className="text-center">
-            {/*<HiOutlineExclamationCircle className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />*/}
-            <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
+          <div className="text-center space-y-4">
+            {emailHistory && <EmailHistoryOverlap emailHistory={emailHistory} />}
+            <p className="font-normal text-gray-500 dark:text-gray-400">
               Please ensure that you confirm the accuracy of your receipts on the {'"'}Receipts{'"'}{" "}
-              page prior to sending. Are you certain you wish to email all of your donors?
-            </h3>
+              page prior to sending. <br />
+              <br />
+              Are you certain you wish to email all of your donors?
+            </p>
             <div className="flex justify-center gap-4">
               <Button color="failure" onClick={handler}>
                 Yes, I{"'"}m sure
               </Button>
-              <Button color="gray" onClick={() => setShowModal(false)}>
+              <Button color="gray" onClick={() => (console.log("hi"), setShowModal(false))}>
                 No, cancel
               </Button>
             </div>
           </div>
         </Modal.Body>
       </Modal>
-    </>
+      {showEmailSentToast && <EmailSentToast onDismiss={() => setShowEmailSentToast(false)} />}
+    </Button>
   )
 }
 
@@ -148,15 +211,18 @@ type CompleteAccountProps = {
   recipients: Recipient[]
   emailHistory: EmailHistoryItem[] | null
 }
-function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
+function CompleteAccountEmail({ donee, recipients, emailHistory }: CompleteAccountProps) {
   const defaultRecipients = useMemo(
     () => recipients.filter(recipient => recipient.status === RecipientStatus.Valid),
     [recipients],
   )
   const [customRecipients, setCustomRecipients] = useState(defaultCustomRecipientsState)
-  const [recipientIds, setRecipientIds] = useState<Set<number>>(
-    new Set(defaultRecipients.map(({ id }) => id)),
+  const [recipientIds, setRecipientIds] = useState(
+    new Set<number>(defaultRecipients.map(({ id }) => id)),
   )
+
+  const trimmedHistory =
+    customRecipients && emailHistory ? trimHistoryById(recipientIds, emailHistory) : emailHistory
 
   return (
     <section className="flex h-full w-full max-w-2xl flex-col justify-center gap-4 p-8 align-middle">
@@ -215,18 +281,10 @@ function CompleteAccountEmail({ donee, recipients }: CompleteAccountProps) {
       <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
         <div className="mb-4 flex justify-center gap-4">
           <EmailPreview donee={donee} />
-          <SendEmails recipients={recipientIds} />
+          <SendEmails recipients={recipientIds} emailHistory={trimmedHistory} />
         </div>
         <Show when={recipientIds.size === 0}>
-          <Alert
-            color="warning"
-            className="mb-4"
-            icon={() => (
-              <div className="mr-2 h-6 w-6">
-                <Svg.Info />
-              </div>
-            )}
-          >
+          <Alert color="warning" className="mb-4" icon={() => <Info className="mr-2 h-6 w-6" />}>
             You have currently have no valid recipients
           </Alert>
         </Show>
@@ -263,16 +321,6 @@ export default function Email(serialisedProps: SerialisedProps) {
 }
 
 // --- server-side props ---
-
-function getEmailHistory(user: UserDataComplete): EmailHistoryItem[] | null {
-  if (!user.emailHistory) return null
-
-  const relevantEmailHistory = user.emailHistory.filter(entry =>
-    doDateRangesIntersect(entry.dateRange, user.dateRange),
-  )
-  if (relevantEmailHistory.length === 0) return null
-  else return relevantEmailHistory
-}
 
 export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSessionOrThrow(req, res)
@@ -311,7 +359,61 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
     accountStatus: AccountStatus.Complete,
     donee: await downloadImagesForDonee(user.donee, storageBucket),
     recipients,
-    emailHistory: getEmailHistory(user),
+    // emailHistory: [
+    //   {
+    //     dateRange: createDateRange("2023-01-01", "2023-12-31"),
+    //     donations: [
+    //       {
+    //         address: "",
+    //         email: "",
+    //         id: 22,
+    //         items: [{ id: 1, name: "hi", total: 100 }],
+    //         name: "Jeff McJefferson",
+    //         total: 100,
+    //       },
+    //       {
+    //         address: "",
+    //         email: "",
+    //         id: 22,
+    //         items: [{ id: 1, name: "hi", total: 100 }],
+    //         name: "Richard 'the dick' Dickardson",
+    //         total: 100,
+    //       },
+    //       {
+    //         address: "",
+    //         email: "",
+    //         id: 22,
+    //         items: [{ id: 1, name: "hi", total: 100 }],
+    //         name: "Jeff",
+    //         total: 100,
+    //       },
+    //     ],
+    //     notSent: [],
+    //     timeStamp: new Date("2023-01-01"),
+    //   },
+    //   {
+    //     dateRange: createDateRange("2023-01-01", "2023-12-31"),
+    //     donations: [
+    //       {
+    //         address: "",
+    //         email: "",
+    //         id: 22,
+    //         items: [{ id: 1, name: "hi", total: 100 }],
+    //         name: "Jeff",
+    //         total: 100,
+    //       },
+    //     ],
+    //     notSent: [],
+    //     timeStamp: new Date("2023-01-01"),
+    //   },
+    // ],
+    emailHistory: user.emailHistory
+      ? trimHistoryByIdAndDateRange(
+          new Set(recipients.map(({ id }) => id)),
+          user.dateRange,
+          user.emailHistory,
+        )
+      : null,
   }
   return {
     props: serialiseDates(props),
