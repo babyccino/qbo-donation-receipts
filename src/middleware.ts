@@ -21,9 +21,12 @@ export const config = {
   matcher: [
     "/auth/signin",
     "/api/stripe/create-checkout-session",
+    "/api/stripe/update-subscription",
     "/api/details",
     "/api/items",
     "/api/receipts",
+    "/api/email",
+    "/api/support",
     "/details",
     "/generate-receipts",
     "/items",
