@@ -7,7 +7,8 @@ import { authOptions } from "./api/auth/[...nextauth]"
 import { buttonStyling } from "@/components/ui"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
-import { base64EncodeFile, postJsonData } from "@/lib/util/request"
+import { postJsonData } from "@/lib/util/request"
+import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
@@ -45,8 +46,8 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
       country: formData.get("country") as string,
       registrationNumber: formData.get("registrationNumber") as string,
       signatoryName: formData.get("signatoryName") as string,
-      signature: signature.name !== "" ? await base64EncodeFile(signature) : undefined,
-      smallLogo: smallLogo.name !== "" ? await base64EncodeFile(smallLogo) : undefined,
+      signature: signature.name !== "" ? await base64DataUrlEncodeFile(signature) : undefined,
+      smallLogo: smallLogo.name !== "" ? await base64DataUrlEncodeFile(smallLogo) : undefined,
     }
   }
 

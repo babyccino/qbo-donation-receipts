@@ -17,6 +17,7 @@ import {
 export { Select, Checkbox } from "flowbite-react"
 
 import { twMerge } from "tailwind-merge"
+import { supportedExtensions } from "@/lib/util/image-helper"
 
 // components from flowbite.com
 // svg from heroicons.dev
@@ -32,7 +33,7 @@ type ToggleProps = {
 }
 const _Toggle = (
   { className, id, defaultChecked, label }: ToggleProps,
-  ref: ForwardedRef<HTMLInputElement>
+  ref: ForwardedRef<HTMLInputElement>,
 ) => (
   <p className={className}>
     <label
@@ -134,7 +135,7 @@ export const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement
   <legend
     className={twMerge(
       className,
-      "font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl"
+      "font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl",
     )}
   >
     {children}
@@ -145,14 +146,13 @@ export const Fieldset = ({ children, className }: FieldsetHTMLAttributes<HTMLFie
   <fieldset
     className={twMerge(
       className,
-      "m-auto w-full rounded-lg bg-white p-6 pt-5 shadow dark:border dark:border-gray-700 dark:bg-gray-800 md:mt-0"
+      "m-auto w-full rounded-lg bg-white p-6 pt-5 shadow dark:border dark:border-gray-700 dark:bg-gray-800 md:mt-0",
     )}
   >
     {children}
   </fieldset>
 )
 
-const supportedExtensions = ["jpg", "jpeg", "png"]
 export function ImageInput({
   label,
   id,

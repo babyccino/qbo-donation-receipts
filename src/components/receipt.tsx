@@ -20,7 +20,6 @@ import {
   StyleSheet,
   Link as PdfLink,
   Image as PdfImage,
-  Font,
 } from "@react-pdf/renderer"
 
 import { formatDate } from "@/lib/util/date"

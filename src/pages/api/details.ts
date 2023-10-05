@@ -1,19 +1,44 @@
+import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
+import sharp from "sharp"
 
 import { storageBucket, user } from "@/lib/db"
-import { isJpegOrPngDataURL } from "@/lib/util/request"
+import {
+  base64FileSize,
+  dataUrlToBase64,
+  isJpegOrPngDataURL,
+  maxFileSizeBytes,
+  supportedExtensions,
+} from "@/lib/util/image-helper"
 import {
   AuthorisedHandler,
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
 
-async function uploadImage(dataUrl: string, path: string, pub: boolean): Promise<string> {
+async function resizeAndUploadImage(
+  dataUrl: string,
+  dimensions: { width?: number; height?: number },
+  path: string,
+  pub: boolean
+): Promise<string> {
+  const base64 = dataUrlToBase64(dataUrl)
+  const buffer = Buffer.from(base64, "base64")
   const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
-  const base64String = dataUrl.slice(dataUrl.indexOf(",") + 1)
-  const fullPath = `${path}.${extension}`
+  if (!supportedExtensions.includes(extension))
+    throw new ApiError(400, "File uploaded is not of type: " + supportedExtensions.join(", "))
+
+  if (base64FileSize(base64) >= maxFileSizeBytes)
+    throw new ApiError(500, "File uploaded is too large")
+
+  const resizedBuffer = await sharp(buffer)
+    .resize({ ...dimensions, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toFormat("webp")
+    .toBuffer()
+  const fullPath = `${path}.webp`
   const file = storageBucket.file(fullPath)
-  await file.save(Buffer.from(base64String, "base64"), { contentType: "image" })
+  // await file.save(Buffer.from(base64String, "base64"), { contentType: "image" })
+  await file.save(resizedBuffer, { contentType: "image/webp" })
   if (pub) await file.makePublic()
   return fullPath
 }
@@ -37,8 +62,12 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const data = parseRequestBody(parser, req.body)
 
   const [signatureUrl, smallLogoUrl] = await Promise.all([
-    data.signature ? uploadImage(data.signature, `${id}/signature`, false) : undefined,
-    data.smallLogo ? uploadImage(data.smallLogo, `${id}/smallLogo`, true) : undefined,
+    data.signature
+      ? resizeAndUploadImage(data.signature, { height: 150 }, `${id}/signature`, false)
+      : undefined,
+    data.smallLogo
+      ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true)
+      : undefined,
   ])
 
   const newData = { donee: { ...data, signature: signatureUrl, smallLogo: smallLogoUrl } }
