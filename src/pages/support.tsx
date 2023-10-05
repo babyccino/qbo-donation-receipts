@@ -1,10 +1,10 @@
 import { Button } from "flowbite-react"
 import { FormEventHandler, useRef, useState } from "react"
 
+import { DataType as ContactDataType } from "@/pages/api/support"
+import { postJsonData } from "@/lib/util/request"
 import { TextArea, TextInput } from "@/components/form"
 import { EmailSentToast } from "@/components/ui"
-import { postJsonData } from "@/lib/util/request"
-import { DataType as ContactDataType } from "@/pages/api/support"
 
 function Support() {
   const formRef = useRef<HTMLFormElement>(null)
