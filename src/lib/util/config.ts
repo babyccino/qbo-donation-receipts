@@ -9,7 +9,7 @@ function getVitalEnvVariable(environmentVariable: string): string {
   if (!unvalidatedEnvironmentVariable) {
     if (process.env.NODE_ENV === "test") {
       console.warn(
-        `Couldn't find vital environment variable: ${environmentVariable}. The value 'test val' will be used instead.`
+        `Couldn't find vital environment variable: ${environmentVariable}. The value 'test val' will be used instead.`,
       )
       return "test val"
     }

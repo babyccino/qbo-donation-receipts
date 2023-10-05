@@ -1,0 +1,12 @@
+firebase
+
+node_modules
+.next
+.swc
+
+.gitignore
+.prettierignore
+.prettierrc
+.vscodeignore
+
+prettier.config.js

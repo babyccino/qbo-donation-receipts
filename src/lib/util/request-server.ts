@@ -7,7 +7,7 @@ import { TypeOf, ZodObject, ZodRawShape } from "zod"
 
 export function parseRequestBody<T extends ZodRawShape>(
   shape: ZodObject<T>,
-  body: any
+  body: any,
 ): TypeOf<ZodObject<T>> {
   const response = shape.safeParse(body)
 
@@ -23,14 +23,14 @@ export function parseRequestBody<T extends ZodRawShape>(
 export type AuthorisedHandler<T = any> = (
   req: NextApiRequest,
   res: NextApiResponse<T>,
-  session: Session
+  session: Session,
 ) => Promise<unknown>
 type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
 type ErrorTypes = { message: string } | ApiError
 export function createAuthorisedHandler<T>(
   handler: AuthorisedHandler<T>,
   methods: HttpVerb[],
-  redirect?: string
+  redirect?: string,
 ): NextApiHandler<T | ErrorTypes> {
   return async (req, res) => {
     console.log(`${req.method} request made to ${req.url}`)

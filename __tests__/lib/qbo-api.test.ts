@@ -835,7 +835,7 @@ describe("parseCompanyInfo", () => {
     }
 
     expect(() => parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toThrow(
-      "No company info found"
+      "No company info found",
     )
   })
 
@@ -867,7 +867,7 @@ describe("parseCompanyInfo", () => {
     }
 
     expect(parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toEqual(
-      expectedCompanyInfo
+      expectedCompanyInfo,
     )
   })
 
@@ -892,7 +892,7 @@ describe("parseCompanyInfo", () => {
     }
 
     expect(parseCompanyInfo(companyInfoQueryResult as CompanyInfoQueryResult)).toEqual(
-      expectedCompanyInfo
+      expectedCompanyInfo,
     )
   })
 

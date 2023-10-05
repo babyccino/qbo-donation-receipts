@@ -23,7 +23,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const data = parseRequestBody(parser, req.body)
   await user.doc(id).set(data, { merge: true })
 
-  res.status(200).json({ok: true})
+  res.status(200).json({ ok: true })
 }
 
 export default createAuthorisedHandler(handler, ["POST"])

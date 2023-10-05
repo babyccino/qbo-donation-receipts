@@ -96,11 +96,11 @@ function EmailPreview({ donee }: { donee: DoneeInfo }) {
 }
 
 const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistoryItem[] }) => (
-  <details className="flex items-center justify-between w-full p-3 font-medium text-left text-gray-500 border border-gray-200 rounded-xl   dark:border-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 open:bg-gray-100 open:p-5 dark:open:bg-gray-800 group">
-    <summary className="flex items-center justify-between mb-2 gap-2">
+  <details className="group flex w-full items-center justify-between rounded-xl border border-gray-200 p-3 text-left font-medium   text-gray-500 open:bg-gray-100 open:p-5 hover:bg-gray-100 dark:border-gray-500 dark:text-gray-400 dark:open:bg-gray-800 dark:hover:bg-gray-800">
+    <summary className="mb-2 flex items-center justify-between gap-2">
       <Info className="mr-2 h-8 w-8" />
       Your selection of donees and date range overlaps with previous campaigns
-      <UpArrow className="w-5 h-5 shrink-0 group-open:text-gray-700 dark:group-open:text-gray-200 group-open:rotate-180" />
+      <UpArrow className="h-5 w-5 shrink-0 group-open:rotate-180 group-open:text-gray-700 dark:group-open:text-gray-200" />
     </summary>
     <p className="font-light">
       <div className="mb-2">
@@ -109,16 +109,19 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistoryItem[
       </div>
       <ul>
         {emailHistory.map((entry, index) => (
-          <li className="border-b last:border-none border-gray-200 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 ">
+          <li
+            className="border-b border-gray-200 last:border-none hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 "
+            key={index}
+          >
             <details
               key={index}
-              className="flex items-center justify-between w-full p-5 font-medium text-left text-gray-500 group/item"
+              className="group/item flex w-full items-center justify-between p-5 text-left font-medium text-gray-500"
             >
               <summary className="flex items-center justify-between gap-2">
                 {formatDateHtml(entry.timeStamp)}
-                <UpArrow className="w-3 h-3 shrink-0 group-open/item:rotate-180" />
+                <UpArrow className="h-3 w-3 shrink-0 group-open/item:rotate-180" />
               </summary>
-              <div className="font-light mt-2">
+              <div className="mt-2 font-light">
                 <p className="mb-2">
                   This campaign spanned donations from{" "}
                   <i>{formatDateHtml(entry.dateRange.startDate)}</i> to{" "}
@@ -126,9 +129,9 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistoryItem[
                 </p>
                 Donors:
                 <br />
-                <ul className="list-disc list-inside">
+                <ul className="list-inside list-disc">
                   {entry.donations.map(donation => (
-                    <li>{donation.name}</li>
+                    <li key={donation.id}>{donation.name}</li>
                   ))}
                 </ul>
               </div>
@@ -169,7 +172,7 @@ function SendEmails({
       <Modal show={showModal} size="lg" popup onClose={() => setShowModal(false)}>
         <Modal.Header />
         <Modal.Body>
-          <div className="text-center space-y-4">
+          <div className="space-y-4 text-center">
             {emailHistory && <EmailHistoryOverlap emailHistory={emailHistory} />}
             <p className="font-normal text-gray-500 dark:text-gray-400">
               Please ensure that you confirm the accuracy of your receipts on the {'"'}Receipts{'"'}{" "}

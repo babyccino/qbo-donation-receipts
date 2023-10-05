@@ -33,7 +33,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
         donationDate: new Date(),
         donee,
         receiptNo: counter++,
-      })
+      }),
     )
     zip.file(`${entry.name}.pdf`, buffer)
   }

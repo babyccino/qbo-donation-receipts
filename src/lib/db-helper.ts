@@ -22,7 +22,7 @@ export function getImageUrl(path: string) {
 
 export async function downloadImagesForDonee(
   donee: Required<DoneeInfo>,
-  storageBucket: Bucket
+  storageBucket: Bucket,
 ): Promise<Required<DoneeInfo>> {
   const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
     getImageAsDataUrl(storageBucket, donee.signature),
@@ -54,7 +54,7 @@ export function isUserDataComplete(user: User): user is UserDataComplete {
       donee.registrationNumber &&
       donee.signatoryName &&
       donee.signature &&
-      donee.smallLogo
+      donee.smallLogo,
   )
 }
 export function checkUserDataCompletion({ items, donee, dateRange }: User): {
@@ -73,7 +73,7 @@ export function checkUserDataCompletion({ items, donee, dateRange }: User): {
         donee.registrationNumber &&
         donee.signatoryName &&
         donee.signature &&
-        donee.smallLogo
+        donee.smallLogo,
     ),
   }
 }

@@ -8,7 +8,6 @@ import { useRouter } from "next/router"
 import { Connect } from "@/components/qbo"
 import { PricingCard } from "@/components/ui"
 import { getUserData } from "@/lib/db"
-import { getImageUrl } from "@/lib/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
@@ -18,6 +17,7 @@ import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { DisconnectBody } from "@/pages/api/auth/disconnect"
 import { DataType } from "@/pages/api/stripe/update-subscription"
 import { BriefcaseIcon, MapPinIcon } from "@heroicons/react/24/solid"
+import { getImageUrl } from "@/lib/db-helper"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {

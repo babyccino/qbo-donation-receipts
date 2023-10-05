@@ -7,7 +7,8 @@ import { ApiError } from "next/dist/server/api-utils"
 import { user as firestoreUser } from "@/lib/db"
 import { getCompanyInfo } from "@/lib/qbo-api"
 import { QBOProfile, OpenIdUserInfo, QboAccount, CompanyInfo } from "@/types/qbo-api"
-import { fetchJsonData, base64EncodeString } from "@/lib/util/request"
+import { base64EncodeString } from "@/lib/util/image-helper"
+import { fetchJsonData } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 import { QboPermission } from "@/types/next-auth-helper"
 import { User } from "@/types/db"
@@ -94,13 +95,13 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   const [userInfo, companyInfo, dbUser] = await Promise.all([
     fetchJsonData<OpenIdUserInfo>(
       `${qboAccountsBaseRoute}/openid_connect/userinfo`,
-      accessToken as string
+      accessToken as string,
     ),
     connectUser ? getCompanyInfo(accessToken, realmId as string) : null,
     doc.get(),
   ])
 
-  if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
+  // if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
   if (!userInfo.emailVerified) return "/terms/email-verified"
 
   const { email, givenName: name } = userInfo

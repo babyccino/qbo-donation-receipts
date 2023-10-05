@@ -20,7 +20,6 @@ import {
   StyleSheet,
   Link as PdfLink,
   Image as PdfImage,
-  Font,
 } from "@react-pdf/renderer"
 
 import { formatDate } from "@/lib/util/date"
@@ -499,7 +498,7 @@ export function ReceiptPdfDocument({
                   <PdfText style={styleSheet.productPrice}>{formatCurrency(total)}</PdfText>
                 </View>
               </View>
-            )
+            ),
           )}
         </View>
         <View style={styleSheet.totalContainer}>

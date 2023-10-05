@@ -12,7 +12,7 @@ type QboConnectedSession = Session & {
 export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
   session.qboPermission === QboPermission.Accounting
 export function assertSessionIsQboConnected(
-  session: Session
+  session: Session,
 ): asserts session is QboConnectedSession {
   if (!isSessionQboConnected(session)) throw new ApiError(401, "user not qbo connected")
 }

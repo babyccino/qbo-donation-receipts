@@ -16,6 +16,7 @@ import {
 } from "flowbite-react"
 
 import { twMerge } from "tailwind-merge"
+import { supportedExtensions } from "@/lib/util/image-helper"
 
 // components from flowbite.com
 // svg from heroicons.dev
@@ -32,14 +33,14 @@ type ToggleProps = {
 }
 const _Toggle = (
   { className, id, defaultChecked, label, onChange, disabled, size }: ToggleProps,
-  ref: ForwardedRef<HTMLInputElement>
+  ref: ForwardedRef<HTMLInputElement>,
 ) => (
   <p className={className}>
     <label
       htmlFor={id.toString()}
       className={twMerge(
         "relative mb-3 inline-flex cursor-pointer items-center",
-        size === "sm" ? "mb-3" : "mb-5"
+        size === "sm" ? "mb-3" : "mb-5",
       )}
     >
       <input
@@ -58,14 +59,14 @@ const _Toggle = (
       <div
         className={twMerge(
           "peer rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800",
-          size === "sm" ? "h-5 w-9 after:h-4 after:w-4" : "h-6 w-11 after:h-5 after:w-5"
+          size === "sm" ? "h-5 w-9 after:h-4 after:w-4" : "h-6 w-11 after:h-5 after:w-5",
         )}
       />
       <span
         className={twMerge(
           "ml-3 font-medium text-gray-900 dark:text-gray-300",
           disabled && "line-through",
-          size === "sm" ? "text-xs" : "text-sm"
+          size === "sm" ? "text-xs" : "text-sm",
         )}
       >
         {label}
@@ -152,7 +153,7 @@ export const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement
   <legend
     className={twMerge(
       className,
-      "font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl"
+      "font-bold leading-tight tracking-tight text-gray-900 dark:text-white md:text-2xl",
     )}
   >
     {children}
@@ -163,14 +164,13 @@ export const Fieldset = ({ children, className }: FieldsetHTMLAttributes<HTMLFie
   <fieldset
     className={twMerge(
       "m-auto w-full rounded-lg bg-white p-6 pt-5 shadow dark:border dark:border-gray-700 dark:bg-gray-800 md:mt-0",
-      className
+      className,
     )}
   >
     {children}
   </fieldset>
 )
 
-const supportedExtensions = ["jpg", "jpeg", "png"]
 export function ImageInput({
   label,
   id,

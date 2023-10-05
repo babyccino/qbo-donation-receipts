@@ -32,7 +32,7 @@ async function hash(value: string) {
 }
 
 async function getCsrfTokenAndHash(
-  cookie: string | undefined
+  cookie: string | undefined,
 ): Promise<{ readonly csrfToken: string; readonly csrfTokenHash: string }> {
   if (cookie) {
     const split = cookie.split("|")
@@ -65,10 +65,10 @@ export async function serverSignIn(
   req: NextApiRequest,
   res: NextApiResponse,
   redirect: boolean,
-  callbackUrl: string = "/"
+  callbackUrl: string = "/",
 ) {
   const { csrfToken, csrfTokenHash } = await getCsrfTokenAndHash(
-    req.cookies["next-auth.csrf-token"]
+    req.cookies["next-auth.csrf-token"],
   )
   const cookie = `${csrfCookie}=${csrfToken}|${csrfTokenHash}`
   const url = `${getBaseUrl()}api/auth/signin/${provider}`
@@ -104,7 +104,7 @@ export async function updateServerSession(res: NextApiResponse, token: JWT) {
     "Set-Cookie",
     `${sessionCookie}=${encoded}; path=/; MaxAge=1800 HttpOnly; ${
       vercelEnv ? "Secure; " : ""
-    }SameSite=Lax`
+    }SameSite=Lax`,
   )
 }
 
@@ -127,7 +127,7 @@ type QboConnectedSession = Session & {
 export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
   session.qboPermission === QboPermission.Accounting
 export function assertSessionIsQboConnected(
-  session: Session
+  session: Session,
 ): asserts session is QboConnectedSession {
   if (!isSessionQboConnected(session)) throw new ApiError(401, "user not qbo connected")
 }
