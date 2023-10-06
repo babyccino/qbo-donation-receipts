@@ -101,7 +101,7 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
     doc.get(),
   ])
 
-  if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
+  // if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
   if (!userInfo.emailVerified) return "/terms/email-verified"
 
   const { email, givenName: name } = userInfo
