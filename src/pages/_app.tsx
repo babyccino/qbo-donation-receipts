@@ -30,11 +30,11 @@ export default function App({
           url: "https://www.donationreceipt.online",
           images: [
             {
-              url: "/open-graph.jpg",
+              url: "/open-graph.webp",
               width: 800,
               height: 600,
               alt: "DonationReceipt.Online homepage",
-              type: "image/jpeg",
+              type: "image/webp",
             },
           ],
         }}

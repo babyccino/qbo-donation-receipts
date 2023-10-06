@@ -1,17 +1,19 @@
+import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
 import { GetServerSideProps } from "next"
 import { getServerSession, Session } from "next-auth"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { ReactNode } from "react"
 import { twMerge } from "tailwind-merge"
 
-import { Link as StyledLink, Svg } from "@/components/ui"
+import { Link as StyledLink } from "@/components/ui"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 import { Show } from "@/lib/util/react"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"
-import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
-import { useSession } from "next-auth/react"
-import { authOptions } from "./api/auth/[...nextauth]"
+
+import HandDrawnUpArrow from "@/public/svg/hand-drawn-up-arrow.svg"
 
 const _Card = ({
   href,
@@ -45,11 +47,7 @@ const Note = ({ children }: { children?: ReactNode }) => (
   <p className="mt-4 font-bold text-green-400">{children}</p>
 )
 const Card = Object.assign(_Card, { Body, Title, Tick, Note })
-const Arrow = () => (
-  <div className="mt-3 h-10 w-10 rotate-180 text-slate-400">
-    <Svg.HandDrawnUpArrow />
-  </div>
-)
+const Arrow = () => <HandDrawnUpArrow className="mt-3 h-10 w-10 rotate-180 text-slate-400" />
 
 type Props =
   | { session: null; filledIn: false }

@@ -38,6 +38,7 @@
     "zod": "^3.21.4"
   },
   "devDependencies": {
+    "@svgr/webpack": "^8.1.0",
     "@types/downloadjs": "^1.4.3",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.11",

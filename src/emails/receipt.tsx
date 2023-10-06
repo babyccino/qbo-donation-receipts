@@ -27,7 +27,7 @@ export const dummyEmailProps: EmailProps = {
     country: "Country",
     registrationNumber: "123456789",
     signatoryName: "Jane Smith",
-    signature: "/signature.png",
+    signature: "/images/signature.webp",
     smallLogo: "/android-chrome-192x192.png",
   },
   currentDate: new Date(),

@@ -20,14 +20,14 @@ const Info = () => (
       <div className="relative mt-8 grid grid-cols-2 gap-4">
         <Image
           className="w-full rounded-lg"
-          src="/using-calc.jpg"
+          src="/images/using-calc.webp"
           alt="person recording donations"
           width={100}
           height={100}
         />
         <Image
           className="mt-4 w-full rounded-lg lg:mt-10"
-          src="/volunteering.jpg"
+          src="/images/volunteering.webp"
           alt="people volunteering"
           width={100}
           height={100}
