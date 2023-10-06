@@ -3,18 +3,10 @@
 import { CheckIcon, EnvelopeIcon, XMarkIcon } from "@heroicons/react/24/solid"
 import { Card, Toast } from "flowbite-react"
 import { ToastToggleProps } from "flowbite-react/lib/esm/components/Toast/ToastToggle"
-import NextLink from "next/link"
-import { ComponentProps, ReactNode } from "react"
-import { twMerge } from "tailwind-merge"
+import { ReactNode } from "react"
 
 import { Show } from "@/lib/util/react"
-
-export const buttonStyling =
-  "text-white bg-primary-700 hover:bg-primary-800 focus:ring-4 focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 dark:bg-primary-600 dark:hover:bg-primary-700 focus:outline-none dark:focus:ring-primary-800"
-
-export const Link = (props: ComponentProps<typeof NextLink>) => (
-  <NextLink {...props} className={twMerge(props.className, buttonStyling)}></NextLink>
-)
+import { Link } from "@/components/link"
 
 export const MissingData = ({
   filledIn,
@@ -27,14 +19,10 @@ export const MissingData = ({
     </span>
     <div className="flex justify-evenly gap-3">
       <Show when={!filledIn.items}>
-        <Link className={buttonStyling} href="/items">
-          Fill in Qualifying Sales Items
-        </Link>
+        <Link href="/items">Fill in Qualifying Sales Items</Link>
       </Show>
       <Show when={!filledIn.doneeDetails}>
-        <Link className={buttonStyling} href="/details">
-          Fill in Donee Details
-        </Link>
+        <Link href="/details">Fill in Donee Details</Link>
       </Show>
     </div>
   </div>

@@ -6,7 +6,7 @@ import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from 
 import Datepicker from "react-tailwindcss-datepicker"
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
-import { buttonStyling } from "@/components/ui"
+import { buttonStyling } from "@/components/link"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 import { getItems } from "@/lib/qbo-api"

@@ -2,8 +2,10 @@ import Head from "next/head"
 import { ReactNode } from "react"
 import { ErrorBoundary as _ErrorBoundary, FallbackProps } from "react-error-boundary"
 
-import { Link } from "@/components/ui"
+// import { Link } from "@/components/ui"
 import { Show } from "@/lib/util/react"
+import { buttonStyling } from "./link"
+import Link from "next/link"
 
 export const Fallback = ({ error }: FallbackProps) => (
   <>
@@ -23,7 +25,9 @@ export const Fallback = ({ error }: FallbackProps) => (
             Error: {error.message}
           </p>
         </Show>
-        <Link href="/support">Contact support</Link>
+        <Link className={buttonStyling} href="/support">
+          Contact support
+        </Link>
       </div>
     </section>
   </>

@@ -6,7 +6,8 @@ import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { Link, MissingData, buttonStyling } from "@/components/ui"
+import { MissingData } from "@/components/ui"
+import { Link, buttonStyling } from "@/components/link"
 import { getUserData, storageBucket } from "@/lib/db"
 import {
   checkUserDataCompletion,

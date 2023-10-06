@@ -1,4 +1,4 @@
-import { Link } from "@/components/ui"
+import { Link } from "@/components/link"
 
 const EmailVerified = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">

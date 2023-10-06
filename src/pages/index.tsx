@@ -6,7 +6,7 @@ import Link from "next/link"
 import { ReactNode } from "react"
 import { twMerge } from "tailwind-merge"
 
-import { Link as StyledLink } from "@/components/ui"
+import { Link as StyledLink } from "@/components/link"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 import { Show } from "@/lib/util/react"

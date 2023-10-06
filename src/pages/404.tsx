@@ -1,6 +1,6 @@
 import Head from "next/head"
 
-import { Link } from "@/components/ui"
+import { Link } from "@/components/link"
 
 const FourOhFour = () => (
   <>
