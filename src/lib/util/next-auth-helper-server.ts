@@ -2,12 +2,11 @@ import { NextApiResponse, NextApiRequest, Redirect } from "next"
 import { ApiError } from "next/dist/server/api-utils"
 import { getCsrfToken } from "next-auth/react"
 import { encode, JWT } from "next-auth/jwt"
-import { Session, getServerSession } from "next-auth"
+import { getServerSession } from "next-auth"
 import crypto from "@/lib/crypto"
 
 import { getBaseUrl } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
-import { QboPermission } from "@/types/next-auth-helper"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { IncomingMessage, ServerResponse } from "http"
 
@@ -117,19 +116,6 @@ export async function getServerSessionOrThrow(req: Request, res: ServerResponse)
   const session = await getServerSession(req, res, authOptions)
   if (!session) throw new ApiError(500, "Couldn't find session")
   return session
-}
-
-type QboConnectedSession = Session & {
-  accessToken: string
-  realmId: string
-  qboPermission: QboPermission.Accounting
-}
-export const isSessionQboConnected = (session: Session): session is QboConnectedSession =>
-  session.qboPermission === QboPermission.Accounting
-export function assertSessionIsQboConnected(
-  session: Session,
-): asserts session is QboConnectedSession {
-  if (!isSessionQboConnected(session)) throw new ApiError(401, "user not qbo connected")
 }
 
 export const disconnectedRedirect: { redirect: Redirect } = {

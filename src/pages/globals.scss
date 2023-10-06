@@ -17,12 +17,15 @@ legend {
 *::selection {
   background: rgba(166 162 253 / 0.26);
 }
+
 ::-webkit-scrollbar {
   width: 9px;
 }
+
 ::-webkit-scrollbar-track {
   background: rgb(0 0 0);
 }
+
 ::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 20px;
@@ -31,6 +34,7 @@ legend {
     background: #555;
   }
 }
+
 details summary::-webkit-details-marker {
   display: none;
 }

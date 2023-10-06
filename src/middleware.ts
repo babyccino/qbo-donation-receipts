@@ -1,7 +1,7 @@
 import { getToken } from "next-auth/jwt"
 import { NextRequest, NextResponse } from "next/server"
 
-import { QboPermission } from "./types/next-auth-helper"
+import { QboPermission } from "@/types/next-auth-helper"
 
 // TODO write custom middleware so signed in users can be redirected from signin page and that page can be made static
 const secret = process.env.NEXTAUTH_SECRET

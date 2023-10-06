@@ -6,7 +6,7 @@ import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { Link, Svg, buttonStyling } from "@/components/ui"
+import { Link, MissingData, buttonStyling } from "@/components/ui"
 import { getUserData, storageBucket } from "@/lib/db"
 import {
   checkUserDataCompletion,
@@ -17,10 +17,8 @@ import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
-import {
-  assertSessionIsQboConnected,
-  getServerSessionOrThrow,
-} from "@/lib/util/next-auth-helper-server"
+import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
+import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { Show } from "@/lib/util/react"
 import { subscribe } from "@/lib/util/request"
 import { DoneeInfo } from "@/types/db"
@@ -52,18 +50,6 @@ function DownloadAllFiles() {
     </div>
   )
 }
-
-const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
-  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
-    <span className="col-span-full font-medium text-gray-900 dark:text-white">
-      Some information necessary to generate your receipts is missing
-    </span>
-    <div className="flex justify-evenly gap-3">
-      {!filledIn.items && <Link href="/items">Fill in Qualifying Items</Link>}
-      {!filledIn.doneeDetails && <Link href="/details">Fill in Donee Details</Link>}
-    </div>
-  </div>
-)
 
 const ReceiptLimitCard = () => (
   <Card className="absolute max-w-sm sm:left-1/2 sm:top-6 sm:-translate-x-1/2">
@@ -144,8 +130,15 @@ const getRandomIndex = () => round(rand(-0.5, names.length - 0.0001))
 const getRandomName = () => `${names[getRandomIndex()]} ${names[getRandomIndex()]}`
 const getRandomBalance = () => `$${round(rand(100, 100000))}.00`
 
-const Tr = ({ children }: { children?: ReactNode }) => (
-  <tr className="relative border-b bg-white dark:border-gray-700 dark:bg-gray-800">{children}</tr>
+const Tr = ({ children, className }: { children?: ReactNode; className?: string }) => (
+  <tr
+    className={twMerge(
+      className,
+      "relative border-b bg-white dark:border-gray-700 dark:bg-gray-800",
+    )}
+  >
+    {children}
+  </tr>
 )
 const Th = ({ children }: { children?: ReactNode }) => (
   <th scope="row" className="whitespace-nowrap px-6 py-2 font-medium text-gray-900 dark:text-white">
@@ -156,19 +149,6 @@ const Td = ({ children }: { children?: ReactNode }) => <td className="px-6 py-2"
 
 const BlurredRows = () => (
   <>
-    <tr className="relative border-b bg-white dark:border-gray-700 dark:bg-gray-800">
-      <Th>{getRandomName()}</Th>
-      <Td>{getRandomBalance()}</Td>
-      <Td>
-        <div className={twMerge(buttonStyling, "inline-block")}>{showReceiptInner}</div>
-      </Td>
-      <Td>
-        <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
-      </Td>
-      <div className="absolute left-0 top-[2px] z-10 h-full w-full backdrop-blur-sm">
-        <ReceiptLimitCard />
-      </div>
-    </tr>
     {new Array(10).fill(0).map((_, idx) => (
       <Tr key={idx}>
         <Th>{getRandomName()}</Th>
@@ -179,7 +159,14 @@ const BlurredRows = () => (
         <Td>
           <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
         </Td>
-        <div className="absolute left-0 top-[2px] h-full w-full backdrop-blur-sm" />
+        <div
+          className={twMerge(
+            !idx && "z-10",
+            "absolute left-0 top-[2px] h-full w-full backdrop-blur-sm",
+          )}
+        >
+          {!idx && <ReceiptLimitCard />}
+        </div>
       </Tr>
     ))}
   </>

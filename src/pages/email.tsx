@@ -1,12 +1,12 @@
-import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
+import { InformationCircleIcon as Info, ChevronUpIcon as UpArrow } from "@heroicons/react/24/solid"
 import { Alert, Button, Checkbox, Label, Modal } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { ApiError } from "next/dist/server/api-utils"
-import { ChevronUpIcon as UpArrow, InformationCircleIcon as Info } from "@heroicons/react/24/solid"
+import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { WithBody, WithBodyProps } from "@/components/receipt"
-import { MissingData, EmailSentToast } from "@/components/ui"
+import { EmailSentToast, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/receipt"
 import { getUserData, storageBucket } from "@/lib/db"
 import {
@@ -24,10 +24,8 @@ import {
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
-import {
-  assertSessionIsQboConnected,
-  getServerSessionOrThrow,
-} from "@/lib/util/next-auth-helper-server"
+import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
+import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
@@ -362,54 +360,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
     accountStatus: AccountStatus.Complete,
     donee: await downloadImagesForDonee(user.donee, storageBucket),
     recipients,
-    // emailHistory: [
-    //   {
-    //     dateRange: createDateRange("2023-01-01", "2023-12-31"),
-    //     donations: [
-    //       {
-    //         address: "",
-    //         email: "",
-    //         id: 22,
-    //         items: [{ id: 1, name: "hi", total: 100 }],
-    //         name: "Jeff McJefferson",
-    //         total: 100,
-    //       },
-    //       {
-    //         address: "",
-    //         email: "",
-    //         id: 22,
-    //         items: [{ id: 1, name: "hi", total: 100 }],
-    //         name: "Richard 'the dick' Dickardson",
-    //         total: 100,
-    //       },
-    //       {
-    //         address: "",
-    //         email: "",
-    //         id: 22,
-    //         items: [{ id: 1, name: "hi", total: 100 }],
-    //         name: "Jeff",
-    //         total: 100,
-    //       },
-    //     ],
-    //     notSent: [],
-    //     timeStamp: new Date("2023-01-01"),
-    //   },
-    //   {
-    //     dateRange: createDateRange("2023-01-01", "2023-12-31"),
-    //     donations: [
-    //       {
-    //         address: "",
-    //         email: "",
-    //         id: 22,
-    //         items: [{ id: 1, name: "hi", total: 100 }],
-    //         name: "Jeff",
-    //         total: 100,
-    //       },
-    //     ],
-    //     notSent: [],
-    //     timeStamp: new Date("2023-01-01"),
-    //   },
-    // ],
     emailHistory: user.emailHistory
       ? trimHistoryByIdAndDateRange(
           new Set(recipients.map(({ id }) => id)),
