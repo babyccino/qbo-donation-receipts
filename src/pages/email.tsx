@@ -1,22 +1,25 @@
-import { useState } from "react"
+import { Button, Modal } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
-import { Button, Modal } from "flowbite-react"
+import { useState } from "react"
 
-import { authOptions } from "./api/auth/[...nextauth]"
-import { postJsonData } from "@/lib/util/request"
-import { MissingData } from "@/components/ui"
 import { Fieldset, TextArea } from "@/components/form"
+import { WithBody, WithBodyProps } from "@/components/receipt"
+import { MissingData } from "@/components/ui"
+import { dummyEmailProps } from "@/emails/receipt"
 import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
-import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
-import { DoneeInfo } from "@/types/db"
+import {
+  checkUserDataCompletion,
+  downloadImagesForDonee,
+  isUserDataComplete,
+} from "@/lib/db-helper"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
-import { dummyEmailProps } from "@/emails/receipt"
-import { WithBody, WithBodyProps } from "@/components/receipt"
-import { downloadImagesForDonee } from "@/lib/db-helper"
+import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { postJsonData } from "@/lib/util/request"
 import { DataType as EmailDataType } from "@/pages/api/email"
+import { DoneeInfo } from "@/types/db"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 
 // Rust enums would be v nice
 enum AccountStatus {
@@ -182,7 +185,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   const user = await getUserData(session.user.id)
   if (!user.donee) return disconnectedRedirect
 
-  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "/account" } }
+  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }
   if (!isUserDataComplete(user)) {
     const { donee } = user
     delete donee.signature
