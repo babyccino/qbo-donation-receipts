@@ -1,24 +1,27 @@
-import { ReactNode, useState } from "react"
-import { GetServerSideProps } from "next"
-import { getServerSession, Session } from "next-auth"
-import { twMerge } from "tailwind-merge"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
+import { GetServerSideProps } from "next"
+import { Session, getServerSession } from "next-auth"
+import { ReactNode, useState } from "react"
+import { twMerge } from "tailwind-merge"
 
-import { authOptions } from "./api/auth/[...nextauth]"
 import { ReceiptPdfDocument } from "@/components/receipt"
-import { Svg, Link, buttonStyling } from "@/components/ui"
+import { Link, MissingData, Svg, buttonStyling } from "@/components/ui"
+import { getUserData } from "@/lib/db"
+import {
+  checkUserDataCompletion,
+  downloadImagesForDonee,
+  isUserDataComplete,
+} from "@/lib/db-helper"
 import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { getDonations } from "@/lib/qbo-api"
-import { Donation } from "@/types/qbo-api"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db-helper"
-import { subscribe } from "@/lib/util/request"
 import { isUserSubscribed } from "@/lib/stripe"
-import { downloadImagesForDonee } from "@/lib/db-helper"
-import { DoneeInfo } from "@/types/db"
 import { getThisYear } from "@/lib/util/date"
 import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { subscribe } from "@/lib/util/request"
+import { DoneeInfo } from "@/types/db"
+import { Donation } from "@/types/qbo-api"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -40,18 +43,6 @@ function DownloadAllFiles() {
     </div>
   )
 }
-
-const MissingData = ({ filledIn }: { filledIn: { items: boolean; doneeDetails: boolean } }) => (
-  <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
-    <span className="col-span-full font-medium text-gray-900 dark:text-white">
-      Some information necessary to generate your receipts is missing
-    </span>
-    <div className="flex justify-evenly gap-3">
-      {!filledIn.items && <Link href="/items">Fill in Qualifying Items</Link>}
-      {!filledIn.doneeDetails && <Link href="/details">Fill in Donee Details</Link>}
-    </div>
-  </div>
-)
 
 const ReceiptLimitCard = () => (
   <Card className="absolute max-w-sm sm:left-1/2 sm:top-6 sm:-translate-x-1/2">
