@@ -19,6 +19,7 @@ import { Donation } from "@/types/qbo-api"
 import { getThisYear } from "@/lib/util/date"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { config } from "@/lib/util/config"
+import { isUserSubscribed } from "@/lib/stripe"
 
 const { testEmail } = config
 
@@ -39,6 +40,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   const user = await getUserData(session.user.id)
   if (!isUserDataComplete(user)) throw new ApiError(401, "User data incomplete")
+  if (!isUserSubscribed(user)) throw new ApiError(401, "User is not subscribed")
 
   const { donee, date } = user
 
