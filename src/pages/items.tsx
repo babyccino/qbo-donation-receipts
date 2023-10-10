@@ -3,7 +3,7 @@ import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
 import { useRouter } from "next/router"
 import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
-import Datepicker from "react-tailwindcss-datepicker"
+import { InformationCircleIcon } from "@heroicons/react/24/solid"
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { buttonStyling } from "@/components/link"
@@ -16,6 +16,7 @@ import {
   createDateRange,
   endOfPreviousYear,
   endOfThisYear,
+  formatDateHtmlReverse,
   startOfPreviousYear,
   startOfThisYear,
   utcEpoch,
@@ -26,7 +27,38 @@ import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nex
 import { postJsonData } from "@/lib/util/request"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
-import { InformationCircleIcon } from "@heroicons/react/24/solid"
+import dynamic from "next/dynamic"
+
+const DumbDatePicker = () => (
+  <div className="relative w-full text-gray-700">
+    <input
+      type="text"
+      className="relative w-full rounded-lg border-gray-300 bg-white py-2.5 pl-4 pr-14 text-sm font-light tracking-wide placeholder-gray-400 transition-all duration-300 focus:border-blue-500 focus:ring focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-white/80"
+      value="????-??-?? ~ ????-??-??"
+      role="presentation"
+      disabled
+    />
+    <button
+      type="button"
+      className="absolute right-0 h-full px-3 text-gray-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+      disabled
+    >
+      <svg
+        className="h-5 w-5"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth="1.5"
+        stroke="currentColor"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+)
+const DatePicker = dynamic(import("react-tailwindcss-datepicker"), {
+  loading: props => <DumbDatePicker />,
+})
 
 type Props = {
   items: Item[]
@@ -148,8 +180,12 @@ export default function Items(serialisedProps: SerialisedProps) {
           />
         ))}
         <div className="flex flex-row gap-2 pb-2 pt-1">
-          <Button onClick={checkAll}>Check All</Button>
-          <Button onClick={unCheckAll}>Uncheck All</Button>
+          <Button onClick={checkAll} color="blue">
+            Check All
+          </Button>
+          <Button onClick={unCheckAll} color="blue">
+            Uncheck All
+          </Button>
         </div>
       </Fieldset>
       <Fieldset>
@@ -171,11 +207,16 @@ export default function Items(serialisedProps: SerialisedProps) {
         </Select>
         <p className="mt-2 space-y-1">
           <Label className="mb-2 inline-block">Date Range</Label>
-          <Datepicker
+          <DatePicker
             value={customDateState}
             onChange={onDateChange}
             disabled={!dateRangeIsCustom}
           />
+          {/* <DumbDatePicker
+            value={`${formatDateHtmlReverse(customDateState.startDate)} ~ ${formatDateHtmlReverse(
+              customDateState.endDate,
+            )}`}
+          /> */}
         </p>
       </Fieldset>
       <input
