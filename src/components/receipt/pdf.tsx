@@ -16,11 +16,7 @@ import { useState } from "react"
 import { buttonStyling } from "@/components/link"
 import { formatDate } from "@/lib/util/date"
 import { EmailProps } from "@/types/receipt"
-import {
-  downloadReceiptInner,
-  downloadReceiptLoadingInner,
-  showReceiptInner,
-} from "./pdf-button-helper"
+import { downloadReceiptInner, downloadReceiptLoadingInner, showReceiptInner } from "./pdf-dumb"
 import { sharedStyle } from "./sharedStyle"
 
 const styleSheet = StyleSheet.create({
