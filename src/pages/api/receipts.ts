@@ -1,7 +1,7 @@
 import JSZip from "jszip"
 import { ApiError } from "next/dist/server/api-utils"
 
-import { ReceiptPdfDocument } from "@/components/receipt"
+import { ReceiptPdfDocument } from "@/components/receipt/pdf"
 import { getUserData, storageBucket } from "@/lib/db"
 import { downloadImagesForDonee, isUserDataComplete } from "@/lib/db-helper"
 import { getDonations } from "@/lib/qbo-api"

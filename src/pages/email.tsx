@@ -5,9 +5,8 @@ import { ApiError } from "next/dist/server/api-utils"
 import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
-import { WithBody, WithBodyProps } from "@/components/receipt"
 import { EmailSentToast, MissingData } from "@/components/ui"
-import { dummyEmailProps } from "@/emails/receipt"
+import { dummyEmailProps } from "@/emails/props"
 import { getUserData, storageBucket } from "@/lib/db"
 import {
   checkUserDataCompletion,
@@ -26,11 +25,18 @@ import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
-import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
+import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
 import { EmailDataType } from "@/pages/api/email"
 import { DoneeInfo, EmailHistoryItem } from "@/types/db"
+import { WithBodyProps } from "@/types/receipt"
+
+const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
+  loading: () => null,
+  ssr: false,
+  loadImmediately: true,
+})
 
 type EmailContext = {
   emailBody: string

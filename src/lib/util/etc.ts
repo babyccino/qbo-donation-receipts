@@ -30,3 +30,9 @@ export function snakeKeysToCamel<T extends object>(obj: T) {
     return result
   }, {}) as SnakeToCamelCaseNested<T>
 }
+
+export const wait = (secs: number) => new Promise<void>(res => setTimeout(res, secs))
+
+export const rand = (min: number, max: number) => Math.random() * (max - min) + min
+const { floor } = Math
+export const randInt = (min: number, max: number) => floor(rand(min, max))

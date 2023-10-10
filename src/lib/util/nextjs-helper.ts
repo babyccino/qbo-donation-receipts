@@ -1,3 +1,6 @@
+import nextDynamic, { DynamicOptions, Loader } from "next/dynamic"
+import { ComponentType, Fragment, ReactNode } from "react"
+
 export const serialisedDateKey = "__serialised_date__"
 export type SerialisedDate = { [serialisedDateKey]: number }
 export type SerialiseDates<T> = T extends Date
@@ -50,3 +53,19 @@ export function deSerialiseDates<T>(obj: T): DeSerialiseDates<T> {
   }
   return newObj as DeSerialiseDates<T>
 }
+
+const isServerSide = typeof window === "undefined"
+
+// add an option to next/dynamic to immediately start loading a component even if it is not in view
+export function dynamic<P = {}>(
+  loader: Loader<P>,
+  options: DynamicOptions<P> & { loadImmediately?: boolean },
+): ComponentType<P> {
+  if (!options.ssr && options.loadImmediately && typeof loader === "function" && !isServerSide) {
+    const loading = loader()
+    return nextDynamic(loading, { ...options })
+  }
+  return nextDynamic(loader, { ...options })
+}
+
+export const fragment = (children: ReactNode) => Fragment({ children })

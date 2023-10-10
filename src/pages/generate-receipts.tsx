@@ -1,3 +1,4 @@
+import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
@@ -5,31 +6,47 @@ import { Session } from "next-auth"
 import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
-import { ReceiptPdfDocument } from "@/components/receipt"
+import { Link } from "@/components/link"
+import {
+  DownloadReceiptLoading,
+  DummyDownloadReceipt,
+  DummyShowReceipt,
+  downloadReceiptInner,
+} from "@/components/receipt/pdf-button-helper"
 import { MissingData } from "@/components/ui"
-import { Link, buttonStyling } from "@/components/link"
 import { getUserData, storageBucket } from "@/lib/db"
 import {
   checkUserDataCompletion,
   downloadImagesForDonee,
   isUserDataComplete,
 } from "@/lib/db-helper"
-import { PDFDownloadLink, PDFViewer } from "@/lib/pdfviewer"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
+import { randInt } from "@/lib/util/etc"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
+import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { subscribe } from "@/lib/util/request"
 import { DoneeInfo } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
-import {
-  ArrowDownTrayIcon,
-  ArrowRightIcon,
-  PlusCircleIcon,
-  PlusIcon,
-} from "@heroicons/react/24/solid"
+import { EmailProps } from "@/types/receipt"
+import { ShowReceiptLoading } from "@/components/receipt/pdf-button-helper"
+
+const DownloadReceipt = dynamic(
+  () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
+  {
+    loading: DownloadReceiptLoading,
+    ssr: false,
+    loadImmediately: true,
+  },
+)
+const ShowReceipt = dynamic(() => import("@/components/receipt/pdf").then(imp => imp.ShowReceipt), {
+  loading: ShowReceiptLoading,
+  ssr: false,
+  loadImmediately: true,
+})
 
 function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
@@ -45,7 +62,7 @@ function DownloadAllFiles() {
   return (
     <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
-      <Button onClick={onClick} disabled={loading}>
+      <Button onClick={onClick} disabled={loading} color="blue">
         {loading ? "...Creating download" : "Download"}
       </Button>
     </div>
@@ -66,57 +83,6 @@ const ReceiptLimitCard = () => (
   </Card>
 )
 
-const showReceiptInner = (
-  <>
-    <span className="hidden sm:inline">Show Receipt</span>
-    <PlusIcon className="inline-block h-5 w-5 sm:ml-2" />
-  </>
-)
-function ShowReceipt({ Receipt }: { Receipt: () => JSX.Element }) {
-  const [show, setShow] = useState(false)
-  const containerClassName = twMerge(
-    show ? "flex" : "hidden",
-    "fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40",
-  )
-
-  return (
-    <>
-      <Button onClick={() => setShow(true)}>{showReceiptInner}</Button>
-      <div className={containerClassName} onClick={() => setShow(false)}>
-        <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
-          <Receipt />
-        </PDFViewer>
-        <button
-          className="fixed right-4 top-4 z-40 h-14 w-14 rounded-lg bg-blue-700 text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-          onClick={() => setShow(false)}
-        >
-          <PlusCircleIcon />
-        </button>
-      </div>
-    </>
-  )
-}
-
-const downloadReceiptInner = (
-  <>
-    <span className="hidden sm:inline">Download</span>
-    <ArrowDownTrayIcon className="-mb-1 inline-block h-5 w-5 sm:ml-2" />
-  </>
-)
-const DownloadReceipt = ({
-  Receipt,
-  fileName,
-}: {
-  Receipt: () => JSX.Element
-  fileName: string
-}) => (
-  <PDFDownloadLink document={<Receipt />} fileName={fileName} className={buttonStyling}>
-    {({ loading }) => (loading ? "Loading document..." : downloadReceiptInner)}
-  </PDFDownloadLink>
-)
-
-const rand = (min: number, max: number) => Math.random() * (max - min) + min
-const { round } = Math
 const names = [
   "Gus",
   "Stephanie",
@@ -127,9 +93,8 @@ const names = [
   "Papadopoulos",
   "Macdonald",
 ]
-const getRandomIndex = () => round(rand(-0.5, names.length - 0.0001))
-const getRandomName = () => `${names[getRandomIndex()]} ${names[getRandomIndex()]}`
-const getRandomBalance = () => `$${round(rand(100, 100000))}.00`
+const getRandomName = () => `${names[randInt(0, names.length)]} ${names[randInt(0, names.length)]}`
+const getRandomBalance = () => `$${randInt(100, 100000)}.00`
 
 const Tr = ({ children, className }: { children?: ReactNode; className?: string }) => (
   <tr
@@ -148,30 +113,26 @@ const Th = ({ children }: { children?: ReactNode }) => (
 )
 const Td = ({ children }: { children?: ReactNode }) => <td className="px-6 py-2">{children}</td>
 
-const BlurredRows = () => (
-  <>
-    {new Array(10).fill(0).map((_, idx) => (
-      <Tr key={idx}>
-        <Th>{getRandomName()}</Th>
-        <Td>{getRandomBalance()}</Td>
-        <Td>
-          <div className={twMerge(buttonStyling, "inline-block")}>{showReceiptInner}</div>
-        </Td>
-        <Td>
-          <div className={twMerge(buttonStyling, "inline-block")}>{downloadReceiptInner}</div>
-        </Td>
-        <div
-          className={twMerge(
-            !idx && "z-10",
-            "absolute left-0 top-[2px] h-full w-full backdrop-blur-sm",
-          )}
-        >
-          {!idx && <ReceiptLimitCard />}
-        </div>
-      </Tr>
-    ))}
-  </>
-)
+const blurredRows = new Array(10).fill(0).map((_, idx) => (
+  <Tr key={idx}>
+    <Th>{getRandomName()}</Th>
+    <Td>{getRandomBalance()}</Td>
+    <Td>
+      <DummyShowReceipt />
+    </Td>
+    <Td>
+      <DummyDownloadReceipt />
+    </Td>
+    <div
+      className={twMerge(
+        !idx && "z-10",
+        "absolute left-0 top-[2px] h-full w-full backdrop-blur-sm",
+      )}
+    >
+      {!idx && <ReceiptLimitCard />}
+    </div>
+  </Tr>
+))
 
 type Props =
   | {
@@ -185,8 +146,6 @@ type Props =
       receiptsReady: false
       filledIn: { items: boolean; doneeDetails: boolean }
     }
-
-// ----- PAGE ----- //
 
 enum Sort {
   Default = 0,
@@ -219,52 +178,50 @@ const unsortedSymbol = (
     <span className="opacity-0">▾</span>
   </span>
 )
-function getSortSymbols(sort: Sort): { name: ReactNode; total: ReactNode } {
-  switch (sort) {
-    case Sort.NameAsc:
-      return { name: "▾", total: unsortedSymbol }
-    case Sort.NameDesc:
-      return { name: "▴", total: unsortedSymbol }
-    case Sort.TotalAsc:
-      return { total: "▴", name: unsortedSymbol }
-    case Sort.TotalDesc:
-      return { total: "▾", name: unsortedSymbol }
-    default:
-      return { name: unsortedSymbol, total: unsortedSymbol }
-  }
+function getNameSort(sort: Sort): ReactNode {
+  if (sort === Sort.NameAsc) return "▾"
+  if (sort === Sort.NameDesc) return "▴"
+  return unsortedSymbol
 }
+function getTotalSort(sort: Sort): ReactNode {
+  if (sort === Sort.TotalAsc) return "▴"
+  if (sort === Sort.TotalDesc) return "▾"
+  return unsortedSymbol
+}
+
+const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "CAD" })
+
+// ----- PAGE ----- //
+
 export default function IndexPage(props: Props) {
   const [sort, setSort] = useState<Sort>(Sort.Default)
 
   if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
-  const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "CAD" })
   const { doneeInfo, subscribed } = props
   const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
   const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
     const fileName = `${entry.name}.pdf`
-    const Receipt = () => (
-      <ReceiptPdfDocument
-        currency="CAD"
-        currentDate={new Date()}
-        donation={entry}
-        donationDate={new Date()}
-        donee={doneeInfo}
-        receiptNo={currentYear + index}
-      />
-    )
+    const receiptProps: EmailProps = {
+      currency: "CAD",
+      currentDate: new Date(),
+      donation: entry,
+      donationDate: new Date(),
+      donee: doneeInfo,
+      receiptNo: currentYear + index,
+    }
 
     return (
       <Tr key={entry.id}>
         <Th>{entry.name}</Th>
         <Td>{formatter.format(entry.total)}</Td>
         <Td>
-          <ShowReceipt key="2" Receipt={Receipt} />
+          <ShowReceipt receiptProps={receiptProps} />
         </Td>
         <Td>
-          <DownloadReceipt key="3" Receipt={Receipt} fileName={fileName} />
+          <DownloadReceipt receiptProps={receiptProps} fileName={fileName} />
         </Td>
       </Tr>
     )
@@ -297,14 +254,14 @@ export default function IndexPage(props: Props) {
                 className="cursor-pointer px-6 py-3"
                 onClick={() => setSort(sort === Sort.NameAsc ? Sort.NameDesc : Sort.NameAsc)}
               >
-                Donor Name {getSortSymbols(sort).name}
+                Donor Name {getNameSort(sort)}
               </th>
               <th
                 scope="col"
                 className="cursor-pointer px-6 py-3"
                 onClick={() => setSort(sort === Sort.TotalDesc ? Sort.TotalAsc : Sort.TotalDesc)}
               >
-                Total {getSortSymbols(sort).total}
+                Total {getTotalSort(sort)}
               </th>
               <th scope="col" className="px-6 py-3">
                 Show Receipt
@@ -316,7 +273,7 @@ export default function IndexPage(props: Props) {
           </thead>
           <tbody>
             {donations.map(mapCustomerToTableRow)}
-            {!subscribed && <BlurredRows />}
+            {!subscribed && blurredRows}
           </tbody>
         </table>
       </div>
