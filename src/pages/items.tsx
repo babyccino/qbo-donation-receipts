@@ -124,7 +124,11 @@ export default function Items(serialisedProps: SerialisedProps) {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="m-auto w-full max-w-lg space-y-4 p-4">
+    <form
+      ref={formRef}
+      onSubmit={onSubmit}
+      className="m-auto flex w-full max-w-lg flex-col items-center justify-center space-y-4 p-4"
+    >
       <Fieldset>
         <Legend className="mb-3">Selected items</Legend>
         <Alert
@@ -175,7 +179,7 @@ export default function Items(serialisedProps: SerialisedProps) {
         </p>
       </Fieldset>
       <input
-        className={buttonStyling + " text-l mx-auto block cursor-pointer"}
+        className={buttonStyling + " text-l"}
         type="submit"
         value={detailsFilledIn ? "Generate Receipts" : "Enter Donee Details"}
       />

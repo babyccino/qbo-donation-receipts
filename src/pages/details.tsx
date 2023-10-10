@@ -116,11 +116,13 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
           helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.smallLogo)}
         />
-        <input
-          className={buttonStyling + " text-l mr-auto block cursor-pointer"}
-          type="submit"
-          value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
-        />
+        <div className="flex flex-row items-center justify-center sm:col-span-2">
+          <input
+            className={buttonStyling + " text-l"}
+            type="submit"
+            value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
+          />
+        </div>
       </Fieldset>
     </form>
   )
