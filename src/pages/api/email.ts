@@ -22,6 +22,7 @@ import { ReceiptPdfDocument } from "@/components/receipt/pdf"
 import { WithBody } from "@/components/receipt/email"
 import { Donation } from "@/types/qbo-api"
 import { EmailHistoryItem } from "@/types/db"
+import { isUserSubscribed } from "@/lib/stripe"
 
 const { testEmail } = config
 
@@ -46,6 +47,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   const userData = await getUserData(session.user.id)
   if (!isUserDataComplete(userData)) throw new ApiError(401, "User data incomplete")
+  if (!isUserSubscribed(userData)) throw new ApiError(401, "User not subscribed")
 
   const { donee, dateRange } = userData
 
