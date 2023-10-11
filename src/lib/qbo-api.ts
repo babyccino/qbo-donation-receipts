@@ -60,7 +60,7 @@ export function combineCustomerQueries(...queries: CustomerQueryResult[]): Custo
 
 export const addBillingAddressesToDonations = (
   donations: DonationWithoutAddress[],
-  customers: CustomerQueryResult
+  customers: CustomerQueryResult,
 ) =>
   donations.map<Donation>(donation => {
     const customer = customers.QueryResponse.Customer.find(el => parseInt(el.Id) === donation.id)
@@ -78,7 +78,7 @@ const notGroupedRow = (row: CustomerSalesReportRow): row is SalesRow | SalesSect
   !("group" in row)
 export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
-  selectedItemIds: number[]
+  selectedItemIds: number[],
 ): DonationWithoutAddress[] {
   const allItems = parseItemsFromReport(report)
 
@@ -94,7 +94,7 @@ export function createDonationsFromSalesReport(
 function createDonationFromRow(
   row: SalesRow | SalesSectionRow,
   selectedItemIds: Set<number>,
-  allItems: Item[]
+  allItems: Item[],
 ): DonationWithoutAddress {
   const { data, id, name } = getRowData(row)
 
@@ -168,7 +168,7 @@ export const makeQueryUrl = (realmId: string, query: string) =>
 export async function getCustomerSalesReport(
   accessToken: string,
   realmId: string,
-  dates: { startDate: Date; endDate: Date }
+  dates: { startDate: Date; endDate: Date },
 ) {
   const startDate = formatDateHtmlReverse(dates.startDate)
   const endDate = formatDateHtmlReverse(dates.endDate)
@@ -178,13 +178,13 @@ summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDa
 
   const salesReport = await fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(
     url,
-    accessToken
+    accessToken,
   )
   if ("Fault" in salesReport) {
     const err = salesReport.Fault.Error[0]?.Message
     throw new ApiError(
       500,
-      "QBO did not return a sales report" + (err ? "\nQBO error: " + err : "")
+      "QBO did not return a sales report" + (err ? "\nQBO error: " + err : ""),
     )
   }
   return salesReport
@@ -220,7 +220,7 @@ export async function getCompanyInfo(accessToken: string, realmId: string) {
 
 function getValidAddress(
   legalAddress: Address | undefined,
-  companyAddress: Address | undefined
+  companyAddress: Address | undefined,
 ): string {
   if (legalAddress) return getAddressString(legalAddress)
   if (companyAddress) return getAddressString(companyAddress)
@@ -242,7 +242,7 @@ export async function getDonations(
   accessToken: string,
   realmId: string,
   dates: { startDate: Date; endDate: Date },
-  items: number[]
+  items: number[],
 ) {
   const [salesReport, customerQueryResult] = await Promise.all([
     getCustomerSalesReport(accessToken, realmId, dates),

@@ -1,12 +1,18 @@
 firebase
 
 node_modules
+
+.github
+.gitignore
+
 .next
 .swc
 
-.gitignore
-.prettierignore
-.prettierrc
+.vscode
 .vscodeignore
 
+.prettierignore
+.prettierrc
 prettier.config.js
+
+.env*

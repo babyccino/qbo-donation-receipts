@@ -1,18 +1,18 @@
-import { FormEventHandler, useRef } from "react"
 import { GetServerSideProps } from "next"
+import { Session } from "next-auth"
 import { useRouter } from "next/router"
-import { Session, getServerSession } from "next-auth"
+import { FormEventHandler, useRef } from "react"
 
-import { authOptions } from "./api/auth/[...nextauth]"
-import { buttonStyling } from "@/components/ui"
+import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
-import { postJsonData } from "@/lib/util/request"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
+import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
+import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
+import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
-import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
-import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { buttonStyling } from "@/components/link"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -116,11 +116,13 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
           helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.smallLogo)}
         />
-        <input
-          className={buttonStyling + " text-l mr-auto block cursor-pointer"}
-          type="submit"
-          value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
-        />
+        <div className="flex flex-row items-center justify-center sm:col-span-2">
+          <input
+            className={buttonStyling + " text-l"}
+            type="submit"
+            value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
+          />
+        </div>
       </Fieldset>
     </form>
   )
@@ -128,10 +130,9 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session = await getServerSession(context.req, context.res, authOptions)
-  if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session)) return disconnectedRedirect
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+  const session = await getServerSessionOrThrow(req, res)
+  assertSessionIsQboConnected(session)
 
   const user = await getUserData(session.user.id)
   if (!user.donee) return disconnectedRedirect

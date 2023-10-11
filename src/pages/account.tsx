@@ -1,21 +1,23 @@
+import { BriefcaseIcon, MapPinIcon } from "@heroicons/react/24/solid"
 import { Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { getServerSession, Session } from "next-auth"
+import { Session } from "next-auth"
 import { signIn, useSession } from "next-auth/react"
 import Image from "next/image"
 import { useRouter } from "next/router"
 
 import { Connect } from "@/components/qbo"
-import { PricingCard, Svg } from "@/components/ui"
-import { getImageUrl, getUserData } from "@/lib/db"
+import { PricingCard } from "@/components/ui"
+import { getUserData } from "@/lib/db"
+import { getImageUrl } from "@/lib/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
+import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
+import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DisconnectBody } from "@/pages/api/auth/disconnect"
 import { DataType } from "@/pages/api/stripe/update-subscription"
-import { Subscription } from "@/types/db"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
@@ -49,28 +51,28 @@ function ProfileCard({
 
   return (
     <Card className="w-72">
-      {logo && (
+      <Show when={Boolean(logo)}>
         <Image
-          src={logo}
+          src={logo as string}
           alt={`${companyName}'s logo`}
           height={50}
           width={50}
           className="rounded-md"
         />
-      )}
+      </Show>
       <h5 className="text-xl font-medium text-gray-500 dark:text-white">{name}</h5>
       <div className="space-y-1">
-        {companyName && (
+        <Show when={Boolean(companyName)}>
           <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
             <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
-              <Svg.Briefcase />
+              <BriefcaseIcon />
             </div>
             {companyName}
           </p>
-        )}
+        </Show>
         <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
           <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
-            <Svg.MapPin />
+            <MapPinIcon />
           </div>
           CA
         </p>
@@ -80,28 +82,28 @@ function ProfileCard({
           <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
             Subscribed since:{" "}
             <span className="text-gray-900 dark:text-white">
-              {formatDate(new Date(subscription.createdAt))}
+              {formatDate(new Date(subscription!.createdAt))}
             </span>
           </p>
           <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
-            Your subscription will {subscription.cancelAtPeriodEnd ? "end" : "automatically renew"}{" "}
+            Your subscription will {subscription!.cancelAtPeriodEnd ? "end" : "automatically renew"}{" "}
             in{" "}
             <span className="text-gray-900 dark:text-white">
-              {getDaysBetweenDates(new Date(), new Date(subscription.periodEnd))}
+              {getDaysBetweenDates(new Date(), new Date(subscription!.periodEnd))}
             </span>{" "}
             days
           </p>
           <Button
-            color={subscription.cancelAtPeriodEnd ? undefined : "light"}
+            color={subscription!.cancelAtPeriodEnd ? undefined : "light"}
             className="flex-shrink"
             onClick={async e => {
               e.preventDefault()
-              const data: DataType = { cancelAtPeriodEnd: !subscription.cancelAtPeriodEnd }
+              const data: DataType = { cancelAtPeriodEnd: !subscription!.cancelAtPeriodEnd }
               await putJsonData("/api/stripe/update-subscription", data)
               router.push(router.asPath)
             }}
           >
-            {subscription.cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
+            {subscription!.cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
           </Button>
         </>
       )}
@@ -126,6 +128,7 @@ function ProfileCard({
     </Card>
   )
 }
+
 export default function AccountPage(props: Props) {
   const { subscribed } = props
   return (
@@ -161,19 +164,10 @@ export default function AccountPage(props: Props) {
 // --- server-side props ---
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
-  const session = await getServerSession(req, res, authOptions)
-
-  if (!session)
-    return {
-      redirect: {
-        destination: "/api/auth/signin",
-        permanent: false,
-      },
-    }
+  const session = await getServerSessionOrThrow(req, res)
 
   const user = await getUserData(session.user.id)
   const subscribed = isUserSubscribed(user)
-
   const { billingAddress, donee } = user
   const account = {
     companyName: donee?.companyName ?? null,
@@ -188,9 +182,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
         account,
       },
     }
-  // if isUserSubscribed returns true then subscription can not be undefined
-  const subscription = user.subscription as Subscription
 
+  const { subscription } = user
   return {
     props: {
       session,

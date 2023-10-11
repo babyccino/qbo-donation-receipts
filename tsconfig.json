@@ -1,14 +1,16 @@
 {
   "compilerOptions": {
+    "types": ["bun-types"], // this is necessary
     "baseUrl": ".",
     "paths": {
       "@/lib/*": ["src/lib/*"],
       "@/components/*": ["src/components/*"],
       "@/types/*": ["src/types/*"],
       "@/pages/*": ["src/pages/*"],
-      "@/emails/*": ["src/emails/*"]
+      "@/emails/*": ["src/emails/*"],
+      "@/public/*": ["public/*"]
     },
-    "target": "ES2015",
+    "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -21,14 +23,20 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "incremental": true
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "jest.setup.js",
-    "lib/pdfviewer/index.js"
+    "lib/pdfviewer/index.js",
+    ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

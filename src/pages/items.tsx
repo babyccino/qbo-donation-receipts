@@ -1,31 +1,64 @@
-import { ChangeEventHandler, FormEventHandler, MouseEventHandler, useRef, useState } from "react"
+import { InformationCircleIcon } from "@heroicons/react/24/solid"
+import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
+import { Session } from "next-auth"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/router"
-import { Session, getServerSession } from "next-auth"
-import Datepicker from "react-tailwindcss-datepicker"
-import { Alert, Button } from "flowbite-react"
+import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
 
-import { buttonStyling, Svg } from "@/components/ui"
+import { Fieldset, Legend, Toggle } from "@/components/form"
+import { buttonStyling } from "@/components/link"
+import { getUserData } from "@/lib/db"
+import { checkUserDataCompletion } from "@/lib/db-helper"
 import { getItems } from "@/lib/qbo-api"
-import { Item } from "@/types/qbo-api"
 import {
+  DateRange,
   DateRangeType,
+  createDateRange,
   endOfPreviousYear,
   endOfThisYear,
   startOfPreviousYear,
   startOfThisYear,
   utcEpoch,
 } from "@/lib/util/date"
+import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
+import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
+import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
-import { authOptions } from "./api/auth/[...nextauth]"
-import { getUserData } from "@/lib/db"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
-import { Fieldset, Label, Legend, Select, Toggle } from "@/components/form"
-import { disconnectedRedirect, isSessionQboConnected } from "@/lib/util/next-auth-helper"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { Item } from "@/types/qbo-api"
 
-type DateRange = { startDate: Date; endDate: Date }
-type StringDateRange = { startDate: string; endDate: string }
+const DumbDatePicker = () => (
+  <div className="relative w-full text-gray-700">
+    <input
+      type="text"
+      className="relative w-full rounded-lg border-gray-300 bg-white py-2.5 pl-4 pr-14 text-sm font-light tracking-wide placeholder-gray-400 transition-all duration-300 focus:border-blue-500 focus:ring focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-white/80"
+      value="????-??-?? ~ ????-??-??"
+      role="presentation"
+      disabled
+    />
+    <button
+      type="button"
+      className="absolute right-0 h-full px-3 text-gray-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+      disabled
+    >
+      <svg
+        className="h-5 w-5"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth="1.5"
+        stroke="currentColor"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+)
+const DatePicker = dynamic(import("react-tailwindcss-datepicker"), {
+  loading: props => <DumbDatePicker />,
+})
+
 type Props = {
   items: Item[]
   session: Session
@@ -35,16 +68,12 @@ type Props = {
   | {
       itemsFilledIn: true
       selectedItems: number[]
-      date: StringDateRange
+      dateRange: DateRange
     }
 )
+type SerialisedProps = SerialiseDates<Props>
 
 type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
-
-const createDateRange = (startDateString: string, endDateString: string) => ({
-  startDate: new Date(startDateString),
-  endDate: new Date(endDateString),
-})
 
 const previousYear = new Date().getFullYear() - 1
 const defaultDateState = createDateRange(`${previousYear}/01/01`, `${previousYear}/12/31`)
@@ -58,22 +87,20 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
   return DateRangeType.Custom
 }
 
-export default function Items(props: Props) {
+export default function Items(serialisedProps: SerialisedProps) {
+  const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   const { items, detailsFilledIn } = props
-  const propsDate = props.itemsFilledIn
-    ? createDateRange(props.date.startDate, props.date.endDate)
-    : null
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
 
   const [dateRangeState, setDateRangeState] = useState<DateRangeType>(
-    props.itemsFilledIn ? getDateRangeType(propsDate as DateRange) : DateRangeType.LastYear
+    props.itemsFilledIn ? getDateRangeType(props.dateRange) : DateRangeType.LastYear,
   )
   const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
   const [customDateState, setCustomDateState] = useState(
-    props.itemsFilledIn ? (propsDate as DateRange) : defaultDateState
+    props.itemsFilledIn ? props.dateRange : defaultDateState,
   )
   const onDateChange = (date: DateValueType) => {
     if (!date || !date.endDate || !date.startDate) return
@@ -118,7 +145,7 @@ export default function Items(props: Props) {
     event.preventDefault()
 
     const items = getItems()
-    const postData: ItemsApiDataType = { items, date: customDateState }
+    const postData: ItemsApiDataType = { items, dateRange: customDateState }
     await postJsonData("/api/items", postData)
 
     const destination = detailsFilledIn ? "/generate-receipts" : "/details"
@@ -128,17 +155,17 @@ export default function Items(props: Props) {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="m-auto w-full max-w-lg space-y-4 p-4">
+    <form
+      ref={formRef}
+      onSubmit={onSubmit}
+      className="m-auto flex w-full max-w-lg flex-col items-center justify-center space-y-4 p-4"
+    >
       <Fieldset>
         <Legend className="mb-3">Selected items</Legend>
         <Alert
           color="info"
           className="mb-4"
-          icon={() => (
-            <div className="mr-2 h-6 w-6">
-              <Svg.Info />
-            </div>
-          )}
+          icon={() => <InformationCircleIcon className="mr-2 h-6 w-6" />}
         >
           Make sure to only choose your QuickBooks sales items which qualify as donations
         </Alert>
@@ -152,8 +179,12 @@ export default function Items(props: Props) {
           />
         ))}
         <div className="flex flex-row gap-2 pb-2 pt-1">
-          <Button onClick={checkAll}>Check All</Button>
-          <Button onClick={unCheckAll}>Uncheck All</Button>
+          <Button onClick={checkAll} color="blue">
+            Check All
+          </Button>
+          <Button onClick={unCheckAll} color="blue">
+            Uncheck All
+          </Button>
         </div>
       </Fieldset>
       <Fieldset>
@@ -175,15 +206,20 @@ export default function Items(props: Props) {
         </Select>
         <p className="mt-2 space-y-1">
           <Label className="mb-2 inline-block">Date Range</Label>
-          <Datepicker
+          <DatePicker
             value={customDateState}
             onChange={onDateChange}
             disabled={!dateRangeIsCustom}
           />
+          {/* <DumbDatePicker
+            value={`${formatDateHtmlReverse(customDateState.startDate)} ~ ${formatDateHtmlReverse(
+              customDateState.endDate,
+            )}`}
+          /> */}
         </p>
       </Fieldset>
       <input
-        className={buttonStyling + " text-l mx-auto block cursor-pointer"}
+        className={buttonStyling + " text-l"}
         type="submit"
         value={detailsFilledIn ? "Generate Receipts" : "Enter Donee Details"}
       />
@@ -193,10 +229,9 @@ export default function Items(props: Props) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<Props> = async context => {
-  const session = await getServerSession(context.req, context.res, authOptions)
-  if (!session) throw new Error("Couldn't find session")
-  if (!isSessionQboConnected(session)) return disconnectedRedirect
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
+  const session = await getServerSessionOrThrow(req, res)
+  assertSessionIsQboConnected(session)
 
   const [user, items] = await Promise.all([
     getUserData(session.user.id),
@@ -205,31 +240,27 @@ export const getServerSideProps: GetServerSideProps<Props> = async context => {
   if (!user) throw new Error("User has no corresponding db entry")
   const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
 
-  if (user.date && user.items) {
-    const selectedItems = user.items
-    const date = {
-      startDate: user.date.startDate.toISOString(),
-      endDate: user.date.endDate.toISOString(),
-    }
-
-    return {
-      props: {
-        itemsFilledIn: true,
-        session,
-        items,
-        detailsFilledIn,
-        selectedItems,
-        date,
-      },
-    }
-  }
-
-  return {
-    props: {
-      itemsFilledIn: false,
+  if (user.dateRange && user.items) {
+    const props = {
+      itemsFilledIn: true,
       session,
       items,
       detailsFilledIn,
-    },
+      selectedItems: user.items,
+      dateRange: user.dateRange,
+    } satisfies Props
+    return {
+      props: serialiseDates(props),
+    }
+  }
+
+  const props = {
+    itemsFilledIn: false,
+    session,
+    items,
+    detailsFilledIn,
+  } satisfies Props
+  return {
+    props: serialiseDates(props),
   }
 }

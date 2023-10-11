@@ -1,9 +1,9 @@
 import * as aws from "@aws-sdk/client-ses"
+import { NextApiHandler } from "next"
 import nodemailer from "nodemailer"
 import { z } from "zod"
 
 import { parseRequestBody } from "@/lib/util/request-server"
-import { NextApiHandler } from "next"
 
 const sesClient = new aws.SESClient({ apiVersion: "2010-12-01", region: "us-east-2" })
 const transporter = nodemailer.createTransport({ SES: { ses: sesClient, aws } })

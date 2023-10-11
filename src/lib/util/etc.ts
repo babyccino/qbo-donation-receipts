@@ -4,6 +4,8 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
+export type RequiredField<T, K extends keyof T> = T & Required<Pick<T, K>>
+
 export type SnakeToCamelCase<S extends string> = S extends `${infer T}_${infer U}`
   ? `${Lowercase<T>}${Capitalize<SnakeToCamelCase<U>>}`
   : Lowercase<S>
@@ -28,3 +30,9 @@ export function snakeKeysToCamel<T extends object>(obj: T) {
     return result
   }, {}) as SnakeToCamelCaseNested<T>
 }
+
+export const wait = (secs: number) => new Promise<void>(res => setTimeout(res, secs))
+
+export const rand = (min: number, max: number) => Math.random() * (max - min) + min
+const { floor } = Math
+export const randInt = (min: number, max: number) => floor(rand(min, max))

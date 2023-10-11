@@ -1,28 +1,14 @@
-import { TextArea, TextInput } from "@/components/form"
-import { Button, Toast } from "flowbite-react"
+import { Button } from "flowbite-react"
 import { FormEventHandler, useRef, useState } from "react"
 
-import { DataType as ContactDataType } from "./api/support"
+import { DataType as ContactDataType } from "@/pages/api/support"
 import { postJsonData } from "@/lib/util/request"
-import { Svg } from "@/components/ui"
-
-function SentMailToast() {
-  return (
-    <Toast className="fixed bottom-5 right-5">
-      <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-cyan-500 dark:bg-cyan-800 dark:text-cyan-200">
-        <div className="h-5 w-5">
-          <Svg.Envelope />
-        </div>
-      </div>
-      <div className="ml-3 text-sm font-normal">Your message has been sent.</div>
-      <Toast.Toggle />
-    </Toast>
-  )
-}
+import { TextArea, TextInput } from "@/components/form"
+import { EmailSentToast } from "@/components/ui"
 
 function Support() {
   const formRef = useRef<HTMLFormElement>(null)
-  const [emailSent, setEmailSent] = useState(false)
+  const [showEmailSentToast, setShowEmailSentToast] = useState(false)
 
   function getFormData() {
     if (!formRef.current) throw new Error("Form html element has not yet been initialised")
@@ -42,10 +28,9 @@ function Support() {
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
-    setEmailSent(true)
-
     const formData: ContactDataType = getFormData()
     const apiResponse = await postJsonData("/api/support", formData)
+    setShowEmailSentToast(true)
   }
 
   return (
@@ -89,7 +74,7 @@ function Support() {
           </Button>
         </form>
       </div>
-      {emailSent && <SentMailToast />}
+      {showEmailSentToast && <EmailSentToast onDismiss={() => setShowEmailSentToast(false)} />}
     </section>
   )
 }

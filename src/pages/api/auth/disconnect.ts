@@ -4,15 +4,15 @@ import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
-import { base64EncodeString } from "@/lib/util/image-helper"
-import { getResponseContent } from "@/lib/util/request"
+import { user } from "@/lib/db"
 import { config } from "@/lib/util/config"
+import { base64EncodeString } from "@/lib/util/image-helper"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-server"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"
-import { user } from "@/lib/db"
 
 const {
   qboClientId,
@@ -39,7 +39,7 @@ async function revokeAccessToken(token: string): Promise<void> {
   if (!response.ok) {
     throw new ApiError(
       500,
-      `access token could not be revoked: ${await getResponseContent(response)}`
+      `access token could not be revoked: ${await getResponseContent(response)}`,
     )
   }
 }
@@ -100,7 +100,7 @@ const handler: NextApiHandler = async (req, res) => {
       req,
       res,
       redirect,
-      "/auth/disconnected"
+      "/auth/disconnected",
     )
 
     if (redirect) return

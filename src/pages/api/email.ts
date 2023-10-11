@@ -1,5 +1,6 @@
 import { ApiError } from "next/dist/server/api-utils"
 import * as aws from "@aws-sdk/client-ses"
+import { FieldValue } from "@google-cloud/firestore"
 import { render } from "@react-email/render"
 import nodemailer from "nodemailer"
 import { renderToBuffer } from "@react-pdf/renderer"
@@ -10,15 +11,17 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { isUserDataComplete } from "@/lib/db-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { WithBody, ReceiptPdfDocument } from "@/components/receipt"
-import { getUserData } from "@/lib/db"
-import { getDonations } from "@/lib/qbo-api"
-import { Donation } from "@/types/qbo-api"
 import { getThisYear } from "@/lib/util/date"
-import { downloadImagesForDonee } from "@/lib/db-helper"
+import { isUserDataComplete, downloadImagesForDonee } from "@/lib/db-helper"
 import { config } from "@/lib/util/config"
+import { getUserData, storageBucket, user } from "@/lib/db"
+import { getDonations } from "@/lib/qbo-api"
+import { formatEmailBody } from "@/lib/email"
+import { ReceiptPdfDocument } from "@/components/receipt/pdf"
+import { WithBody } from "@/components/receipt/email"
+import { Donation } from "@/types/qbo-api"
+import { EmailHistoryItem } from "@/types/db"
 import { isUserSubscribed } from "@/lib/stripe"
 
 const { testEmail } = config
@@ -26,44 +29,57 @@ const { testEmail } = config
 const sesClient = new aws.SESClient({ apiVersion: "2010-12-01", region: "us-east-2" })
 const transporter = nodemailer.createTransport({ SES: { ses: sesClient, aws } })
 
+const getFileNameFromImagePath = (str: string) => str.split("/")[1]
+
 export const parser = z.object({
   emailBody: z.string().min(5),
+  recipientIds: z.array(z.number()).refine(arr => arr.length > 0),
 })
-export type DataType = z.infer<typeof parser>
-const getFileNameFromImagePath = (str: string) => str.split("/")[1]
+export type EmailDataType = z.input<typeof parser>
+
+type DonationWithEmail = Donation & { email: string }
+const hasEmail = (donation: Donation): donation is DonationWithEmail => Boolean(donation.email)
 
 const handler: AuthorisedHandler = async (req, res, session) => {
   assertSessionIsQboConnected(session)
 
-  const data = parseRequestBody(parser, req.body)
-  const { emailBody } = data
+  const { emailBody, recipientIds } = parseRequestBody(parser, req.body)
 
-  const user = await getUserData(session.user.id)
-  if (!isUserDataComplete(user)) throw new ApiError(401, "User data incomplete")
-  if (!isUserSubscribed(user)) throw new ApiError(401, "User is not subscribed")
+  const userData = await getUserData(session.user.id)
+  if (!isUserDataComplete(userData)) throw new ApiError(401, "User data incomplete")
+  if (!isUserSubscribed(userData)) throw new ApiError(401, "User not subscribed")
 
-  const { donee, date } = user
+  const { donee, dateRange } = userData
 
   const [donations, doneeWithImages] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, date, user.items),
-    downloadImagesForDonee(user.donee),
+    getDonations(session.accessToken, session.realmId, dateRange, userData.items),
+    downloadImagesForDonee(userData.donee, storageBucket),
   ])
+
+  // throw if req.body.to is not a subset of the calculated donations
+  const set = new Set(donations.map(entry => entry.id))
+  const ids = recipientIds.filter(id => !set.has(id))
+  if (ids.length > 0)
+    throw new ApiError(
+      400,
+      `${ids.length} IDs were found in the request body which were not present in the calculated donations for this date range` +
+        ids,
+    )
 
   let counter = getThisYear()
   const { companyName } = donee
-  const sendReceipt = async (entry: Donation) => {
-    const recipient = testEmail ?? entry.email
-    if (!recipient) return
-
+  const sendReceipt = async (entry: DonationWithEmail) => {
     const props = {
       currency: "CAD",
       currentDate: new Date(),
       donation: entry,
-      donationDate: date.endDate,
+      donationDate: dateRange.endDate,
       donee: doneeWithImages,
       receiptNo: counter++,
     }
     const receiptBuffer = renderToBuffer(ReceiptPdfDocument(props))
+
+    const body = formatEmailBody(emailBody, entry.name)
 
     const signatureCid = "signature"
     const signatureAttachment = {
@@ -86,13 +102,13 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       WithBody({
         ...props,
         donee: doneeWithCidImages,
-        body: emailBody,
-      })
+        body,
+      }),
     )
 
     await transporter.sendMail({
-      from: { address: user.email, name: companyName },
-      to: recipient,
+      from: { address: userData.email, name: companyName },
+      to: entry.email,
       subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
       attachments: [
         {
@@ -105,17 +121,38 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       ],
       html,
     })
+
+    return entry
   }
 
   if (testEmail) {
     console.log(`sending test email to ${testEmail}`)
-    await sendReceipt(donations[0])
-    return res.status(200).json({ ok: true })
+    const testDonation = { ...donations[0], email: testEmail }
+    await sendReceipt(testDonation)
   }
 
-  const receiptsSent = donations.filter(entry => entry.email !== null).map(sendReceipt)
-  await Promise.all(receiptsSent)
+  const receiptsSentPromises: Promise<DonationWithEmail>[] = []
+  const notSentData: { name: string; id: number }[] = []
+  for (const donation of donations) {
+    if (hasEmail(donation) && recipientIds.includes(donation.id))
+      receiptsSentPromises.push(testEmail ? Promise.resolve(donation) : sendReceipt(donation))
+    else notSentData.push({ id: donation.id, name: donation.name })
+  }
 
+  if (receiptsSentPromises.length === 0) throw new ApiError(500, "No receipts were sent")
+
+  const receiptsSent = await Promise.all(receiptsSentPromises)
+
+  const doc = user.doc(session.user.id)
+  const emailHistoryItem: EmailHistoryItem = {
+    dateRange: dateRange,
+    timeStamp: new Date(),
+    donations: receiptsSent,
+    notSent: notSentData,
+  }
+  await doc.update({
+    emailHistory: FieldValue.arrayUnion(emailHistoryItem),
+  })
   res.status(200).json({ ok: true })
 }
 

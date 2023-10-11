@@ -10,11 +10,10 @@ import {
 } from "react"
 import {
   FileInput,
-  Label as FlowbiteLabel,
+  Label,
   TextInput as FlowbiteTextInput,
   Textarea as FlowbiteTextArea,
 } from "flowbite-react"
-export { Select, Checkbox } from "flowbite-react"
 
 import { twMerge } from "tailwind-merge"
 import { supportedExtensions } from "@/lib/util/image-helper"
@@ -23,36 +22,55 @@ import { supportedExtensions } from "@/lib/util/image-helper"
 // svg from heroicons.dev
 // hand drawn arrows from svgrepo.com
 
-export const Label = FlowbiteLabel
-
 type ToggleProps = {
   className?: string
   id: number
   defaultChecked: boolean
   label: string
+  disabled?: boolean
+  onChange?: ChangeEventHandler<HTMLInputElement>
+  size?: "sm" | "md"
 }
 const _Toggle = (
-  { className, id, defaultChecked, label }: ToggleProps,
+  { className, id, defaultChecked, label, onChange, disabled, size }: ToggleProps,
   ref: ForwardedRef<HTMLInputElement>,
 ) => (
   <p className={className}>
     <label
       htmlFor={id.toString()}
-      className="relative mb-4 inline-flex cursor-pointer items-center"
+      className={twMerge(
+        "relative mb-3 inline-flex cursor-pointer items-center",
+        size === "sm" ? "mb-3" : "mb-5",
+      )}
     >
       <input
+        type="checkbox"
         className="peer sr-only"
         ref={ref}
-        type="checkbox"
         name="items"
         value={id}
         id={id.toString()}
+        disabled={disabled}
+        onChange={onChange}
         // if the user has already made a selection then the list will be prefilled with that data
         // otherwise all will be marked by default
         defaultChecked={defaultChecked}
       />
-      <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800" />
-      <span className="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{label}</span>
+      <div
+        className={twMerge(
+          "peer rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-blue-800",
+          size === "sm" ? "h-5 w-9 after:h-4 after:w-4" : "h-6 w-11 after:h-5 after:w-5",
+        )}
+      />
+      <span
+        className={twMerge(
+          "ml-3 font-medium text-gray-900 dark:text-gray-300",
+          disabled && "line-through",
+          size === "sm" ? "text-xs" : "text-sm",
+        )}
+      >
+        {label}
+      </span>
     </label>
   </p>
 )
@@ -78,9 +96,9 @@ export const TextInput = ({
   type?: HTMLInputTypeAttribute
 }) => (
   <p className={className}>
-    <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
+    <Label className="mb-2 inline-block" htmlFor={id}>
       {label}
-    </FlowbiteLabel>
+    </Label>
     <FlowbiteTextInput
       name={id}
       id={id}
@@ -115,9 +133,9 @@ export const TextArea = ({
   onChange?: ChangeEventHandler<HTMLTextAreaElement>
 }) => (
   <p className={className}>
-    <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
+    <Label className="mb-2 inline-block" htmlFor={id}>
       {label}
-    </FlowbiteLabel>
+    </Label>
     <FlowbiteTextArea
       name={id}
       id={id}
@@ -145,8 +163,8 @@ export const Legend = ({ children, className }: HTMLAttributes<HTMLLegendElement
 export const Fieldset = ({ children, className }: FieldsetHTMLAttributes<HTMLFieldSetElement>) => (
   <fieldset
     className={twMerge(
-      className,
       "m-auto w-full rounded-lg bg-white p-6 pt-5 shadow dark:border dark:border-gray-700 dark:bg-gray-800 md:mt-0",
+      className,
     )}
   >
     {children}
@@ -184,9 +202,9 @@ export function ImageInput({
 
   return (
     <p>
-      <FlowbiteLabel className="mb-2 inline-block" htmlFor={id}>
+      <Label className="mb-2 inline-block" htmlFor={id}>
         {label}
-      </FlowbiteLabel>
+      </Label>
       <FileInput
         id={id}
         name={id}

@@ -7,6 +7,12 @@ function getVitalEnvVariable(environmentVariable: string): string {
 
   const unvalidatedEnvironmentVariable = process.env[environmentVariable]
   if (!unvalidatedEnvironmentVariable) {
+    if (process.env.NODE_ENV === "test") {
+      console.warn(
+        `Couldn't find vital environment variable: ${environmentVariable}. The value 'test val' will be used instead.`,
+      )
+      return "test val"
+    }
     console.error("process.env: ", process.env)
     throw new Error(`Couldn't find vital environment variable: ${environmentVariable}`)
   } else {
@@ -14,62 +20,64 @@ function getVitalEnvVariable(environmentVariable: string): string {
   }
 }
 
-type ConfigInput = Record<string, boolean>
-type Config<T extends ConfigInput> = {
-  [K in keyof T as SnakeToCamelCase<K & string>]: T[K] extends true ? string : string | undefined
+type EnvList = readonly string[]
+type StringsToObj<T extends EnvList | undefined> = T extends EnvList
+  ? { [K in T[number] as SnakeToCamelCase<K>]: string }
+  : undefined
+type StringsToObjPartial<T extends EnvList | undefined> = T extends EnvList
+  ? { [K in T[number] as SnakeToCamelCase<K>]?: string }
+  : undefined
+type Props = {
+  vitalKeys?: EnvList
+  nonVitalKeys?: EnvList
 }
-function getConfig<T extends ConfigInput>(conf: T): Config<T> {
-  const keys = Object.keys(conf)
+type Config<T extends Props> = StringsToObj<T["vitalKeys"]> & StringsToObjPartial<T["nonVitalKeys"]>
+function getConfig<TProps extends Props>({ vitalKeys, nonVitalKeys }: TProps): Config<TProps> {
   const ret = {} as any
-  for (const key of keys) {
-    const val = conf[key as keyof T]
+  vitalKeys?.forEach(key => {
     const camelCaseKey = snakeToCamel(key)
-    ret[camelCaseKey] = val ? getVitalEnvVariable(key) : getNonVitalEnvVariable(key)
-  }
+    ret[camelCaseKey] = getVitalEnvVariable(key)
+  })
+  nonVitalKeys?.forEach(key => {
+    const camelCaseKey = snakeToCamel(key)
+    ret[camelCaseKey] = getNonVitalEnvVariable(key)
+  })
   return ret
 }
 
-const vital = true as const
-const nonVital = false as const
-export const config = getConfig({
-  NEXTAUTH_JWT_SECRET: vital,
-  NEXTAUTH_SECRET: vital,
-  NEXTAUTH_QBO_AUTH_PROVIDER_ID: vital,
-
-  QBO_CLIENT_ID: vital,
-  QBO_CLIENT_SECRET: vital,
-  QBO_WELL_KNOWN: vital,
-  QBO_BASE_API_ROUTE: vital,
-  QBO_OAUTH_ROUTE: vital,
-  QBO_ACCOUNTS_BASE_ROUTE: vital,
-  QBO_OAUTH_REVOCATION_ENDPOINT: vital,
-
-  STRIPE_PUBLIC_KEY: vital,
-  STRIPE_PRIVATE_KEY: vital,
-  STRIPE_WEBHOOK_SECRET: vital,
-  STRIPE_SUBSCRIBE_PRICE_ID: vital,
-
-  FIREBASE_PROJECT_ID: vital,
-  FIREBASE_CLIENT_EMAIL: vital,
-  FIREBASE_PRIVATE_KEY: vital,
-
-  FIREBASE_API_KEY: nonVital,
-  FIREBASE_MESSAGING_SENDER_ID: nonVital,
-  FIREBASE_APP_ID: nonVital,
-  FIREBASE_MEASUREMENT_ID: nonVital,
-
-  FIREBASE_STORAGE_EMULATOR_HOST: nonVital,
-
-  AWS_ACCESS_KEY_ID: vital,
-  AWS_SECRET_ACCESS_KEY: vital,
-
-  VERCEL_ENV: nonVital,
-  VERCEL_URL: nonVital,
-  VERCEL_BRANCH_URL: nonVital,
-  NEXT_PUBLIC_VERCEL_URL: nonVital,
-  PRODUCTION_URL: nonVital,
-
-  TEST_EMAIL: nonVital,
-
-  NODE_ENV: nonVital,
-})
+const vitalKeys = [
+  "NEXTAUTH_JWT_SECRET",
+  "NEXTAUTH_SECRET",
+  "NEXTAUTH_QBO_AUTH_PROVIDER_ID",
+  "QBO_CLIENT_ID",
+  "QBO_CLIENT_SECRET",
+  "QBO_WELL_KNOWN",
+  "QBO_BASE_API_ROUTE",
+  "QBO_OAUTH_ROUTE",
+  "QBO_ACCOUNTS_BASE_ROUTE",
+  "QBO_OAUTH_REVOCATION_ENDPOINT",
+  "STRIPE_PUBLIC_KEY",
+  "STRIPE_PRIVATE_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_SUBSCRIBE_PRICE_ID",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_CLIENT_EMAIL",
+  "FIREBASE_PRIVATE_KEY",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+] as const
+const nonVitalKeys = [
+  "FIREBASE_API_KEY",
+  "FIREBASE_MESSAGING_SENDER_ID",
+  "FIREBASE_APP_ID",
+  "FIREBASE_MEASUREMENT_ID",
+  "FIREBASE_STORAGE_EMULATOR_HOST",
+  "VERCEL_ENV",
+  "VERCEL_URL",
+  "VERCEL_BRANCH_URL",
+  "NEXT_PUBLIC_VERCEL_URL",
+  "PRODUCTION_URL",
+  "TEST_EMAIL",
+  "NODE_ENV",
+] as const
+export const config = getConfig({ vitalKeys, nonVitalKeys })

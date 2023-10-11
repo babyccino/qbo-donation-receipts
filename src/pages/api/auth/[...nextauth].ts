@@ -95,13 +95,13 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   const [userInfo, companyInfo, dbUser] = await Promise.all([
     fetchJsonData<OpenIdUserInfo>(
       `${qboAccountsBaseRoute}/openid_connect/userinfo`,
-      accessToken as string
+      accessToken as string,
     ),
     connectUser ? getCompanyInfo(accessToken, realmId as string) : null,
     doc.get(),
   ])
 
-  // if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
+  if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
   if (!userInfo.emailVerified) return "/terms/email-verified"
 
   const { email, givenName: name } = userInfo

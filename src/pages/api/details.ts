@@ -1,6 +1,6 @@
 import { ApiError } from "next/dist/server/api-utils"
-import { z } from "zod"
 import sharp from "sharp"
+import { z } from "zod"
 
 import { storageBucket, user } from "@/lib/db"
 import {
@@ -20,7 +20,7 @@ async function resizeAndUploadImage(
   dataUrl: string,
   dimensions: { width?: number; height?: number },
   path: string,
-  pub: boolean
+  pub: boolean,
 ): Promise<string> {
   const base64 = dataUrlToBase64(dataUrl)
   const buffer = Buffer.from(base64, "base64")
@@ -31,13 +31,13 @@ async function resizeAndUploadImage(
   if (base64FileSize(base64) >= maxFileSizeBytes)
     throw new ApiError(500, "File uploaded is too large")
 
+  const background = extension === "png" ? { r: 0, g: 0, b: 0, alpha: 0 } : { r: 0, g: 0, b: 0 }
   const resizedBuffer = await sharp(buffer)
-    .resize({ ...dimensions, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .resize({ ...dimensions, fit: "contain", background })
     .toFormat("webp")
     .toBuffer()
   const fullPath = `${path}.webp`
   const file = storageBucket.file(fullPath)
-  // await file.save(Buffer.from(base64String, "base64"), { contentType: "image" })
   await file.save(resizedBuffer, { contentType: "image/webp" })
   if (pub) await file.makePublic()
   return fullPath

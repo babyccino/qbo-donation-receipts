@@ -115,7 +115,7 @@ async function updateProduct(data: Stripe.Product) {
         name: data.name,
         metadata: data.metadata,
       },
-      { merge: true }
+      { merge: true },
     )
 }
 
@@ -135,7 +135,7 @@ async function upsertPrice(data: Stripe.Price) {
         interval: data.recurring?.interval,
         intervalCount: data.recurring?.interval_count,
       },
-      { merge: true }
+      { merge: true },
     )
 }
 
@@ -174,6 +174,6 @@ async function addBillingAddress(subscription: Stripe.Subscription) {
         name: name ?? undefined,
       },
     },
-    { merge: true }
+    { merge: true },
   )
 }

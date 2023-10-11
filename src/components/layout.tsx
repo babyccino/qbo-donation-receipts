@@ -1,9 +1,24 @@
-import { MouseEventHandler, ReactNode, useState, useEffect } from "react"
+import { MouseEventHandler, ReactNode, useEffect, useState } from "react"
+import {
+  ArrowLeftOnRectangleIcon,
+  ArrowRightOnRectangleIcon,
+  Bars3BottomLeftIcon,
+  ChatBubbleLeftEllipsisIcon,
+  DocumentTextIcon,
+  EnvelopeIcon,
+  GlobeAltIcon,
+  RectangleGroupIcon,
+  RectangleStackIcon,
+  ShoppingBagIcon,
+  TableCellsIcon,
+  UserCircleIcon,
+  UserPlusIcon,
+} from "@heroicons/react/24/solid"
 import { signOut, useSession } from "next-auth/react"
-import { useRouter } from "next/router"
 import Link from "next/link"
+import { useRouter } from "next/router"
 
-import { Svg } from "@/components/ui"
+import { Show } from "@/lib/util/react"
 import { subscribe } from "@/lib/util/request"
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -28,16 +43,14 @@ export default function Layout({ children }: { children: ReactNode }) {
           onClick={() => setShowSidebar(true)}
         >
           <span className="sr-only">Open sidebar</span>
-          <div className="h-6 w-6">
-            <Svg.Sidebar />
-          </div>
+          <Bars3BottomLeftIcon className="h-6 w-6" />
         </button>
-        {showSidebar && (
+        <Show when={showSidebar}>
           <div
             className="fixed inset-0 z-20 animate-fadeIn bg-black/40"
             onClick={() => setShowSidebar(false)}
           />
-        )}
+        </Show>
         <nav
           id="separator-sidebar"
           className={
@@ -47,16 +60,16 @@ export default function Layout({ children }: { children: ReactNode }) {
           aria-label="Sidebar"
         >
           <ul className="h-full space-y-2 overflow-y-auto bg-gray-50 px-3 py-4 font-medium dark:bg-gray-800">
-            <NavLink link="/" logo={<Svg.Dashboard />} label="Dashboard" />
-            <NavLink link="/items" logo={<Svg.Products />} label="Items" />
-            <NavLink link="/details" logo={<Svg.Components />} label="Details" />
-            <NavLink link="/generate-receipts" logo={<Svg.SignUp />} label="Receipts" />
-            <NavLink link="/email" logo={<Svg.Envelope />} label="Email" />
-            {user && <NavLink link="/account" logo={<Svg.Users />} label="Account" />}
+            <NavLink link="/" logo={<RectangleGroupIcon />} label="Dashboard" />
+            <NavLink link="/items" logo={<ShoppingBagIcon />} label="Items" />
+            <NavLink link="/details" logo={<RectangleStackIcon />} label="Details" />
+            <NavLink link="/generate-receipts" logo={<TableCellsIcon />} label="Receipts" />
+            <NavLink link="/email" logo={<EnvelopeIcon />} label="Email" />
+            {user && <NavLink link="/account" logo={<UserCircleIcon />} label="Account" />}
             {user ? (
               <NavAnchor
                 href="/api/auth/signout"
-                logo={<Svg.SignIn />}
+                logo={<ArrowLeftOnRectangleIcon />}
                 onClick={e => {
                   e.preventDefault()
                   signOut()
@@ -64,7 +77,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 label="Sign Out"
               />
             ) : (
-              <NavLink link="/auth/signin" logo={<Svg.SignIn />} label="Sign In" />
+              <NavLink link="/auth/signin" logo={<ArrowRightOnRectangleIcon />} label="Sign In" />
             )}
 
             <hr
@@ -78,12 +91,12 @@ export default function Layout({ children }: { children: ReactNode }) {
                 e.preventDefault()
                 subscribe(router.pathname)
               }}
-              logo={<Svg.Upgrade />}
+              logo={<UserPlusIcon />}
               label="Upgrade To Pro"
             />
-            <NavLink link="/terms/terms" logo={<Svg.Help />} label="Terms and Conditions" />
-            <NavLink link="/terms/privacy" logo={<Svg.Documentation />} label="Privacy Policy" />
-            <NavLink link="/support" logo={<Svg.Inbox2 />} label="Support" />
+            <NavLink link="/terms/terms" logo={<GlobeAltIcon />} label="Terms and Conditions" />
+            <NavLink link="/terms/privacy" logo={<DocumentTextIcon />} label="Privacy Policy" />
+            <NavLink link="/support" logo={<ChatBubbleLeftEllipsisIcon />} label="Support" />
           </ul>
         </nav>
       </header>

@@ -1,3 +1,6 @@
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
+
 import "./globals.scss"
 
 import { SessionProvider } from "next-auth/react"
@@ -8,25 +11,30 @@ import { NextSeo } from "next-seo"
 
 import Layout from "@/components/layout"
 import ErrorBoundary from "@/components/error"
+import { config } from "@/lib/util/config"
 
 export default function App({
   Component,
   pageProps: { session, ...pageProps },
 }: AppProps<{ session: Session }>) {
+  const pageTitle =
+    config.nodeEnv === "development" || config.nodeEnv === "test"
+      ? "[dev] DonationReceipt.Online"
+      : "DonationReceipt.Online"
   return (
     <>
       <NextSeo
-        title="DonationReceipt.Online"
+        title={pageTitle}
         description="Expedite your organisation's year-end!"
         openGraph={{
           url: "https://www.donationreceipt.online",
           images: [
             {
-              url: "/open-graph.jpg",
+              url: "/open-graph.webp",
               width: 800,
               height: 600,
               alt: "DonationReceipt.Online homepage",
-              type: "image/jpeg",
+              type: "image/webp",
             },
           ],
         }}
