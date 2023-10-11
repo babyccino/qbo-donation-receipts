@@ -8,4 +8,4 @@ export const Show = ({
   when: boolean
   fallback?: ReactNode
   children: ReactNode
-}): JSX.Element | null => <>{when ? children : fallback}</>
+}): ReactNode => (when ? children : fallback || null)

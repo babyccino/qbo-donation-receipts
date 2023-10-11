@@ -6,6 +6,7 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
+import { NextResponse } from "next/server"
 
 export const parser = z.object({
   items: z.array(z.number()),
@@ -17,13 +18,13 @@ export const parser = z.object({
 
 export type DataType = z.infer<typeof parser>
 
-const handler: AuthorisedHandler = async (req, res, session) => {
+const handler: AuthorisedHandler = async (req, session) => {
   const id = session.user.id
 
   const data = parseRequestBody(parser, req.body)
   await user.doc(id).set(data, { merge: true })
 
-  res.status(200).json({ ok: true })
+  return NextResponse.json({ ok: true }, { status: 200 })
 }
 
-export default createAuthorisedHandler(handler, ["POST"])
+export const POST = createAuthorisedHandler(handler)

@@ -8,13 +8,14 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { getUserData } from "@/lib/db"
+import { NextResponse } from "next/server"
 
 export const parser = z.object({
   cancelAtPeriodEnd: z.boolean(),
 })
 export type DataType = z.infer<typeof parser>
 
-const handler: AuthorisedHandler = async ({ body }, res, session) => {
+const handler: AuthorisedHandler = async ({ body }, session) => {
   const data = parseRequestBody(parser, body)
 
   const user = await getUserData(session.user.id)
@@ -25,7 +26,7 @@ const handler: AuthorisedHandler = async ({ body }, res, session) => {
   })
   manageSubscriptionStatusChange(subscription)
 
-  res.status(200).json({ subscription })
+  return NextResponse.json({ subscription }, { status: 200 })
 }
 
-export default createAuthorisedHandler(handler, ["PUT"])
+export const PUT = createAuthorisedHandler(handler)

@@ -1,4 +1,4 @@
-import NextAuth, { NextAuthOptions } from "next-auth"
+import NextAuth, { NextAuthOptions, getServerSession } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
 import { CallbacksOptions } from "next-auth"
@@ -12,6 +12,7 @@ import { fetchJsonData } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
 import { QboPermission } from "@/types/next-auth-helper"
 import { User } from "@/types/db"
+import { GetServerSidePropsContext } from "next"
 
 const {
   qboClientId,
@@ -201,3 +202,5 @@ export const authOptions: NextAuthOptions = {
 }
 
 export default NextAuth(authOptions)
+export const auth = (ctx: GetServerSidePropsContext) =>
+  getServerSession(ctx.req, ctx.res, authOptions)

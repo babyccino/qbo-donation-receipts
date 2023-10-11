@@ -23,6 +23,7 @@ import { WithBody } from "@/components/receipt/email"
 import { Donation } from "@/types/qbo-api"
 import { EmailHistoryItem } from "@/types/db"
 import { isUserSubscribed } from "@/lib/stripe"
+import { NextResponse } from "next/server"
 
 const { testEmail } = config
 
@@ -40,7 +41,7 @@ export type EmailDataType = z.input<typeof parser>
 type DonationWithEmail = Donation & { email: string }
 const hasEmail = (donation: Donation): donation is DonationWithEmail => Boolean(donation.email)
 
-const handler: AuthorisedHandler = async (req, res, session) => {
+const handler: AuthorisedHandler = async (req, session) => {
   assertSessionIsQboConnected(session)
 
   const { emailBody, recipientIds } = parseRequestBody(parser, req.body)
@@ -153,7 +154,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   await doc.update({
     emailHistory: FieldValue.arrayUnion(emailHistoryItem),
   })
-  res.status(200).json({ ok: true })
+  return NextResponse.json({ ok: true }, { status: 200 })
 }
 
-export default createAuthorisedHandler(handler, ["POST"])
+export const POST = createAuthorisedHandler(handler)

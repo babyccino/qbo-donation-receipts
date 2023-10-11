@@ -10,6 +10,7 @@ import {
 } from "@/lib/util/request-server"
 import { getUserData } from "@/lib/db"
 import { config } from "@/lib/util/config"
+import { NextResponse } from "next/server"
 
 export const parser = z.object({
   redirect: z.string().optional(),
@@ -17,7 +18,7 @@ export const parser = z.object({
 })
 export type DataType = z.input<typeof parser>
 
-const handler: AuthorisedHandler = async ({ body }, res, session) => {
+const handler: AuthorisedHandler = async ({ body }, session) => {
   const data = parseRequestBody(parser, body)
   const { metadata, redirect } = data
 
@@ -46,7 +47,7 @@ const handler: AuthorisedHandler = async ({ body }, res, session) => {
 
   if (!stripeSession.url) throw new ApiError(502, "stripe did not send a redirect url")
 
-  res.status(200).json({ url: stripeSession.url })
+  return NextResponse.json({ url: stripeSession.url }, { status: 200 })
 }
 
-export default createAuthorisedHandler(handler, ["POST"])
+export const POST = createAuthorisedHandler(handler)

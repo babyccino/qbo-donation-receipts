@@ -1,4 +1,4 @@
-import { NextApiResponse, NextApiRequest, Redirect } from "next"
+import { NextApiResponse, Redirect } from "next"
 import { ApiError } from "next/dist/server/api-utils"
 import { getCsrfToken } from "next-auth/react"
 import { encode, JWT } from "next-auth/jwt"
@@ -7,8 +7,9 @@ import crypto from "@/lib/crypto"
 
 import { getBaseUrl } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { IncomingMessage, ServerResponse } from "http"
+import { NextRequest, NextResponse } from "next/server"
 
 const { nextauthSecret, vercelEnv } = config
 
@@ -61,13 +62,12 @@ function splitCookies(cookie: string): string[] {
 
 export async function serverSignIn(
   provider: string,
-  req: NextApiRequest,
-  res: NextApiResponse,
-  redirect: boolean,
+  req: NextRequest,
+  redirect: boolean = true,
   callbackUrl: string = "/",
 ) {
   const { csrfToken, csrfTokenHash } = await getCsrfTokenAndHash(
-    req.cookies["next-auth.csrf-token"],
+    req.cookies.get("next-auth.csrf-token")?.value,
   )
   const cookie = `${csrfCookie}=${csrfToken}|${csrfTokenHash}`
   const url = `${getBaseUrl()}api/auth/signin/${provider}`
@@ -91,20 +91,26 @@ export async function serverSignIn(
 
   const cookies = response.headers.get("Set-Cookie") as string
 
-  res.setHeader("Set-Cookie", splitCookies(cookies))
-  if (redirect) res.redirect(302, data.url)
+  const splitCookiess = splitCookies(cookies)
+  const nextResponse = redirect
+    ? NextResponse.redirect(data.url, {
+        status: 302,
+      })
+    : NextResponse.json({ redirect: response.redirected }, { status: 200 })
+  for (const cookie of splitCookiess) nextResponse.headers.append("Set-Cookie", cookie)
 
-  return data.url
+  return nextResponse
 }
 
-export async function updateServerSession(res: NextApiResponse, token: JWT) {
+export async function updateServerSession(res: NextResponse, token: JWT) {
   const encoded = await encode({ token, secret: nextauthSecret })
-  res.setHeader(
+  res.headers.append(
     "Set-Cookie",
     `${sessionCookie}=${encoded}; path=/; MaxAge=1800 HttpOnly; ${
       vercelEnv ? "Secure; " : ""
     }SameSite=Lax`,
   )
+  return res
 }
 
 type Request = IncomingMessage & {

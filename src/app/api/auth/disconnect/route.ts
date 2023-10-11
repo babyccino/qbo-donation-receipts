@@ -1,9 +1,10 @@
-import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
-import { getServerSession } from "next-auth"
+import { NextApiRequest, NextApiResponse } from "next"
+import { getServerSession } from "next-auth/next"
 import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
+import { authOptions } from "@/auth"
 import { user } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
@@ -11,8 +12,8 @@ import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-server"
 import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"
+import { NextRequest, NextResponse } from "next/server"
 
 const {
   qboClientId,
@@ -44,7 +45,7 @@ async function revokeAccessToken(token: string): Promise<void> {
   }
 }
 
-async function disconnectClient(req: NextApiRequest, res: NextApiResponse) {
+async function disconnectClient(req: NextRequest, res: NextResponse) {
   const token = await getToken({ req, secret, secureCookie: Boolean(vercelEnv) })
   if (!token) throw new ApiError(500, "Client has session but session token was not found")
 
@@ -67,12 +68,11 @@ export const parser = z.object({
 })
 export type DisconnectBody = z.input<typeof parser>
 
-const handler: NextApiHandler = async (req, res) => {
-  if (!(req.method === "GET" || req.method === "POST")) return res.status(405).end()
+const handler = async (req: NextRequest, res: NextResponse) => {
+  const session = await getServerSession(authOptions)
 
-  const session = await getServerSession(req, res, authOptions)
-
-  const realmId = req.query["realmId"]
+  const { searchParams } = req.nextUrl
+  const realmId = searchParams.get("query")
   if (session) user.doc(session.user.id).set({ connected: false }, { merge: true })
   else if (typeof realmId === "string") disconnectUserByRealmId(realmId)
 
@@ -81,12 +81,12 @@ const handler: NextApiHandler = async (req, res) => {
   // already revoked their tokens
   // if the user is disconnecting from within the application the tokens will need to be
   // revoked by us
-  const shouldRevokeAccessToken = req.query["revoke"] === "true"
+  const shouldRevokeAccessToken = searchParams.get("revoke") === "true"
   if (session && session.accessToken && shouldRevokeAccessToken)
     await revokeAccessToken(session.accessToken)
 
   // if the user is signed in already and disconnected there is nothing for us to do
-  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
+  if (session && !isSessionQboConnected(session)) return NextResponse.redirect("/auth/disconnected")
 
   const { redirect, reconnect } = parseRequestBody(parser, req.body || {})
 
@@ -94,23 +94,14 @@ const handler: NextApiHandler = async (req, res) => {
   // i.e. signed in, in the `disconnected` state
   // if the user is not signed in they will also need to be signed in, in this state
   if (reconnect || !session) {
-    console.log("...reconnecting")
-    const redirectUrl = await serverSignIn(
-      "QBO-disconnected",
-      req,
-      res,
-      redirect,
-      "/auth/disconnected",
-    )
-
-    if (redirect) return
-    else res.status(200).json({ redirect: redirectUrl })
+    return serverSignIn("QBO-disconnected", req, redirect, "/auth/disconnected")
   } else {
     // no longer valid access tokens need to be removed from the user's session
-    await disconnectClient(req, res)
-
-    if (redirect) res.redirect(302, "/auth/disconnected")
-    else res.status(200).json({ redirect: "/auth/disconnected" })
+    const response = redirect
+      ? NextResponse.redirect("/auth/disconnected")
+      : NextResponse.json({ redirect: "/auth/disconnected" })
+    return await disconnectClient(req, response)
   }
 }
-export default handler
+export const GET = handler
+export const POST = handler

@@ -15,6 +15,7 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
+import { NextResponse } from "next/server"
 
 async function resizeAndUploadImage(
   dataUrl: string,
@@ -56,7 +57,7 @@ export const parser = z.object({
 })
 export type DataType = z.infer<typeof parser>
 
-const handler: AuthorisedHandler = async (req, res, session) => {
+const handler: AuthorisedHandler = async (req, session) => {
   const id = session.user.id
 
   const data = parseRequestBody(parser, req.body)
@@ -73,7 +74,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const newData = { donee: { ...data, signature: signatureUrl, smallLogo: smallLogoUrl } }
   await user.doc(id).set(newData, { merge: true })
 
-  res.status(200).json(newData)
+  return NextResponse.json(newData, { status: 200 })
 }
 
-export default createAuthorisedHandler(handler, ["POST"])
+export const POST = createAuthorisedHandler(handler)

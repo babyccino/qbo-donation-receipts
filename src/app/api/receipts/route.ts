@@ -10,7 +10,7 @@ import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/util/request-server"
 import { renderToBuffer } from "@react-pdf/renderer"
 
-const handler: AuthorisedHandler = async (req, res, session) => {
+const handler: AuthorisedHandler = async (req, session) => {
   assertSessionIsQboConnected(session)
 
   const user = await getUserData(session.user.id)
@@ -38,7 +38,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   }
 
   const zipBuffer = await zip.generateAsync({ type: "nodebuffer" })
-  res.setHeader("Content-Type", "application/zip").status(200).send(zipBuffer)
+  return new Response(zipBuffer, { status: 200, headers: { "Content-Type": "application/zip" } })
 }
 
-export default createAuthorisedHandler(handler, ["GET"])
+export const GET = createAuthorisedHandler(handler)

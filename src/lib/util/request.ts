@@ -1,4 +1,4 @@
-import { DataType as CheckoutSessionDataType } from "@/pages/api/stripe/create-checkout-session"
+import { DataType as CheckoutSessionDataType } from "@/app/api/stripe/create-checkout-session/route"
 import { config } from "@/lib/util/config"
 
 const { vercelEnv, vercelBranchUrl, vercelUrl, productionUrl } = config

@@ -4,6 +4,7 @@ import nodemailer from "nodemailer"
 import { z } from "zod"
 
 import { parseRequestBody } from "@/lib/util/request-server"
+import { NextResponse } from "next/server"
 
 const sesClient = new aws.SESClient({ apiVersion: "2010-12-01", region: "us-east-2" })
 const transporter = nodemailer.createTransport({ SES: { ses: sesClient, aws } })
@@ -31,11 +32,11 @@ const handler: NextApiHandler = async (req, res) => {
       replyTo: data.from,
     })
 
-    res.status(200).json({ ok: true })
+    return NextResponse.json({ ok: true }, { status: 200 })
   } catch (error) {
     console.error(error)
 
-    res.status(500).json(error)
+    return NextResponse.json(error, { status: 500 })
   }
 }
 export default handler

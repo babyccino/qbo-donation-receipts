@@ -1,8 +1,8 @@
-import type { Bucket } from "@google-cloud/storage"
 import { Timestamp } from "@google-cloud/firestore"
+import type { Bucket } from "@google-cloud/storage"
 
-import { DoneeInfo, User } from "@/types/db"
 import { config } from "@/lib/util/config"
+import { DoneeInfo, User } from "@/types/db"
 const { firebaseProjectId, firebaseStorageEmulatorHost } = config
 
 export async function getImageAsDataUrl(storageBucket: Bucket, url: string) {

@@ -2,8 +2,9 @@ import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
 import { ApiError } from "next/dist/server/api-utils"
 import { Session, getServerSession } from "next-auth"
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { TypeOf, ZodObject, ZodRawShape } from "zod"
+import { NextRequest, NextResponse } from "next/server"
 
 export function parseRequestBody<T extends ZodRawShape>(
   shape: ZodObject<T>,
@@ -20,40 +21,29 @@ export function parseRequestBody<T extends ZodRawShape>(
   return response.data
 }
 
-export type AuthorisedHandler<T = any> = (
-  req: NextApiRequest,
-  res: NextApiResponse<T>,
-  session: Session,
-) => Promise<unknown>
-type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
-type ErrorTypes = { message: string } | ApiError
-export function createAuthorisedHandler<T>(
-  handler: AuthorisedHandler<T>,
-  methods: HttpVerb[],
-  redirect?: string,
-): NextApiHandler<T | ErrorTypes> {
-  return async (req, res) => {
+export type AuthorisedHandler = (req: NextRequest, session: Session) => Promise<Response>
+// type ErrorTypes = { message: string } | ApiError
+export function createAuthorisedHandler<T>(handler: AuthorisedHandler, redirect?: string) {
+  return async (req: NextRequest) => {
     console.log(`${req.method} request made to ${req.url}`)
-    if (!req.method || !methods.includes(req.method as HttpVerb)) {
-      return res.status(405).end()
-    }
 
-    const session = await getServerSession(req, res, authOptions)
+    const session = await getServerSession(authOptions)
     if (!session && redirect) {
-      return res.redirect(302, redirect)
+      return NextResponse.redirect(redirect)
     }
 
     if (!session) {
-      return res.status(401).end()
+      return NextResponse.json({}, { status: 401 })
     }
 
     try {
-      await handler(req, res, session)
+      return await handler(req, session)
     } catch (error) {
       console.error(error)
-      if (!(error instanceof ApiError)) return res.status(404).json({ message: "server error" })
+      if (!(error instanceof ApiError))
+        return NextResponse.json({ message: "server error" }, { status: 404 })
 
-      res.status(error.statusCode).json(error)
+      return NextResponse.json(error, { status: error.statusCode })
     }
   }
 }
