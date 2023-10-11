@@ -30,6 +30,13 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "jest.setup.js", "lib/pdfviewer/index.js"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "jest.setup.js",
+    "lib/pdfviewer/index.js",
+    ".next/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

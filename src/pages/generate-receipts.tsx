@@ -11,7 +11,7 @@ import {
   DownloadReceiptLoading,
   DummyDownloadReceipt,
   DummyShowReceipt,
-  downloadReceiptInner,
+  ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
 import { getUserData, storageBucket } from "@/lib/db"
@@ -32,7 +32,6 @@ import { subscribe } from "@/lib/util/request"
 import { DoneeInfo } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
-import { ShowReceiptLoading } from "@/components/receipt/pdf-dumb"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
