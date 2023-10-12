@@ -25,7 +25,7 @@ import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
-import { DataType as ItemsApiDataType } from "@/pages/api/items"
+import { DataType as ItemsApiDataType } from "@/app/api/items/route"
 import { Item } from "@/types/qbo-api"
 
 const DumbDatePicker = () => (

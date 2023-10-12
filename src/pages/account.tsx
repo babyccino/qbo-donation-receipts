@@ -16,8 +16,8 @@ import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
 import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
-import { DisconnectBody } from "@/pages/api/auth/disconnect"
-import { DataType } from "@/pages/api/stripe/update-subscription"
+import { DisconnectBody } from "@/app/api/auth/disconnect/route"
+import { DataType } from "@/app/api/stripe/update-subscription/route"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {

@@ -28,7 +28,7 @@ import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
-import { EmailDataType } from "@/pages/api/email"
+import { EmailDataType } from "@/app/api/email/route"
 import { DoneeInfo, EmailHistoryItem } from "@/types/db"
 import { WithBodyProps } from "@/types/receipt"
 
