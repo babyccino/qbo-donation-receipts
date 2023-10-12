@@ -1,5 +1,8 @@
 import Image from "next/image"
+import { Checkbox } from "flowbite-react/lib/esm/components/Checkbox"
+import { Label } from "flowbite-react/lib/esm/components/Label"
 
+import QBOSignInDefault from "@/public/svg/qbo/qbo-sign-in-default.svg"
 import Form from "./form"
 
 export default function SignInPage() {
@@ -11,7 +14,21 @@ export default function SignInPage() {
           DonationReceipt.Online
         </h1>
       </div>
-      <Form />
+      <Form>
+        <Checkbox defaultChecked={false} id="agree" className="peer inline-block" required />
+        <Label className="ml-3 inline-block" htmlFor="agree">
+          I agree with the{" "}
+          <a className="text-primary-600 hover:underline dark:text-primary-500" href="/forms">
+            terms and conditions
+          </a>
+        </Label>
+        <button
+          type="submit"
+          className="col-span-2 mx-auto mt-4 block brightness-50 filter peer-checked:filter-none"
+        >
+          <QBOSignInDefault />
+        </button>
+      </Form>
     </div>
   )
 }
