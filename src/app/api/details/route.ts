@@ -46,7 +46,7 @@ async function resizeAndUploadImage(
 
 const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
 
-export const parser = z.object({
+const parser = z.object({
   companyName: z.string(),
   companyAddress: z.string(),
   country: z.string(),

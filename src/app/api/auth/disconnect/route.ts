@@ -62,13 +62,13 @@ async function disconnectUserByRealmId(realmId: string) {
   await Promise.all(promises)
 }
 
-export const parser = z.object({
+const parser = z.object({
   redirect: z.boolean().default(true),
   reconnect: z.boolean().default(false),
 })
 export type DisconnectBody = z.input<typeof parser>
 
-const handler = async (req: NextRequest, res: NextResponse) => {
+const handler = async (req: NextRequest) => {
   const session = await getServerSession(authOptions)
 
   const { searchParams } = req.nextUrl

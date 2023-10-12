@@ -10,7 +10,7 @@ import {
 import { getUserData } from "@/lib/db"
 import { NextResponse } from "next/server"
 
-export const parser = z.object({
+const parser = z.object({
   cancelAtPeriodEnd: z.boolean(),
 })
 export type DataType = z.infer<typeof parser>

@@ -32,7 +32,7 @@ const transporter = nodemailer.createTransport({ SES: { ses: sesClient, aws } })
 
 const getFileNameFromImagePath = (str: string) => str.split("/")[1]
 
-export const parser = z.object({
+const parser = z.object({
   emailBody: z.string().min(5),
   recipientIds: z.array(z.number()).refine(arr => arr.length > 0),
 })

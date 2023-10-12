@@ -8,7 +8,7 @@ import {
 } from "@/lib/util/request-server"
 import { NextResponse } from "next/server"
 
-export const parser = z.object({
+const parser = z.object({
   items: z.array(z.number()),
   dateRange: z.object({
     startDate: z.coerce.date(),

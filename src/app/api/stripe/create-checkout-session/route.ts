@@ -12,7 +12,7 @@ import { getUserData } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { NextResponse } from "next/server"
 
-export const parser = z.object({
+const parser = z.object({
   redirect: z.string().optional(),
   metadata: z.record(z.string(), z.any()).default({}),
 })
