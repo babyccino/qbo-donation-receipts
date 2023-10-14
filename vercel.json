@@ -1,5 +1,5 @@
 {
-  "installCommand": "bun install && bun run patch",
+  "installCommand": "npm install && npm run patch",
   "buildCommand": "npx next build",
   "headers": [
     {
