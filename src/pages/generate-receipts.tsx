@@ -16,7 +16,7 @@ import {
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
 import { getUserData, storageBucket } from "@/lib/db"
-import { checkUserDataCompletion, downloadImageAndConvertToPng, getImageAsDataUrl, isUserDataComplete } from "@/lib/db-helper"
+import { checkUserDataCompletion, downloadImageAndConvertToPng, downloadImageAsDataUrl, isUserDataComplete } from "@/lib/db-helper"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"

@@ -8,7 +8,7 @@ import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
 
 const { firebaseProjectId, firebaseStorageEmulatorHost } = config
 
-export async function getImageAsDataUrl(storageBucket: Bucket, firestorePath: string) {
+export async function downloadImageAsDataUrl(storageBucket: Bucket, firestorePath: string) {
   const file = await storageBucket.file(firestorePath).download()
   const fileString = file[0].toString("base64")
   const match = firestorePath.match(/[^.]+$/)
@@ -28,8 +28,8 @@ export async function downloadImagesForDonee(
   storageBucket: Bucket,
 ): Promise<Required<DoneeInfo>> {
   const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
-    getImageAsDataUrl(storageBucket, donee.signature),
-    getImageAsDataUrl(storageBucket, donee.smallLogo),
+    downloadImageAsDataUrl(storageBucket, donee.signature),
+    downloadImageAsDataUrl(storageBucket, donee.smallLogo),
   ])
 
   return {
@@ -40,7 +40,7 @@ export async function downloadImagesForDonee(
 }
 
 export async function downloadImageAsBuffer(storageBucket: Bucket, firestorePath: string) {
-  const dataUrl = await getImageAsDataUrl(storageBucket, firestorePath)
+  const dataUrl = await downloadImageAsDataUrl(storageBucket, firestorePath)
   const b64 = dataUrlToBase64(dataUrl)
   return Buffer.from(b64, "base64")  
 }

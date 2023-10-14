@@ -7,7 +7,13 @@ import { z } from "zod"
 import { WithBody } from "@/components/receipt/email"
 import { ReceiptPdfDocument } from "@/components/receipt/pdf"
 import { getUserData, storageBucket, user } from "@/lib/db"
-import { downloadImagesForDonee, isUserDataComplete } from "@/lib/db-helper"
+import {
+  bufferToPngDataUrl,
+  downloadImageAsBuffer,
+  downloadImageAsDataUrl,
+  downloadImagesForDonee,
+  isUserDataComplete,
+} from "@/lib/db-helper"
 import { formatEmailBody } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -21,6 +27,7 @@ import {
 } from "@/lib/util/request-server"
 import { EmailHistoryItem } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
+import { dataUrlToBase64 } from "@/lib/util/image-helper"
 
 const { testEmail } = config
 
@@ -58,9 +65,10 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     }
   }
 
-  const [donations, doneeWithImages] = await Promise.all([
+  const [donations, signatureWebpDataUrl, logoWebpDataUrl] = await Promise.all([
     getDonations(session.accessToken, session.realmId, dateRange, userData.items),
-    downloadImagesForDonee(userData.donee, storageBucket),
+    downloadImageAsDataUrl(storageBucket, donee.signature),
+    downloadImageAsDataUrl(storageBucket, donee.smallLogo),
   ])
 
   // throw if req.body.to is not a subset of the calculated donations
@@ -75,6 +83,17 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       )
   }
 
+  const [signaturePngDataUrl, logoPngDataUrl] = await Promise.all([
+    bufferToPngDataUrl(Buffer.from(dataUrlToBase64(signatureWebpDataUrl), "base64")),
+    bufferToPngDataUrl(Buffer.from(dataUrlToBase64(logoWebpDataUrl), "base64")),
+  ])
+
+  const doneeWithPngDataUrls = {
+    ...donee,
+    signatue: signaturePngDataUrl,
+    smallLogo: logoPngDataUrl,
+  }
+
   let counter = emailHistory?.flatMap(item => item.donations).length || 0
   const { companyName } = donee
   const thisYear = getThisYear()
@@ -85,29 +104,17 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       currentDate: new Date(),
       donation: entry,
       donationDate: dateRange.endDate,
-      donee: doneeWithImages,
+      donee: doneeWithPngDataUrls,
       receiptNo,
     }
     const receiptBuffer = renderToBuffer(ReceiptPdfDocument(props))
 
     const body = formatEmailBody(emailBody, entry.name)
 
-    const signatureCid = "signature"
-    const signatureAttachment = {
-      filename: getFileNameFromImagePath(donee.signature as string) + ".webp",
-      content: Buffer.from(doneeWithImages.signature, "base64url"),
-      cid: signatureCid,
-    }
-    const logoCid = "logo"
-    const logoAttachment = {
-      filename: getFileNameFromImagePath(donee.smallLogo as string) + ".webp",
-      content: Buffer.from(doneeWithImages.smallLogo, "base64url"),
-      cid: logoCid,
-    }
-    const doneeWithCidImages = {
+    const doneeWithWebpDataUrlImages = {
       ...donee,
-      signature: `cid:${signatureCid}`,
-      smallLogo: `cid:${logoCid}`,
+      signature: signatureWebpDataUrl,
+      smallLogo: logoWebpDataUrl,
     }
 
     await resend.emails.send({
@@ -122,12 +129,10 @@ const handler: AuthorisedHandler = async (req, res, session) => {
           )} - ${formatDateHtmlReverse(dateRange.startDate)}.pdf`,
           content: await receiptBuffer,
         },
-        signatureAttachment,
-        logoAttachment,
       ],
       react: WithBody({
         ...props,
-        donee: doneeWithCidImages,
+        donee: doneeWithWebpDataUrlImages,
         body,
       }),
     })
