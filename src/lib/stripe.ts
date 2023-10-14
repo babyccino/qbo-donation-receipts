@@ -5,7 +5,7 @@ import { User } from "@/types/db"
 import { config } from "@/lib/util/config"
 import { RequiredField } from "@/lib/util/etc"
 
-export const stripe = new Stripe(config.stripePrivateKey, { apiVersion: "2022-11-15" })
+export const stripe = new Stripe(config.stripePrivateKey, { apiVersion: "2023-08-16" })
 
 function getDate(timeStamp: number): Date
 function getDate(timeStamp: number | null | undefined): Date | undefined
