@@ -213,8 +213,10 @@ export function ShowReceipt({ receiptProps }: { receiptProps: EmailProps }) {
     " fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
 
   return (
-    <Button onClick={() => setShow(true)} color="blue">
-      {showReceiptInner}
+    <>
+      <Button onClick={() => setShow(true)} color="blue">
+        {showReceiptInner}
+      </Button>
       <div className={containerClassName} onClick={() => setShow(false)}>
         <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
           <ReceiptPdfDocument {...receiptProps} />
@@ -226,6 +228,6 @@ export function ShowReceipt({ receiptProps }: { receiptProps: EmailProps }) {
           <PlusCircleIcon />
         </button>
       </div>
-    </Button>
+    </>
   )
 }
