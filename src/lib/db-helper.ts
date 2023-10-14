@@ -1,14 +1,17 @@
-import type { Bucket } from "@google-cloud/storage"
 import { Timestamp } from "@google-cloud/firestore"
+import sharp from "sharp"
 
 import { DoneeInfo, User } from "@/types/db"
 import { config } from "@/lib/util/config"
+import { Bucket } from "@/lib/db"
+import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
+
 const { firebaseProjectId, firebaseStorageEmulatorHost } = config
 
-export async function getImageAsDataUrl(storageBucket: Bucket, url: string) {
-  const file = await storageBucket.file(url).download()
+export async function getImageAsDataUrl(storageBucket: Bucket, firestorePath: string) {
+  const file = await storageBucket.file(firestorePath).download()
   const fileString = file[0].toString("base64")
-  const match = url.match(/[^.]+$/)
+  const match = firestorePath.match(/[^.]+$/)
   if (!match) throw new Error("")
   const extension = match[0]
   return `data:image/${extension};base64,${fileString}`
@@ -35,6 +38,23 @@ export async function downloadImagesForDonee(
     smallLogo: smallLogoDataUrl,
   }
 }
+
+export async function downloadImageAsBuffer(storageBucket: Bucket, firestorePath: string) {
+  const dataUrl = await getImageAsDataUrl(storageBucket, firestorePath)
+  const b64 = dataUrlToBase64(dataUrl)
+  return Buffer.from(b64, "base64")  
+}
+
+export async function bufferToPngDataUrl(buffer: Buffer) {
+  const outputBuf = await sharp(buffer).toFormat("png").toBuffer()
+  return bufferToDataUrl("iamge/png", outputBuf)
+}
+
+export async function downloadImageAndConvertToPng(storageBucket: Bucket, firestorePath: string) {
+  const inputBuf = await downloadImageAsBuffer(storageBucket, firestorePath)
+  return bufferToPngDataUrl(inputBuf)
+}
+
 
 export type UserDataComplete = User & {
   items: Required<User>["items"]

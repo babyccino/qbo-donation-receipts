@@ -4,6 +4,7 @@ import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
 import { ReactNode, useState } from "react"
+import sharp from "sharp"
 import { twMerge } from "tailwind-merge"
 
 import { Link } from "@/components/link"
@@ -15,15 +16,12 @@ import {
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
 import { getUserData, storageBucket } from "@/lib/db"
-import {
-  checkUserDataCompletion,
-  downloadImagesForDonee,
-  isUserDataComplete,
-} from "@/lib/db-helper"
+import { checkUserDataCompletion, downloadImageAndConvertToPng, getImageAsDataUrl, isUserDataComplete } from "@/lib/db-helper"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
+import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { dynamic } from "@/lib/util/nextjs-helper"
@@ -297,11 +295,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const [donations, donee] = await Promise.all([
+  const { donee } = user
+  const [donations, pngSignature, pngLogo] = await Promise.all([
     getDonations(session.accessToken, session.realmId, user.dateRange, user.items),
-    downloadImagesForDonee(user.donee, storageBucket),
+    downloadImageAndConvertToPng(storageBucket, donee.signature),
+    downloadImageAndConvertToPng(storageBucket, donee.smallLogo),
   ])
-
+  donee.signature = pngSignature
+  donee.smallLogo = pngLogo
   const subscribed = isUserSubscribed(user)
 
   return {
