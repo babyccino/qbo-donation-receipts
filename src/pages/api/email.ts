@@ -1,24 +1,18 @@
 import { FieldValue } from "@google-cloud/firestore"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { ApiError } from "next/dist/server/api-utils"
-import { Resend } from "resend"
 import { z } from "zod"
 
 import { WithBody } from "@/components/receipt/email"
 import { ReceiptPdfDocument } from "@/components/receipt/pdf"
 import { getUserData, storageBucket, user } from "@/lib/db"
-import {
-  bufferToPngDataUrl,
-  downloadImageAsBuffer,
-  downloadImageAsDataUrl,
-  downloadImagesForDonee,
-  isUserDataComplete,
-} from "@/lib/db-helper"
-import { formatEmailBody } from "@/lib/email"
+import { bufferToPngDataUrl, downloadImageAsDataUrl, isUserDataComplete } from "@/lib/db-helper"
+import { formatEmailBody, resend } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { config } from "@/lib/util/config"
 import { formatDateHtmlReverse, getThisYear } from "@/lib/util/date"
+import { dataUrlToBase64 } from "@/lib/util/image-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import {
   AuthorisedHandler,
@@ -27,13 +21,8 @@ import {
 } from "@/lib/util/request-server"
 import { EmailHistoryItem } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
-import { dataUrlToBase64 } from "@/lib/util/image-helper"
 
 const { testEmail } = config
-
-const resend = new Resend(config.resendApiKey)
-
-const getFileNameFromImagePath = (str: string) => str.split("/")[1]
 
 export const parser = z.object({
   emailBody: z.string(),

@@ -1,12 +1,8 @@
-import * as aws from "@aws-sdk/client-ses"
 import { NextApiHandler } from "next"
-import nodemailer from "nodemailer"
 import { z } from "zod"
 
+import { resend } from "@/lib/email"
 import { parseRequestBody } from "@/lib/util/request-server"
-
-const sesClient = new aws.SESClient({ apiVersion: "2010-12-01", region: "us-east-2" })
-const transporter = nodemailer.createTransport({ SES: { ses: sesClient, aws } })
 
 export const parser = z.object({
   from: z.string().email(),
@@ -23,12 +19,12 @@ const handler: NextApiHandler = async (req, res) => {
   try {
     const data = parseRequestBody(parser, req.body)
 
-    await transporter.sendMail({
-      from: "contact@donationreceipt.online",
+    await resend.emails.send({
+    from: "contact@donationreceipt.online",
       to: "gus.ryan163@gmail.com",
       subject: `A user submitted a support ticket: ${data.subject}`,
       text: data.body,
-      replyTo: data.from,
+      reply_to: data.from,
     })
 
     res.status(200).json({ ok: true })
