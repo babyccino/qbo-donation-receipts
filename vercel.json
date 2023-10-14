@@ -1,5 +1,6 @@
 {
   "installCommand": "bun install && bun run patch",
+  "buildCommand": "npx next build",
   "headers": [
     {
       "source": "/:path*",
