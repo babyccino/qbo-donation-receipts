@@ -1,38 +1,35 @@
-import { ApiError } from "next/dist/server/api-utils"
-import * as aws from "@aws-sdk/client-ses"
 import { FieldValue } from "@google-cloud/firestore"
-import { render } from "@react-email/render"
-import nodemailer from "nodemailer"
 import { renderToBuffer } from "@react-pdf/renderer"
+import { ApiError } from "next/dist/server/api-utils"
+import { Resend } from "resend"
 import { z } from "zod"
 
+import { WithBody } from "@/components/receipt/email"
+import { ReceiptPdfDocument } from "@/components/receipt/pdf"
+import { getUserData, storageBucket, user } from "@/lib/db"
+import { downloadImagesForDonee, isUserDataComplete } from "@/lib/db-helper"
+import { formatEmailBody } from "@/lib/email"
+import { getDonations } from "@/lib/qbo-api"
+import { isUserSubscribed } from "@/lib/stripe"
+import { config } from "@/lib/util/config"
+import { formatDateHtmlReverse, getThisYear } from "@/lib/util/date"
+import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import {
   AuthorisedHandler,
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getThisYear } from "@/lib/util/date"
-import { isUserDataComplete, downloadImagesForDonee } from "@/lib/db-helper"
-import { config } from "@/lib/util/config"
-import { getUserData, storageBucket, user } from "@/lib/db"
-import { getDonations } from "@/lib/qbo-api"
-import { formatEmailBody } from "@/lib/email"
-import { ReceiptPdfDocument } from "@/components/receipt/pdf"
-import { WithBody } from "@/components/receipt/email"
-import { Donation } from "@/types/qbo-api"
 import { EmailHistoryItem } from "@/types/db"
-import { isUserSubscribed } from "@/lib/stripe"
+import { Donation } from "@/types/qbo-api"
 
 const { testEmail } = config
 
-const sesClient = new aws.SESClient({ apiVersion: "2010-12-01", region: "us-east-2" })
-const transporter = nodemailer.createTransport({ SES: { ses: sesClient, aws } })
+const resend = new Resend(config.resendApiKey)
 
 const getFileNameFromImagePath = (str: string) => str.split("/")[1]
 
 export const parser = z.object({
-  emailBody: z.string().min(5),
+  emailBody: z.string(),
   recipientIds: z.array(z.number()).refine(arr => arr.length > 0),
 })
 export type EmailDataType = z.input<typeof parser>
@@ -49,7 +46,17 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   if (!isUserDataComplete(userData)) throw new ApiError(401, "User data incomplete")
   if (!isUserSubscribed(userData)) throw new ApiError(401, "User not subscribed")
 
-  const { donee, dateRange } = userData
+  const { donee, dateRange, emailHistory } = userData
+
+  if (emailHistory && emailHistory.length >= 4) {
+    const now = new Date().getTime()
+    const msInDay = 1000 * 60 * 60 * 24
+    let count = 0
+    for (const item of emailHistory) {
+      if (now - item.timeStamp.getTime() < msInDay) ++count
+      if (count >= 4) throw new ApiError(400, "too many requests")
+    }
+  }
 
   const [donations, doneeWithImages] = await Promise.all([
     getDonations(session.accessToken, session.realmId, dateRange, userData.items),
@@ -57,25 +64,29 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   ])
 
   // throw if req.body.to is not a subset of the calculated donations
-  const set = new Set(donations.map(entry => entry.id))
-  const ids = recipientIds.filter(id => !set.has(id))
-  if (ids.length > 0)
-    throw new ApiError(
-      400,
-      `${ids.length} IDs were found in the request body which were not present in the calculated donations for this date range` +
-        ids,
-    )
+  {
+    const set = new Set(donations.map(entry => entry.id))
+    const ids = recipientIds.filter(id => !set.has(id))
+    if (ids.length > 0)
+      throw new ApiError(
+        400,
+        `${ids.length} IDs were found in the request body which were not present in the calculated donations for this date range` +
+          ids,
+      )
+  }
 
-  let counter = getThisYear()
+  let counter = emailHistory?.flatMap(item => item.donations).length || 0
   const { companyName } = donee
+  const thisYear = getThisYear()
   const sendReceipt = async (entry: DonationWithEmail) => {
+    const receiptNo = thisYear + counter * 10000
     const props = {
       currency: "CAD",
       currentDate: new Date(),
       donation: entry,
       donationDate: dateRange.endDate,
       donee: doneeWithImages,
-      receiptNo: counter++,
+      receiptNo,
     }
     const receiptBuffer = renderToBuffer(ReceiptPdfDocument(props))
 
@@ -83,14 +94,14 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
     const signatureCid = "signature"
     const signatureAttachment = {
-      filename: getFileNameFromImagePath(donee.signature as string),
-      path: doneeWithImages.signature,
+      filename: getFileNameFromImagePath(donee.signature as string) + ".webp",
+      content: Buffer.from(doneeWithImages.signature, "base64url"),
       cid: signatureCid,
     }
     const logoCid = "logo"
     const logoAttachment = {
-      filename: getFileNameFromImagePath(donee.smallLogo as string),
-      path: doneeWithImages.smallLogo,
+      filename: getFileNameFromImagePath(donee.smallLogo as string) + ".webp",
+      content: Buffer.from(doneeWithImages.smallLogo, "base64url"),
       cid: logoCid,
     }
     const doneeWithCidImages = {
@@ -98,28 +109,27 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       signature: `cid:${signatureCid}`,
       smallLogo: `cid:${logoCid}`,
     }
-    const html = render(
-      WithBody({
-        ...props,
-        donee: doneeWithCidImages,
-        body,
-      }),
-    )
 
-    await transporter.sendMail({
-      from: { address: userData.email, name: companyName },
+    await resend.emails.send({
+      from: `${companyName} <noreply@${config.domain}>`,
       to: entry.email,
+      reply_to: userData.email,
       subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
       attachments: [
         {
-          filename: `Donation Receipt.pdf`,
+          filename: `${entry.name} Donations ${formatDateHtmlReverse(
+            dateRange.endDate,
+          )} - ${formatDateHtmlReverse(dateRange.startDate)}.pdf`,
           content: await receiptBuffer,
-          contentType: "application/pdf",
         },
         signatureAttachment,
         logoAttachment,
       ],
-      html,
+      react: WithBody({
+        ...props,
+        donee: doneeWithCidImages,
+        body,
+      }),
     })
 
     return entry

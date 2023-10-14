@@ -65,6 +65,8 @@ const vitalKeys = [
   "FIREBASE_PRIVATE_KEY",
   "AWS_ACCESS_KEY_ID",
   "AWS_SECRET_ACCESS_KEY",
+  "RESEND_API_KEY",
+  "DOMAIN",
 ] as const
 const nonVitalKeys = [
   "FIREBASE_API_KEY",
