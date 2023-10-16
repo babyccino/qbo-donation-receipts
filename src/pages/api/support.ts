@@ -3,10 +3,11 @@ import { z } from "zod"
 
 import { resend } from "@/lib/email"
 import { parseRequestBody } from "@/lib/util/request-server"
+import { regularCharactersRegex } from "@/lib/util/etc"
 
 export const parser = z.object({
   from: z.string().email(),
-  subject: z.string().min(5),
+  subject: z.string().min(5).regex(new RegExp(regularCharactersRegex)),
   body: z.string().min(5),
 })
 export type DataType = z.infer<typeof parser>

@@ -3,6 +3,7 @@ import sharp from "sharp"
 import { z } from "zod"
 
 import { storageBucket, user } from "@/lib/db"
+import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import {
   base64FileSize,
   dataUrlToBase64,
@@ -45,12 +46,13 @@ async function resizeAndUploadImage(
 
 const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
 
+const zodRegularString = z.string().regex(new RegExp(regularCharactersRegex))
 export const parser = z.object({
-  companyName: z.string(),
-  companyAddress: z.string(),
-  country: z.string(),
-  registrationNumber: z.string(),
-  signatoryName: z.string(),
+  companyName: zodRegularString,
+  companyAddress: zodRegularString,
+  country: zodRegularString,
+  registrationNumber: z.string().regex(new RegExp(charityRegistrationNumberRegex)),
+  signatoryName: zodRegularString,
   signature: z.string().optional().refine(dataUrlRefiner),
   smallLogo: z.string().optional().refine(dataUrlRefiner),
 })

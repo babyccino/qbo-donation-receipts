@@ -4,15 +4,16 @@ import { useRouter } from "next/router"
 import { FormEventHandler, useRef } from "react"
 
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
+import { buttonStyling } from "@/components/link"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
+import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
-import { buttonStyling } from "@/components/link"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -80,6 +81,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
           defaultValue={doneeInfo.companyName}
           label="Legal name"
           required
+          pattern={regularCharactersRegex}
         />
         <TextInput
           id="country"
@@ -87,6 +89,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
           defaultValue={doneeInfo.country}
           label="Country"
           required
+          pattern={regularCharactersRegex}
         />
         <TextInput
           id="registrationNumber"
@@ -94,6 +97,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
           defaultValue={doneeInfo.registrationNumber}
           label="Charity registration number"
           required
+          pattern={charityRegistrationNumberRegex}
         />
         <TextInput
           id="signatoryName"
@@ -101,6 +105,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
           label="Signatory's name"
           defaultValue={doneeInfo.signatoryName}
           required
+          pattern={regularCharactersRegex}
         />
         <ImageInput
           id="signature"

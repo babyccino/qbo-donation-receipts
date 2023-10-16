@@ -1,22 +1,22 @@
 import {
+  FileInput,
+  Textarea as FlowbiteTextArea,
+  TextInput as FlowbiteTextInput,
+  Label,
+} from "flowbite-react"
+import {
   ChangeEventHandler,
   FieldsetHTMLAttributes,
-  HTMLAttributes,
-  ReactNode,
-  useState,
-  forwardRef,
   ForwardedRef,
+  HTMLAttributes,
   HTMLInputTypeAttribute,
+  ReactNode,
+  forwardRef,
+  useState,
 } from "react"
-import {
-  FileInput,
-  Label,
-  TextInput as FlowbiteTextInput,
-  Textarea as FlowbiteTextArea,
-} from "flowbite-react"
 
-import { twMerge } from "tailwind-merge"
 import { supportedExtensions } from "@/lib/util/image-helper"
+import { twMerge } from "tailwind-merge"
 
 // components from flowbite.com
 // svg from heroicons.dev
@@ -85,9 +85,11 @@ export const TextInput = ({
   className,
   required,
   type,
+  pattern,
 }: {
   id: string
   label: string
+  pattern?: string
   defaultValue?: string
   placeholder?: string
   minLength?: number
@@ -107,6 +109,7 @@ export const TextInput = ({
       placeholder={placeholder}
       required={required}
       type={type}
+      pattern={pattern}
     />
   </p>
 )
