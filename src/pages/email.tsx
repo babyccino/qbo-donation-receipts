@@ -83,7 +83,9 @@ function EmailPreview({ donee }: { donee: DoneeInfo }) {
 
   return (
     <>
-      <Button onClick={() => setShowModal(true)}>Show Preview Email</Button>
+      <Button color="blue" onClick={() => setShowModal(true)}>
+        Show Preview Email
+      </Button>
       <Modal dismissible show={showModal} onClose={() => setShowModal(false)} className="bg-white">
         <Modal.Body className="bg-white">
           <div className="overflow-scroll">
@@ -91,7 +93,9 @@ function EmailPreview({ donee }: { donee: DoneeInfo }) {
           </div>
         </Modal.Body>
         <Modal.Footer className="bg-white">
-          <Button onClick={() => setShowModal(false)}>Close</Button>
+          <Button color="blue" onClick={() => setShowModal(false)}>
+            Close
+          </Button>
         </Modal.Footer>
       </Modal>
       <button onClick={e => e.currentTarget.value}></button>
@@ -169,6 +173,7 @@ function SendEmails({
 
   return (
     <Button
+      color="blue"
       className={recipients.size > 0 ? "" : "line-through"}
       onClick={() => setShowModal(true)}
     >
