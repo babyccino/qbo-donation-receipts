@@ -1,10 +1,5 @@
-import { Resend } from "resend"
-
-import { config } from "@/lib/util/config"
 import { DateRange, doDateRangesIntersect, getThisYear } from "@/lib/util/date"
 import { EmailHistoryItem } from "@/types/db"
-
-export const resend = new Resend(config.resendApiKey)
 
 export const templateDonorName = "FULL_NAME"
 export const formatEmailBody = (str: string, donorName: string) =>

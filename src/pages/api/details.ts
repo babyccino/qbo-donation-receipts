@@ -32,7 +32,10 @@ async function resizeAndUploadImage(
   if (base64FileSize(base64) >= maxFileSizeBytes)
     throw new ApiError(500, "File uploaded is too large")
 
-  const background = extension === "png" ? { r: 0, g: 0, b: 0, alpha: 0 } : { r: 0, g: 0, b: 0 }
+  const background =
+    extension === "png" || extension === "webp"
+      ? { r: 0, g: 0, b: 0, alpha: 0 }
+      : { r: 0, g: 0, b: 0 }
   const resizedBuffer = await sharp(buffer)
     .resize({ ...dimensions, fit: "contain", background })
     .toFormat("webp")

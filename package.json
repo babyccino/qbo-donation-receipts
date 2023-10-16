@@ -4,6 +4,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "generate-patch": "patch-package jose",
     "patch": "patch-package",
     "prettier": "prettier --write .",
     "email-dev": "email dev --port 3001 --dir ./src/emails",
@@ -20,7 +21,7 @@
     "firebase-admin": "^11.7.0",
     "flowbite-react": "^0.6.4",
     "jszip": "^3.10.1",
-    "next": "13.5.4",
+    "next": "13.5.3",
     "next-auth": "^4.23.2",
     "next-seo": "^6.1.0",
     "patch-package": "^8.0.0",
@@ -59,5 +60,10 @@
     "tls": false,
     "node:crypto": false,
     "request": false
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "jose@4.15.4": "patches/jose@4.15.4.patch"
+    }
   }
 }
