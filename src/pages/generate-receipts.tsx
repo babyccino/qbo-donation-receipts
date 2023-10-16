@@ -4,7 +4,6 @@ import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
 import { ReactNode, useState } from "react"
-import sharp from "sharp"
 import { twMerge } from "tailwind-merge"
 
 import { Link } from "@/components/link"
@@ -16,12 +15,15 @@ import {
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
 import { getUserData, storageBucket } from "@/lib/db"
-import { checkUserDataCompletion, downloadImageAndConvertToPng, downloadImageAsDataUrl, isUserDataComplete } from "@/lib/db-helper"
+import {
+  checkUserDataCompletion,
+  downloadImageAndConvertToPng,
+  isUserDataComplete
+} from "@/lib/db-helper"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
-import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { dynamic } from "@/lib/util/nextjs-helper"

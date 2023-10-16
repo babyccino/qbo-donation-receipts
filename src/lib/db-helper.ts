@@ -42,7 +42,7 @@ export async function downloadImagesForDonee(
 export async function downloadImageAsBuffer(storageBucket: Bucket, firestorePath: string) {
   const dataUrl = await downloadImageAsDataUrl(storageBucket, firestorePath)
   const b64 = dataUrlToBase64(dataUrl)
-  return Buffer.from(b64, "base64")  
+  return Buffer.from(b64, "base64")
 }
 
 export async function bufferToPngDataUrl(buffer: Buffer) {
@@ -54,7 +54,6 @@ export async function downloadImageAndConvertToPng(storageBucket: Bucket, firest
   const inputBuf = await downloadImageAsBuffer(storageBucket, firestorePath)
   return bufferToPngDataUrl(inputBuf)
 }
-
 
 export type UserDataComplete = User & {
   items: Required<User>["items"]
