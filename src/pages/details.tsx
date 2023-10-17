@@ -1,9 +1,10 @@
 import { GetServerSideProps } from "next"
+import { Label, TextInput } from "flowbite-react"
 import { Session } from "next-auth"
 import { useRouter } from "next/router"
 import { FormEventHandler, useRef } from "react"
 
-import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
+import { Fieldset, ImageInput, Legend } from "@/components/form"
 import { buttonStyling } from "@/components/link"
 import { getUserData } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db-helper"
@@ -68,45 +69,75 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
     <form ref={formRef} onSubmit={onSubmit} className="w-full max-w-2xl space-y-4 p-4">
       <Fieldset className="grid gap-4 sm:grid-cols-2 sm:gap-6">
         <Legend className="sm:col-span-2">Organisation</Legend>
-        <TextInput
-          id="companyAddress"
-          minLength={10}
-          defaultValue={doneeInfo.companyAddress}
-          label="Address"
-          className="sm:col-span-2"
-          required
-        />
-        <TextInput
-          id="companyName"
-          defaultValue={doneeInfo.companyName}
-          label="Legal name"
-          required
-          pattern={regularCharactersRegex}
-        />
-        <TextInput
-          id="country"
-          minLength={2}
-          defaultValue={doneeInfo.country}
-          label="Country"
-          required
-          pattern={regularCharactersRegex}
-        />
-        <TextInput
-          id="registrationNumber"
-          minLength={15}
-          defaultValue={doneeInfo.registrationNumber}
-          label="Charity registration number"
-          required
-          pattern={charityRegistrationNumberRegex}
-        />
-        <TextInput
-          id="signatoryName"
-          minLength={5}
-          label="Signatory's name"
-          defaultValue={doneeInfo.signatoryName}
-          required
-          pattern={regularCharactersRegex}
-        />
+        <p className="sm:col-span-2">
+          <Label className="mb-2 inline-block" htmlFor="companyAddress">
+            Address
+          </Label>
+          <TextInput
+            name="companyAddress"
+            id="companyAddress"
+            minLength={10}
+            defaultValue={doneeInfo.companyAddress}
+            required
+            title="alphanumeric as well as '-', '_', ','"
+            pattern={regularCharactersRegex}
+          />
+        </p>
+        <p>
+          <Label className="mb-2 inline-block" htmlFor="companyName">
+            Legal name
+          </Label>
+          <TextInput
+            id="companyName"
+            name="companyName"
+            defaultValue={doneeInfo.companyName}
+            required
+            title="alphanumeric as well as '-', '_', ','"
+            pattern={regularCharactersRegex}
+          />
+        </p>
+        <p>
+          <Label className="mb-2 inline-block" htmlFor="country">
+            Country
+          </Label>
+          <TextInput
+            name="country"
+            id="country"
+            minLength={2}
+            defaultValue={doneeInfo.country}
+            required
+            title="alphanumeric as well as '-', '_', ','"
+            pattern={regularCharactersRegex}
+          />
+        </p>
+        <p>
+          <Label className="mb-2 inline-block" htmlFor="registrationNumber">
+            Charity registration number
+          </Label>
+          <TextInput
+            name="registrationNumber"
+            id="registrationNumber"
+            minLength={15}
+            defaultValue={doneeInfo.registrationNumber}
+            required
+            title="Canadian registration numbers are of the format: 123456789AA1234"
+            pattern={charityRegistrationNumberRegex}
+          />
+        </p>
+        <p>
+          <Label className="mb-2 inline-block" htmlFor="signatoryName">
+            Signatory's name
+          </Label>
+          <TextInput
+            name="signatoryName"
+            id="signatoryName"
+            minLength={5}
+            defaultValue={doneeInfo.signatoryName}
+            required
+            title="alphanumeric as well as '-', '_', ','"
+            pattern={regularCharactersRegex}
+          />
+        </p>
         <ImageInput
           id="signature"
           label="Image of signatory's signature"

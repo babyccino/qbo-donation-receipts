@@ -1,10 +1,10 @@
-import { Button } from "flowbite-react"
+import { Button, Label, TextInput } from "flowbite-react"
 import { FormEventHandler, useRef, useState } from "react"
 
-import { DataType as ContactDataType } from "@/pages/api/support"
-import { postJsonData } from "@/lib/util/request"
-import { TextArea, TextInput } from "@/components/form"
+import { TextArea } from "@/components/form"
 import { EmailSentToast } from "@/components/ui"
+import { postJsonData } from "@/lib/util/request"
+import { DataType as ContactDataType } from "@/pages/api/support"
 
 function Support() {
   const formRef = useRef<HTMLFormElement>(null)
@@ -43,21 +43,26 @@ function Support() {
           Got a technical issue? Want to send feedback? Let us know.
         </p>
         <form ref={formRef} onSubmit={onSubmit} className="space-y-8">
-          <TextInput
-            id="from"
-            type="email"
-            label="Your email"
-            placeholder="name@email.com"
-            minLength={5}
-            required
-          />
-          <TextInput
-            id="subject"
-            label="Subject"
-            placeholder="Let us know how we can help you"
-            minLength={5}
-            required
-          />
+          <p>
+            <Label htmlFor="from">Your email</Label>
+            <TextInput
+              name="from"
+              id="from"
+              type="email"
+              minLength={5}
+              placeholder="name@email.com"
+              required
+            />
+          </p>
+          <p>
+            <Label htmlFor="subject">Subject</Label>
+            <TextInput
+              name="subject"
+              id="subject"
+              minLength={5}
+              placeholder="Let us know how we can help you"
+            />
+          </p>
           <TextArea
             id="body"
             label="Leave a comment"

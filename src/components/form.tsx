@@ -1,9 +1,4 @@
-import {
-  FileInput,
-  Textarea as FlowbiteTextArea,
-  TextInput as FlowbiteTextInput,
-  Label,
-} from "flowbite-react"
+import { FileInput, Textarea as FlowbiteTextArea, Label } from "flowbite-react"
 import {
   ChangeEventHandler,
   FieldsetHTMLAttributes,
@@ -75,44 +70,6 @@ const _Toggle = (
   </p>
 )
 export const Toggle = forwardRef<HTMLInputElement, ToggleProps>(_Toggle)
-
-export const TextInput = ({
-  id,
-  label,
-  defaultValue,
-  placeholder,
-  minLength,
-  className,
-  required,
-  type,
-  pattern,
-}: {
-  id: string
-  label: string
-  pattern?: string
-  defaultValue?: string
-  placeholder?: string
-  minLength?: number
-  className?: string
-  required?: boolean
-  type?: HTMLInputTypeAttribute
-}) => (
-  <p className={className}>
-    <Label className="mb-2 inline-block" htmlFor={id}>
-      {label}
-    </Label>
-    <FlowbiteTextInput
-      name={id}
-      id={id}
-      minLength={minLength}
-      defaultValue={defaultValue}
-      placeholder={placeholder}
-      required={required}
-      type={type}
-      pattern={pattern}
-    />
-  </p>
-)
 
 export const TextArea = ({
   id,
