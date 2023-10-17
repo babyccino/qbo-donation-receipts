@@ -1,5 +1,9 @@
-import { InformationCircleIcon as Info, ChevronUpIcon as UpArrow } from "@heroicons/react/24/solid"
-import { Alert, Button, Checkbox, Label, Modal } from "flowbite-react"
+import {
+  EnvelopeIcon,
+  InformationCircleIcon as Info,
+  ChevronUpIcon as UpArrow,
+} from "@heroicons/react/24/solid"
+import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { ApiError } from "next/dist/server/api-utils"
 import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
@@ -160,6 +164,7 @@ function SendEmails({
 }) {
   const [showModal, setShowModal] = useState(false)
   const [showEmailSentToast, setShowEmailSentToast] = useState(false)
+  const [showEmailFailureToast, setShowEmailFailureToast] = useState(false)
   const { emailBody } = useContext(EmailContext)
 
   const handler = async () => {
@@ -167,17 +172,25 @@ function SendEmails({
       emailBody: emailBody,
       recipientIds: Array.from(recipients),
     }
-    await postJsonData("/api/email", data)
+    try {
+      await postJsonData("/api/email", data)
+    } catch (e) {
+      if (e && typeof e === "object" && (e as any).statusCode === 429) {
+        setShowEmailFailureToast(true)
+      }
+    }
     setShowModal(false)
   }
 
   return (
-    <Button
-      color="blue"
-      className={recipients.size > 0 ? "" : "line-through"}
-      onClick={() => setShowModal(true)}
-    >
-      Send Emails
+    <>
+      <Button
+        color="blue"
+        className={recipients.size > 0 ? "" : "line-through"}
+        onClick={() => setShowModal(true)}
+      >
+        Send Emails
+      </Button>
       <Modal show={showModal} size="lg" popup onClose={() => setShowModal(false)}>
         <Modal.Header />
         <Modal.Body>
@@ -201,7 +214,18 @@ function SendEmails({
         </Modal.Body>
       </Modal>
       {showEmailSentToast && <EmailSentToast onDismiss={() => setShowEmailSentToast(false)} />}
-    </Button>
+      {showEmailFailureToast && (
+        <Toast className="fixed bottom-5 right-5">
+          <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200">
+            <EnvelopeIcon className="h-5 w-5" />
+          </div>
+          <div className="ml-3 text-sm font-normal">
+            You are only allowed 5 email campaigns within a 24 hour period on your current plan.
+          </div>
+          <Toast.Toggle onDismiss={() => setShowEmailFailureToast(false)} />
+        </Toast>
+      )}
+    </>
   )
 }
 

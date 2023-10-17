@@ -51,7 +51,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     let count = 0
     for (const item of emailHistory) {
       if (now - item.timeStamp.getTime() < msInDay) ++count
-      if (count >= 4) throw new ApiError(400, "too many requests")
+      if (count >= 4) throw new ApiError(429, "too many requests")
     }
   }
 

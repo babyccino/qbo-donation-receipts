@@ -53,7 +53,7 @@ export function createAuthorisedHandler<T>(
       console.error(error)
       if (!(error instanceof ApiError)) return res.status(404).json({ message: "server error" })
 
-      res.status(error.statusCode).json(error)
+      res.status(error.statusCode).json({ ...error })
     }
   }
 }
