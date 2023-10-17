@@ -126,7 +126,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
         </p>
         <p>
           <Label className="mb-2 inline-block" htmlFor="signatoryName">
-            Signatory's name
+            Signatory{"'"}s name
           </Label>
           <TextInput
             name="signatoryName"
