@@ -16,14 +16,13 @@ import {
   TableCellsIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/solid"
-import { getServerSession } from "next-auth"
 import Link from "next/link"
 import { ReactNode } from "react"
 
-import { authOptions } from "@/auth"
-import { NavInnerProps, NavItemInner, SignOut, Upgrade } from "@/components/nav"
 import { FromUserData } from "@/components/db"
+import { NavInnerProps, NavItemInner, SignOut, Upgrade } from "@/components/nav"
 import { isUserSubscribed } from "@/lib/stripe"
+import { getServerSession } from "./auth-util"
 
 export const metadata = {
   title: "DonationReceipt.Online",
@@ -47,10 +46,8 @@ const NavLink = ({
 )
 
 export default async function Layout({ children }: { children: ReactNode }) {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession()
   const user = session?.user
-  // const userData = user ? await getUserData(user.id) : undefined
-  // const isSubscribed = userData ? isUserSubscribed(userData) : false
   const isSubscribed = true
 
   return (

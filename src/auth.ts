@@ -43,12 +43,21 @@ export const qboProvider: OAuthConfig<QBOProfile> = {
 }
 
 export const qboProviderDisconnected: OAuthConfig<QBOProfile> = {
-  ...qboProvider,
   id: "QBO-disconnected",
   name: "QBO-disconnected",
+  clientId: qboClientId,
+  clientSecret: qboClientSecret,
+  type: "oauth",
+  version: "2.0",
+  wellKnown: qboWellKnown,
   authorization: {
     params: { scope: "openid profile address email phone" },
   },
+  idToken: true,
+  checks: ["pkce", "state"],
+  profile: profile => ({
+    id: profile.sub,
+  }),
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
