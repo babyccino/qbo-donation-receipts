@@ -18,8 +18,8 @@ const parser = z.object({
 })
 export type DataType = z.input<typeof parser>
 
-const handler: AuthorisedHandler = async ({ body }, session) => {
-  const data = parseRequestBody(parser, body)
+const handler: AuthorisedHandler = async ({ body, method }, session) => {
+  const data = parseRequestBody(parser, body || {})
   const { metadata, redirect } = data
 
   const [user, stripeSession] = await Promise.all([
@@ -47,7 +47,9 @@ const handler: AuthorisedHandler = async ({ body }, session) => {
 
   if (!stripeSession.url) throw new ApiError(502, "stripe did not send a redirect url")
 
-  return NextResponse.json({ url: stripeSession.url }, { status: 200 })
+  if (method === "GET") return NextResponse.redirect(stripeSession.url)
+  else return NextResponse.json({ url: stripeSession.url }, { status: 200 })
 }
 
 export const POST = createAuthorisedHandler(handler)
+export const GET = createAuthorisedHandler(handler)
