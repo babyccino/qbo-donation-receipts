@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next"
-import { getServerSession } from "next-auth/next"
 import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
+import { NextRequest, NextResponse } from "next/server"
 
 import { authOptions } from "@/auth"
 import { user } from "@/lib/db"
@@ -13,7 +13,7 @@ import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-s
 import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { QboPermission } from "@/types/next-auth-helper"
-import { NextRequest, NextResponse } from "next/server"
+import { getServerSession, getServerSessionOrThrow } from "@/app/auth-util"
 
 const {
   qboClientId,
@@ -69,7 +69,7 @@ const parser = z.object({
 export type DisconnectBody = z.input<typeof parser>
 
 const handler = async (req: NextRequest) => {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession()
 
   const { searchParams } = req.nextUrl
   const realmId = searchParams.get("query")

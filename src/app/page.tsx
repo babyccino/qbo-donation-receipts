@@ -1,7 +1,5 @@
 import { ArrowRightIcon } from "@heroicons/react/24/solid"
-import { getServerSession } from "next-auth/next"
 
-import { authOptions } from "@/auth"
 import { Link as StyledLink } from "@/components/link"
 import { checkUserDataCompletion } from "@/lib/db-helper"
 import { Show } from "@/lib/util/react"
@@ -9,6 +7,7 @@ import { QboPermission } from "@/types/next-auth-helper"
 import { Body, Card, Note, Tick, Title } from "@/components/card"
 import { FromUserData } from "@/components/db"
 import HandDrawnUpArrow from "@/public/svg/hand-drawn-up-arrow.svg"
+import { getServerSession } from "./auth-util"
 
 const Arrow = () => <HandDrawnUpArrow className="mt-3 h-10 w-10 rotate-180 text-slate-400" />
 
@@ -18,7 +17,7 @@ async function FromFilledIn({ id, children }: { id: string; children: cbType }) 
 }
 
 export default async function IndexPage() {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession()
 
   return (
     <section className="mx-auto max-w-screen-xl space-y-12 p-4 px-4 text-center sm:py-8 lg:py-16">
@@ -44,7 +43,7 @@ export default async function IndexPage() {
         )}
       </div>
       <div className="flex w-full flex-col items-center">
-        <Card href={session ? "/account" : "/api/auth/signin"}>
+        <Card href={session ? "/account" : "/auth/signin"}>
           <Title>Link your account</Title>
           <Body>Sign in with your QuickBooks Online account and authorise our application</Body>
           {session?.qboPermission === QboPermission.Accounting && <Tick />}
