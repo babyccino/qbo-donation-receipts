@@ -1,3 +1,5 @@
+"use client"
+
 import { PlusCircleIcon } from "@heroicons/react/24/solid"
 import {
   Document,
