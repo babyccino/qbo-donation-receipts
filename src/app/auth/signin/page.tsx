@@ -1,9 +1,9 @@
 import Image from "next/image"
 import { Checkbox } from "flowbite-react/lib/esm/components/Checkbox"
 import { Label } from "flowbite-react/lib/esm/components/Label"
+import Link from "next/link"
 
 import QBOSignInDefault from "@/public/svg/qbo/qbo-sign-in-default.svg"
-import Form from "./form"
 
 export default function SignInPage() {
   return (
@@ -14,7 +14,7 @@ export default function SignInPage() {
           DonationReceipt.Online
         </h1>
       </div>
-      <Form>
+      <form className="w-full max-w-md flex-col items-center rounded-lg bg-white p-6 shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md sm:p-8 md:mt-0">
         <Checkbox defaultChecked={false} id="agree" className="peer inline-block" required />
         <Label className="ml-3 inline-block" htmlFor="agree">
           I agree with the{" "}
@@ -22,13 +22,12 @@ export default function SignInPage() {
             terms and conditions
           </a>
         </Label>
-        <button
-          type="submit"
-          className="col-span-2 mx-auto mt-4 block brightness-50 filter peer-checked:filter-none"
-        >
-          <QBOSignInDefault />
-        </button>
-      </Form>
+        <div className="brightness-50 filter peer-checked:filter-none peer-checked:hover:brightness-90 flex justify-center">
+          <Link className="mx-auto mt-4 block" href="/api/auth/disconnect-sign-in">
+            <QBOSignInDefault />
+          </Link>
+        </div>
+      </form>
     </div>
   )
 }
