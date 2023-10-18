@@ -8,8 +8,7 @@ import { useRouter } from "next/router"
 
 import { Connect } from "@/components/qbo"
 import { PricingCard } from "@/components/ui"
-import { getUserData } from "@/lib/db"
-import { getImageUrl } from "@/lib/db-helper"
+import { getImageUrl } from "@/lib/db/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
@@ -18,6 +17,7 @@ import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { DisconnectBody } from "@/pages/api/auth/disconnect"
 import { DataType } from "@/pages/api/stripe/update-subscription"
+import { user } from "@/lib/db"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
@@ -166,13 +166,13 @@ export default function AccountPage(props: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSessionOrThrow(req, res)
 
-  const user = await getUserData(session.user.id)
-  const subscribed = isUserSubscribed(user)
-  const { billingAddress, donee } = user
+  const userData = await user.getOrThrow(session.user.id)
+  const subscribed = isUserSubscribed(userData)
+  const { billingAddress, donee } = userData
   const account = {
     companyName: donee?.companyName ?? null,
     logo: donee?.smallLogo ? getImageUrl(donee.smallLogo) : null,
-    name: billingAddress?.name ?? user.name,
+    name: billingAddress?.name ?? userData.name,
   }
   if (!subscribed)
     return {
@@ -183,7 +183,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const { subscription } = user
+  const { subscription } = userData
   return {
     props: {
       session,

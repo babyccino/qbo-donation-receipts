@@ -3,11 +3,7 @@
     "types": ["bun-types"], // this is necessary
     "baseUrl": ".",
     "paths": {
-      "@/lib/*": ["src/lib/*"],
-      "@/components/*": ["src/components/*"],
-      "@/types/*": ["src/types/*"],
-      "@/pages/*": ["src/pages/*"],
-      "@/emails/*": ["src/emails/*"],
+      "@/*": ["src/*"],
       "@/public/*": ["public/*"]
     },
     "target": "es5",

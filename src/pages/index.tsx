@@ -1,14 +1,14 @@
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
 import { GetServerSideProps } from "next"
-import { getServerSession, Session } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { ReactNode } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { Link as StyledLink } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { user } from "@/lib/db"
+import { checkUserDataCompletion } from "@/lib/db/db-helper"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"
@@ -130,8 +130,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const user = await getUserData(session.user.id)
-  const filledIn = checkUserDataCompletion(user)
+  const userData = await user.getOrThrow(session.user.id)
+  const filledIn = checkUserDataCompletion(userData)
 
   return {
     props: {

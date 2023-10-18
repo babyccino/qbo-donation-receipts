@@ -14,12 +14,8 @@ import {
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
-import { getUserData, storageBucket } from "@/lib/db"
-import {
-  checkUserDataCompletion,
-  downloadImageAndConvertToPng,
-  isUserDataComplete
-} from "@/lib/db-helper"
+import { fileStorage, user } from "@/lib/db"
+import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db/db-helper"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
@@ -29,6 +25,7 @@ import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { subscribe } from "@/lib/util/request"
+import { bufferToPngDataUrl } from "@/lib/util/sharp-helper"
 import { DoneeInfo } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
@@ -282,30 +279,35 @@ export default function IndexPage(props: Props) {
 
 // --- server-side props ---
 
+export async function downloadImageAndConvertToPng(id: string, name: string) {
+  const inputBuf = await fileStorage.downloadFileBuffer(id, name)
+  return bufferToPngDataUrl(inputBuf)
+}
+
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSessionOrThrow(req, res)
   assertSessionIsQboConnected(session)
 
-  const user = await getUserData(session.user.id)
-  if (!user) throw new Error("No user data found in database")
+  const id = session.user.id
+  const userData = await user.getOrThrow(id)
 
-  if (!isUserDataComplete(user))
+  if (!isUserDataComplete(userData))
     return {
       props: {
         receiptsReady: false,
-        filledIn: checkUserDataCompletion(user),
+        filledIn: checkUserDataCompletion(userData),
       },
     }
 
-  const { donee } = user
+  const { donee } = userData
   const [donations, pngSignature, pngLogo] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, user.dateRange, user.items),
-    downloadImageAndConvertToPng(storageBucket, donee.signature),
-    downloadImageAndConvertToPng(storageBucket, donee.smallLogo),
+    getDonations(session.accessToken, session.realmId, userData.dateRange, userData.items),
+    downloadImageAndConvertToPng(id, donee.signature),
+    downloadImageAndConvertToPng(id, donee.smallLogo),
   ])
   donee.signature = pngSignature
   donee.smallLogo = pngLogo
-  const subscribed = isUserSubscribed(user)
+  const subscribed = isUserSubscribed(userData)
 
   return {
     props: {

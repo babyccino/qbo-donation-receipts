@@ -4,7 +4,6 @@ import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
-import { user } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
@@ -13,6 +12,8 @@ import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"
+import { UserData } from "@/types/db"
+import { user as firebaseUser } from "@/lib/db"
 
 const {
   qboClientId,
@@ -54,11 +55,10 @@ async function disconnectClient(req: NextApiRequest, res: NextApiResponse) {
   return updateServerSession(res, token)
 }
 
-async function disconnectUserByRealmId(realmId: string) {
-  const query = await user.where("realmId", "==", realmId).get()
-  if (query.empty) return
-  const promises = query.docs.map(doc => doc.ref.set({ connected: false }, { merge: true }))
-  await Promise.all(promises)
+async function disconnectUserByRealmId(user: UserData, realmId: string) {
+  const query = await user.queryFirst("realmId", "==", realmId)
+  if (!query) return
+  await user.set(query.id, { connected: false })
 }
 
 export const parser = z.object({
@@ -67,50 +67,51 @@ export const parser = z.object({
 })
 export type DisconnectBody = z.input<typeof parser>
 
-const handler: NextApiHandler = async (req, res) => {
-  if (!(req.method === "GET" || req.method === "POST")) return res.status(405).end()
+export const createHandler = (user: UserData) =>
+  (async (req, res) => {
+    if (!(req.method === "GET" || req.method === "POST")) return res.status(405).end()
 
-  const session = await getServerSession(req, res, authOptions)
+    const session = await getServerSession(req, res, authOptions)
 
-  const realmId = req.query["realmId"]
-  if (session) user.doc(session.user.id).set({ connected: false }, { merge: true })
-  else if (typeof realmId === "string") disconnectUserByRealmId(realmId)
+    const realmId = req.query["realmId"]
+    if (session) user.set(session.user.id, { connected: false })
+    else if (typeof realmId === "string") disconnectUserByRealmId(user, realmId)
 
-  // the caller can specify whether or not they want their access token to be disconnected
-  // this is because if the user has been disconnected from within QBO then they will have
-  // already revoked their tokens
-  // if the user is disconnecting from within the application the tokens will need to be
-  // revoked by us
-  const shouldRevokeAccessToken = req.query["revoke"] === "true"
-  if (session && session.accessToken && shouldRevokeAccessToken)
-    await revokeAccessToken(session.accessToken)
+    // the caller can specify whether or not they want their access token to be disconnected
+    // this is because if the user has been disconnected from within QBO then they will have
+    // already revoked their tokens
+    // if the user is disconnecting from within the application the tokens will need to be
+    // revoked by us
+    const shouldRevokeAccessToken = req.query["revoke"] === "true"
+    if (session && session.accessToken && shouldRevokeAccessToken)
+      await revokeAccessToken(session.accessToken)
 
-  // if the user is signed in already and disconnected there is nothing for us to do
-  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
+    // if the user is signed in already and disconnected there is nothing for us to do
+    if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
 
-  const { redirect, reconnect } = parseRequestBody(parser, req.body || {})
+    const { redirect, reconnect } = parseRequestBody(parser, req.body || {})
 
-  // if reconnect is specified user will be re-signed in, without the accounting permissions
-  // i.e. signed in, in the `disconnected` state
-  // if the user is not signed in they will also need to be signed in, in this state
-  if (reconnect || !session) {
-    console.log("...reconnecting")
-    const redirectUrl = await serverSignIn(
-      "QBO-disconnected",
-      req,
-      res,
-      redirect,
-      "/auth/disconnected",
-    )
+    // if reconnect is specified user will be re-signed in, without the accounting permissions
+    // i.e. signed in, in the `disconnected` state
+    // if the user is not signed in they will also need to be signed in, in this state
+    if (reconnect || !session) {
+      console.log("...reconnecting")
+      const redirectUrl = await serverSignIn(
+        "QBO-disconnected",
+        req,
+        res,
+        redirect,
+        "/auth/disconnected",
+      )
 
-    if (redirect) return
-    else res.status(200).json({ redirect: redirectUrl })
-  } else {
-    // no longer valid access tokens need to be removed from the user's session
-    await disconnectClient(req, res)
+      if (redirect) return
+      else res.status(200).json({ redirect: redirectUrl })
+    } else {
+      // no longer valid access tokens need to be removed from the user's session
+      await disconnectClient(req, res)
 
-    if (redirect) res.redirect(302, "/auth/disconnected")
-    else res.status(200).json({ redirect: "/auth/disconnected" })
-  }
-}
-export default handler
+      if (redirect) res.redirect(302, "/auth/disconnected")
+      else res.status(200).json({ redirect: "/auth/disconnected" })
+    }
+  }) satisfies NextApiHandler
+export default createHandler(firebaseUser)

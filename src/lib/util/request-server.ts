@@ -1,8 +1,6 @@
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
 import { ApiError } from "next/dist/server/api-utils"
-import { Session, getServerSession } from "next-auth"
-
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { NextAuthOptions, Session, getServerSession } from "next-auth"
 import { TypeOf, ZodObject, ZodRawShape } from "zod"
 
 export function parseRequestBody<T extends ZodRawShape>(
@@ -28,6 +26,7 @@ export type AuthorisedHandler<T = any> = (
 type HttpVerb = "POST" | "GET" | "PUT" | "PATCH" | "DELETE"
 type ErrorTypes = { message: string } | ApiError
 export function createAuthorisedHandler<T>(
+  authOptions: NextAuthOptions,
   handler: AuthorisedHandler<T>,
   methods: HttpVerb[],
   redirect?: string,
@@ -50,6 +49,7 @@ export function createAuthorisedHandler<T>(
     try {
       await handler(req, res, session)
     } catch (error) {
+      console.log("caught")
       console.error(error)
       if (!(error instanceof ApiError)) return res.status(404).json({ message: "server error" })
 

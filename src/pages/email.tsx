@@ -7,12 +7,12 @@ import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { EmailSentToast, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
-import { getUserData, storageBucket } from "@/lib/db"
+import { fileStorage, user } from "@/lib/db"
 import {
   checkUserDataCompletion,
   downloadImagesForDonee,
   isUserDataComplete,
-} from "@/lib/db-helper"
+} from "@/lib/db/db-helper"
 import {
   formatEmailBody,
   makeDefaultEmailBody,
@@ -338,19 +338,20 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const session = await getServerSessionOrThrow(req, res)
   assertSessionIsQboConnected(session)
 
-  const user = await getUserData(session.user.id)
-  if (!user.donee) throw new ApiError(500, "User is connected but is missing donee info in db")
+  const userData = await user.getOrThrow(session.user.id)
+  if (!userData.donee) throw new ApiError(500, "User is connected but is missing donee info in db")
 
-  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }
-  if (!isUserDataComplete(user)) {
-    const { donee } = user
+  if (!isUserSubscribed(userData))
+    return { redirect: { permanent: false, destination: "subscribe" } }
+  if (!isUserDataComplete(userData)) {
+    const { donee } = userData
     for (const key in donee) {
       if (donee[key as keyof DoneeInfo] === undefined) delete donee[key as keyof DoneeInfo]
     }
     return {
       props: {
         accountStatus: AccountStatus.IncompleteData,
-        filledIn: checkUserDataCompletion(user),
+        filledIn: checkUserDataCompletion(userData),
         donee,
       },
     }
@@ -359,8 +360,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const donations = await getDonations(
     session.accessToken,
     session.realmId,
-    user.dateRange,
-    user.items,
+    userData.dateRange,
+    userData.items,
   )
   const recipients = donations.map(({ id, name, email }) => ({
     id,
@@ -369,13 +370,13 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   }))
   const props: Props = {
     accountStatus: AccountStatus.Complete,
-    donee: await downloadImagesForDonee(user.donee, storageBucket),
+    donee: await downloadImagesForDonee(session.user.id, userData.donee, fileStorage),
     recipients,
-    emailHistory: user.emailHistory
+    emailHistory: userData.emailHistory
       ? trimHistoryByIdAndDateRange(
           new Set(recipients.map(({ id }) => id)),
-          user.dateRange,
-          user.emailHistory,
+          userData.dateRange,
+          userData.emailHistory,
         )
       : null,
   }

@@ -8,8 +8,8 @@ import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from 
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { user } from "@/lib/db"
+import { checkUserDataCompletion } from "@/lib/db/db-helper"
 import { getItems } from "@/lib/qbo-api"
 import {
   DateRange,
@@ -233,21 +233,21 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const session = await getServerSessionOrThrow(req, res)
   assertSessionIsQboConnected(session)
 
-  const [user, items] = await Promise.all([
-    getUserData(session.user.id),
+  const [userData, items] = await Promise.all([
+    user.getOrThrow(session.user.id),
     getItems(session.accessToken, session.realmId),
   ])
-  if (!user) throw new Error("User has no corresponding db entry")
-  const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
+  if (!userData) throw new Error("User has no corresponding db entry")
+  const detailsFilledIn = checkUserDataCompletion(userData).doneeDetails
 
-  if (user.dateRange && user.items) {
+  if (userData.dateRange && userData.items) {
     const props = {
       itemsFilledIn: true,
       session,
       items,
       detailsFilledIn,
-      selectedItems: user.items,
-      dateRange: user.dateRange,
+      selectedItems: userData.items,
+      dateRange: userData.dateRange,
     } satisfies Props
     return {
       props: serialiseDates(props),

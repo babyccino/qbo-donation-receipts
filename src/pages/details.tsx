@@ -5,8 +5,8 @@ import { FormEventHandler, useRef } from "react"
 
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { user } from "@/lib/db"
+import { checkUserDataCompletion } from "@/lib/db/db-helper"
 import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
@@ -139,14 +139,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   const session = await getServerSessionOrThrow(req, res)
   assertSessionIsQboConnected(session)
 
-  const user = await getUserData(session.user.id)
-  if (!user.donee) return disconnectedRedirect
+  const userData = await user.getOrThrow(session.user.id)
+  if (!userData.donee) return disconnectedRedirect
 
   return {
     props: {
       session,
-      doneeInfo: user.donee,
-      itemsFilledIn: checkUserDataCompletion(user).items,
+      doneeInfo: userData.donee,
+      itemsFilledIn: checkUserDataCompletion(userData).items,
     },
   }
 }

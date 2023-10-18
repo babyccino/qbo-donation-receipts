@@ -1,6 +1,29 @@
 import { DateRange } from "@/lib/util/date"
 import { CompanyInfo, Donation } from "@/types/qbo-api"
+import { WhereFilterOp } from "firebase-admin/firestore"
 import Stripe from "stripe"
+
+type UploadOptions = {
+  contentType?: "image/webp" | "image/jpeg" | "image/jpg" | "image/png"
+  publicUrl?: boolean
+}
+export interface FileStorage {
+  saveFile(
+    id: string,
+    fileName: string,
+    data: Buffer | string,
+    opts?: UploadOptions,
+  ): Promise<string>
+  downloadFileBase64(id: string, fileName: string): Promise<string>
+  downloadFileBase64DataUrl(id: string, fileName: string): Promise<string>
+  downloadFileBuffer(id: string, fileName: string): Promise<Buffer>
+}
+
+type ArrayFields<T> = {
+  [K in keyof T as Required<T>[K] extends Array<any> ? K : never]: T[K]
+}
+
+// Collections
 
 export type DoneeInfo = CompanyInfo & {
   registrationNumber?: string
@@ -23,6 +46,32 @@ export type User = {
   subscription?: Subscription
   billingAddress?: BillingAddress
 }
+type PartialUser = Omit<
+  Partial<User>,
+  "dateRange" | "donee" | "subscription" | "billingAddress"
+> & {
+  dateRange?: Partial<DateRange>
+  donee?: Partial<DoneeInfo>
+  subscription?: Partial<Subscription>
+  billingAddress?: Partial<BillingAddress>
+}
+
+interface Collection<T> {
+  get(id: string): Promise<T | undefined>
+  getOrThrow(id: string): Promise<T>
+  set(id: string, data: Partial<T>): Promise<void>
+  delete(id: string): Promise<void>
+}
+export interface UserData extends Collection<User> {
+  set(id: string, data: PartialUser): Promise<void>
+  queryFirst<T extends keyof User>(
+    param: T,
+    op: WhereFilterOp,
+    value: User[T],
+  ): Promise<User | undefined>
+  append(id: string, data: ArrayFields<PartialUser>): Promise<void>
+}
+type hi = PartialUser["billingAddress"]
 
 type BillingAddress = {
   phone: string
@@ -58,6 +107,7 @@ export type Product = {
   name?: string
   metadata?: Stripe.Metadata
 }
+export interface ProudctData extends Collection<Product> {}
 
 export type Price = {
   id: string
@@ -69,3 +119,4 @@ export type Price = {
   intervalCount?: number
   metadata?: Stripe.Metadata
 }
+export interface PriceData extends Collection<Price> {}

@@ -1,6 +1,6 @@
 import { test, describe, expect } from "bun:test"
 
-import { timestampToDate } from "@/lib/db-helper"
+import { timestampToDate } from "@/lib/db/db-helper"
 import { Timestamp } from "@google-cloud/firestore"
 
 describe("timestampToDate", () => {

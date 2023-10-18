@@ -1,21 +1,9 @@
 import { Timestamp } from "@google-cloud/firestore"
-import sharp from "sharp"
 
-import { DoneeInfo, User } from "@/types/db"
+import { DoneeInfo, FileStorage, User } from "@/types/db"
 import { config } from "@/lib/util/config"
-import { Bucket } from "@/lib/db"
-import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
 
 const { firebaseProjectId, firebaseStorageEmulatorHost } = config
-
-export async function downloadImageAsDataUrl(storageBucket: Bucket, firestorePath: string) {
-  const file = await storageBucket.file(firestorePath).download()
-  const fileString = file[0].toString("base64")
-  const match = firestorePath.match(/[^.]+$/)
-  if (!match) throw new Error("")
-  const extension = match[0]
-  return `data:image/${extension};base64,${fileString}`
-}
 
 export function getImageUrl(path: string) {
   if (firebaseStorageEmulatorHost)
@@ -24,12 +12,13 @@ export function getImageUrl(path: string) {
 }
 
 export async function downloadImagesForDonee(
+  id: string,
   donee: Required<DoneeInfo>,
-  storageBucket: Bucket,
+  fileStorage: FileStorage,
 ): Promise<Required<DoneeInfo>> {
   const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
-    downloadImageAsDataUrl(storageBucket, donee.signature),
-    downloadImageAsDataUrl(storageBucket, donee.smallLogo),
+    fileStorage.downloadFileBase64DataUrl(id, donee.signature),
+    fileStorage.downloadFileBase64DataUrl(id, donee.smallLogo),
   ])
 
   return {
@@ -37,22 +26,6 @@ export async function downloadImagesForDonee(
     signature: signatureDataUrl,
     smallLogo: smallLogoDataUrl,
   }
-}
-
-export async function downloadImageAsBuffer(storageBucket: Bucket, firestorePath: string) {
-  const dataUrl = await downloadImageAsDataUrl(storageBucket, firestorePath)
-  const b64 = dataUrlToBase64(dataUrl)
-  return Buffer.from(b64, "base64")
-}
-
-export async function bufferToPngDataUrl(buffer: Buffer) {
-  const outputBuf = await sharp(buffer).toFormat("png").toBuffer()
-  return bufferToDataUrl("iamge/png", outputBuf)
-}
-
-export async function downloadImageAndConvertToPng(storageBucket: Bucket, firestorePath: string) {
-  const inputBuf = await downloadImageAsBuffer(storageBucket, firestorePath)
-  return bufferToPngDataUrl(inputBuf)
 }
 
 export type UserDataComplete = User & {

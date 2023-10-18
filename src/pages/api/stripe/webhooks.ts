@@ -1,9 +1,9 @@
 import { NextApiHandler, NextApiRequest } from "next"
-import Stripe from "stripe"
 import { Readable } from "node:stream"
+import Stripe from "stripe"
 
-import { stripe, manageSubscriptionStatusChange } from "@/lib/stripe"
-import { price, product, user } from "@/lib/db"
+import { price as firebasePrice, product as firebaseProduct, user as firebaseUser } from "@/lib/db"
+import { hooks, stripe } from "@/lib/stripe"
 import { config as envConfig } from "@/lib/util/config"
 
 export const config = {
@@ -12,7 +12,7 @@ export const config = {
   },
 }
 
-async function buffer(readable: Readable) {
+async function makeBuffer(readable: Readable) {
   const chunks = []
   for await (const chunk of readable) {
     chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk)
@@ -26,7 +26,7 @@ async function getStripeEvent(req: NextApiRequest) {
   if (!sig) throw new Error("request missing stripe-signature")
   if (!webhookSecret) throw new Error("missing webhook secret")
 
-  const buf = await buffer(req)
+  const buf = await makeBuffer(req)
   return stripe.webhooks.constructEvent(buf, sig, webhookSecret)
 }
 
@@ -40,6 +40,29 @@ const relevantEvents = new Set([
   "customer.subscription.updated",
   "customer.subscription.deleted",
 ])
+
+const firebaseHooks = hooks(firebaseUser, firebaseProduct, firebasePrice)
+async function handleEvent(event: Stripe.Event) {
+  switch (event.type) {
+    case "product.created":
+    case "product.updated":
+    case "product.deleted":
+      return firebaseHooks.updateProduct(event.data.object as Stripe.Product)
+    case "price.created":
+    case "price.updated":
+    case "price.deleted":
+      return firebaseHooks.upsertPrice(event.data.object as Stripe.Price)
+    case "customer.subscription.created":
+    case "customer.subscription.deleted":
+      return firebaseHooks.createDeleteSubscription(event.data.object as Stripe.Subscription)
+    case "customer.subscription.updated":
+      return firebaseHooks.updateSubscription(event.data.object as Stripe.Subscription)
+    case "checkout.session.completed":
+      return firebaseHooks.checkoutSessionCompleted(event.data.object as Stripe.Checkout.Session)
+    default:
+      throw new Error("Unhandled relevant event!")
+  }
+}
 
 const webhookHandler: NextApiHandler = async (req, res) => {
   if (req.method !== "POST") {
@@ -60,120 +83,3 @@ const webhookHandler: NextApiHandler = async (req, res) => {
   }
 }
 export default webhookHandler
-
-async function handleEvent(event: Stripe.Event) {
-  switch (event.type) {
-    case "product.created":
-    case "product.updated":
-    case "product.deleted":
-      await updateProduct(event.data.object as Stripe.Product)
-      break
-    case "price.created":
-    case "price.updated":
-    case "price.deleted":
-      await upsertPrice(event.data.object as Stripe.Price)
-      break
-    case "customer.subscription.created":
-    case "customer.subscription.updated":
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription
-      await Promise.all([
-        manageSubscriptionStatusChange(subscription),
-        event.type === "customer.subscription.updated" && addBillingAddress(subscription),
-      ])
-      break
-    }
-    case "checkout.session.completed": {
-      const checkoutSession = event.data.object as Stripe.Checkout.Session
-      if (checkoutSession.mode !== "subscription") break
-
-      const subscription = await getSubscriptionFromCheckoutSession(checkoutSession)
-      await Promise.all([
-        manageSubscriptionStatusChange(subscription),
-        addBillingAddress(subscription),
-      ])
-      break
-    }
-    default:
-      throw new Error("Unhandled relevant event!")
-  }
-}
-
-function getId(product: string | { id: string } | null) {
-  if (!product) throw new Error("Missing id")
-  return typeof product == "string" ? product : product.id
-}
-
-async function updateProduct(data: Stripe.Product) {
-  const doc = product.doc(data.id)
-  if (data.deleted) await doc.delete()
-  else
-    await doc.set(
-      {
-        id: data.id,
-        active: data.active,
-        name: data.name,
-        metadata: data.metadata,
-      },
-      { merge: true },
-    )
-}
-
-async function upsertPrice(data: Stripe.Price) {
-  const productId = getId(data.product)
-  const doc = price(productId).doc(data.id)
-  if (data.deleted) await doc.delete()
-  else
-    await doc.set(
-      {
-        id: data.id,
-        active: data.active,
-        unitAmount: data.unit_amount ?? undefined,
-        currency: data.currency,
-        type: data.type,
-        metadata: data.metadata,
-        interval: data.recurring?.interval,
-        intervalCount: data.recurring?.interval_count,
-      },
-      { merge: true },
-    )
-}
-
-async function getSubscriptionFromCheckoutSession({
-  subscription,
-}: Stripe.Checkout.Session): Promise<Stripe.Subscription> {
-  if (!subscription) throw new Error("session did not contain subscription data")
-  if (typeof subscription === "string")
-    return await stripe.subscriptions.retrieve(subscription, {
-      expand: ["default_payment_method"],
-    })
-  return subscription
-}
-
-async function getPaymentMethodFromSubscription({
-  default_payment_method: paymentMethod,
-}: Stripe.Subscription): Promise<Stripe.PaymentMethod> {
-  if (!paymentMethod) throw new Error("payment method was not found in subscription object")
-  if (typeof paymentMethod === "string")
-    return await stripe.paymentMethods.retrieve(paymentMethod, { expand: ["billing_details"] })
-  return paymentMethod
-}
-
-async function addBillingAddress(subscription: Stripe.Subscription) {
-  const { clientId } = subscription.metadata
-  if (!clientId) throw new Error("user id not found in subscription metadata")
-
-  const paymentMethod = await getPaymentMethodFromSubscription(subscription)
-  const { address, phone, name } = paymentMethod.billing_details
-
-  return await user.doc(clientId).set(
-    {
-      billingAddress: {
-        address: address ?? undefined,
-        phone: phone ?? undefined,
-        name: name ?? undefined,
-      },
-    },
-    { merge: true },
-  )
-}

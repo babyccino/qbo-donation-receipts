@@ -1,4 +1,13 @@
-export const supportedExtensions = ["jpg", "jpeg", "png", "webp"]
+import { ApiError } from "next/dist/server/api-utils"
+
+export const supportedExtensions = ["jpg", "jpeg", "png", "webp"] as const
+export type supportedExtensions = (typeof supportedExtensions)[number]
+export function assertExtensionSupported(
+  extension: string,
+): asserts extension is supportedExtensions {
+  if (!supportedExtensions.includes(extension as supportedExtensions))
+    throw new ApiError(400, "File uploaded is not of type: " + supportedExtensions.join(", "))
+}
 // 1mb = 2^20 bytes
 export const maxFileSizeBytes = 100 * Math.pow(2, 10)
 

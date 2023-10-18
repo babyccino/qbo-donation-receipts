@@ -1,0 +1,26 @@
+diff --git a/node_modules/@google-cloud/firestore/build/src/document-reader.js b/node_modules/@google-cloud/firestore/build/src/document-reader.js
+index da32b26..a1cba10 100644
+--- a/node_modules/@google-cloud/firestore/build/src/document-reader.js
++++ b/node_modules/@google-cloud/firestore/build/src/document-reader.js
+@@ -88,7 +88,7 @@ class DocumentReader {
+         try {
+             const stream = await this.firestore.requestStream('batchGetDocuments', 
+             /* bidirectional= */ false, request, requestTag);
+-            stream.resume();
++            // stream.resume();
+             for await (const response of stream) {
+                 let snapshot;
+                 if (response.found) {
+diff --git a/node_modules/@google-cloud/firestore/build/src/reference.js b/node_modules/@google-cloud/firestore/build/src/reference.js
+index 837dd09..e75a140 100644
+--- a/node_modules/@google-cloud/firestore/build/src/reference.js
++++ b/node_modules/@google-cloud/firestore/build/src/reference.js
+@@ -2015,7 +2015,7 @@ class Query {
+                 backendStream.on('end', () => {
+                     streamActive.resolve(/* active= */ false);
+                 });
+-                backendStream.resume();
++                // backendStream.resume();
+                 backendStream.pipe(stream);
+             } while (await streamActive.promise);
+         })
