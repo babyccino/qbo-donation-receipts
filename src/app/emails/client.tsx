@@ -1,34 +1,23 @@
+"use client"
+
 import { InformationCircleIcon as Info, ChevronUpIcon as UpArrow } from "@heroicons/react/24/solid"
 import { Alert, Button, Checkbox, Label, Modal } from "flowbite-react"
-import { GetServerSideProps } from "next"
-import { ApiError } from "next/dist/server/api-utils"
 import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
 
-import { Fieldset, TextArea, Toggle } from "@/components/form"
+import { EmailDataType } from "@/app/api/email/route"
+import { Fieldset, TextArea, Toggle } from "@/components/form-server"
 import { EmailSentToast, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
-import { getUserData, storageBucket } from "@/lib/db"
-import {
-  checkUserDataCompletion,
-  downloadImagesForDonee,
-  isUserDataComplete,
-} from "@/lib/db-helper"
 import {
   formatEmailBody,
   makeDefaultEmailBody,
   templateDonorName,
   trimHistoryById,
-  trimHistoryByIdAndDateRange,
 } from "@/lib/email"
-import { getDonations } from "@/lib/qbo-api"
-import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
-import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
+import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
-import { EmailDataType } from "@/app/api/email/route"
 import { DoneeInfo, EmailHistoryItem } from "@/types/db"
 import { WithBodyProps } from "@/types/receipt"
 
@@ -200,14 +189,14 @@ function SendEmails({
   )
 }
 
-enum AccountStatus {
+export enum AccountStatus {
   NotSubscribed = 0,
   IncompleteData,
   Complete,
 }
 
 const defaultCustomRecipientsState = false
-enum RecipientStatus {
+export enum RecipientStatus {
   Valid = 0,
   NoEmail,
 }
@@ -306,9 +295,7 @@ type IncompleteAccountProps = {
   donee: DoneeInfo
 }
 type Props = IncompleteAccountProps | CompleteAccountProps
-type SerialisedProps = SerialiseDates<Props>
-export default function Email(serialisedProps: SerialisedProps) {
-  const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
+export default function ClientEmail(props: Props) {
   const defaultEmailBody = makeDefaultEmailBody(props.donee.companyName)
   const [emailBody, setEmailBody] = useState(defaultEmailBody)
   return (
@@ -325,56 +312,4 @@ export default function Email(serialisedProps: SerialisedProps) {
       )}
     </EmailContext.Provider>
   )
-}
-
-// --- server-side props ---
-
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
-  const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
-
-  const user = await getUserData(session.user.id)
-  if (!user.donee) throw new ApiError(500, "User is connected but is missing donee info in db")
-
-  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }
-  if (!isUserDataComplete(user)) {
-    const { donee } = user
-    for (const key in donee) {
-      if (donee[key as keyof DoneeInfo] === undefined) delete donee[key as keyof DoneeInfo]
-    }
-    return {
-      props: {
-        accountStatus: AccountStatus.IncompleteData,
-        filledIn: checkUserDataCompletion(user),
-        donee,
-      },
-    }
-  }
-
-  const donations = await getDonations(
-    session.accessToken,
-    session.realmId,
-    user.dateRange,
-    user.items,
-  )
-  const recipients = donations.map(({ id, name, email }) => ({
-    id,
-    name,
-    status: email ? RecipientStatus.Valid : RecipientStatus.NoEmail,
-  }))
-  const props: Props = {
-    accountStatus: AccountStatus.Complete,
-    donee: await downloadImagesForDonee(user.donee, storageBucket),
-    recipients,
-    emailHistory: user.emailHistory
-      ? trimHistoryByIdAndDateRange(
-          new Set(recipients.map(({ id }) => id)),
-          user.dateRange,
-          user.emailHistory,
-        )
-      : null,
-  }
-  return {
-    props: serialiseDates(props),
-  }
 }

@@ -1,33 +1,19 @@
-import { ArrowRightIcon } from "@heroicons/react/24/solid"
+"use client"
+
 import download from "downloadjs"
-import { Alert, Button, Card } from "flowbite-react"
-import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
+import { Button, Card } from "flowbite-react"
 import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
-import { Link } from "@/components/link"
 import {
   DownloadReceiptLoading,
   DummyDownloadReceipt,
   DummyShowReceipt,
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
-import { MissingData } from "@/components/ui"
-import { getUserData, storageBucket } from "@/lib/db"
-import {
-  checkUserDataCompletion,
-  downloadImagesForDonee,
-  isUserDataComplete,
-} from "@/lib/db-helper"
-import { getDonations } from "@/lib/qbo-api"
-import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { dynamic } from "@/lib/util/nextjs-helper"
-import { Show } from "@/lib/util/react"
 import { subscribe } from "@/lib/util/request"
 import { DoneeInfo } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
@@ -47,7 +33,7 @@ const ShowReceipt = dynamic(() => import("@/components/receipt/pdf").then(imp =>
   loadImmediately: true,
 })
 
-function DownloadAllFiles() {
+export function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
 
   const onClick = async () => {
@@ -133,19 +119,6 @@ const blurredRows = new Array(10).fill(0).map((_, idx) => (
   </Tr>
 ))
 
-type Props =
-  | {
-      receiptsReady: true
-      session: Session
-      donations: Donation[]
-      doneeInfo: DoneeInfo
-      subscribed: boolean
-    }
-  | {
-      receiptsReady: false
-      filledIn: { items: boolean; doneeDetails: boolean }
-    }
-
 enum Sort {
   Default = 0,
   NameAsc,
@@ -189,16 +162,18 @@ function getTotalSort(sort: Sort): ReactNode {
 }
 
 const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "CAD" })
-
-// ----- PAGE ----- //
-
-export default function IndexPage(props: Props) {
+export function Table({
+  unsortedDonations,
+  donee,
+  subscribed,
+}: {
+  unsortedDonations: Donation[]
+  donee: DoneeInfo
+  subscribed: boolean
+}) {
   const [sort, setSort] = useState<Sort>(Sort.Default)
 
-  if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
-
-  const { doneeInfo, subscribed } = props
-  const donations = getSortedDonations(props.donations, sort)
+  const donations = getSortedDonations(unsortedDonations, sort)
 
   const currentYear = getThisYear()
   const mapCustomerToTableRow = (entry: Donation, index: number): JSX.Element => {
@@ -208,7 +183,7 @@ export default function IndexPage(props: Props) {
       currentDate: new Date(),
       donation: entry,
       donationDate: new Date(),
-      donee: doneeInfo,
+      donee,
       receiptNo: currentYear + index,
     }
 
@@ -227,90 +202,35 @@ export default function IndexPage(props: Props) {
   }
 
   return (
-    <section className="flex h-full w-full flex-col p-8">
-      <Show when={subscribed}>
-        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <DownloadAllFiles />
-          <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
-            <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
-            <Link href="/email">Email</Link>
-          </div>
-        </div>
-      </Show>
-      <Alert
-        color="info"
-        className="mb-4 sm:hidden"
-        icon={() => <ArrowRightIcon className="mr-2 h-6 w-6" />}
-      >
-        Scroll right to view/download individual receipts
-      </Alert>
-      <div className="w-full overflow-x-auto overflow-y-hidden sm:rounded-lg">
-        <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
-          <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
-            <tr>
-              <th
-                scope="col"
-                className="cursor-pointer px-6 py-3"
-                onClick={() => setSort(sort === Sort.NameAsc ? Sort.NameDesc : Sort.NameAsc)}
-              >
-                Donor Name {getNameSort(sort)}
-              </th>
-              <th
-                scope="col"
-                className="cursor-pointer px-6 py-3"
-                onClick={() => setSort(sort === Sort.TotalDesc ? Sort.TotalAsc : Sort.TotalDesc)}
-              >
-                Total {getTotalSort(sort)}
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Show Receipt
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Download Receipt
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {donations.map(mapCustomerToTableRow)}
-            {!subscribed && blurredRows}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+      <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+        <tr>
+          <th
+            scope="col"
+            className="cursor-pointer px-6 py-3"
+            onClick={() => setSort(sort === Sort.NameAsc ? Sort.NameDesc : Sort.NameAsc)}
+          >
+            Donor Name {getNameSort(sort)}
+          </th>
+          <th
+            scope="col"
+            className="cursor-pointer px-6 py-3"
+            onClick={() => setSort(sort === Sort.TotalDesc ? Sort.TotalAsc : Sort.TotalDesc)}
+          >
+            Total {getTotalSort(sort)}
+          </th>
+          <th scope="col" className="px-6 py-3">
+            Show Receipt
+          </th>
+          <th scope="col" className="px-6 py-3">
+            Download Receipt
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {donations.map(mapCustomerToTableRow)}
+        {!subscribed && blurredRows}
+      </tbody>
+    </table>
   )
-}
-
-// --- server-side props ---
-
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
-  const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
-
-  const user = await getUserData(session.user.id)
-  if (!user) throw new Error("No user data found in database")
-
-  if (!isUserDataComplete(user))
-    return {
-      props: {
-        receiptsReady: false,
-        filledIn: checkUserDataCompletion(user),
-      },
-    }
-
-  const [donations, donee] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, user.dateRange, user.items),
-    downloadImagesForDonee(user.donee, storageBucket),
-  ])
-
-  const subscribed = isUserSubscribed(user)
-
-  return {
-    props: {
-      receiptsReady: true,
-      session,
-      donations: subscribed ? donations : donations.slice(0, 3),
-      doneeInfo: donee,
-      subscribed,
-    },
-  }
 }

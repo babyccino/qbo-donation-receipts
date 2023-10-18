@@ -1,9 +1,9 @@
-"use-client"
+"use client"
 
 import { FileInput, Label } from "flowbite-react"
 import { ChangeEventHandler, ReactNode, useState } from "react"
 
-import { supportedExtensions } from "@/lib/util/image-helper"
+import { imageIsSupported, supportedExtensions } from "@/lib/util/image-helper"
 
 export function ImageInput({
   label,
@@ -26,7 +26,7 @@ export function ImageInput({
     if (!files || files.length === 0) return
     const file = files[0]
     const extension = file.name.split(".").pop()
-    if (!extension || !supportedExtensions.includes(extension) || file.size > maxSize) {
+    if (!extension || !imageIsSupported(extension) || file.size > maxSize) {
       event.target.value = ""
       return setError(true)
     }

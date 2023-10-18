@@ -1,7 +1,5 @@
-import { Button } from "flowbite-react"
-
+import { Link } from "@/components/link"
 import { PricingCard } from "@/components/ui"
-import { subscribe } from "@/lib/util/request"
 
 export default function Subscribe() {
   return (
@@ -13,16 +11,7 @@ export default function Subscribe() {
         <PricingCard
           title="Subscribe to use this feature"
           plan="pro"
-          button={
-            <Button
-              onClick={e => {
-                e.preventDefault()
-                subscribe("/email")
-              }}
-            >
-              Go pro
-            </Button>
-          }
+          button={<Link href="/api/stripe/create-checkout-session">Go pro</Link>}
         />
       </div>
     </section>

@@ -1,4 +1,8 @@
-export const supportedExtensions = ["jpg", "jpeg", "png"]
+export const supportedExtensions = ["jpg", "jpeg", "png", "webp"] as const
+export type supportedExtensions = (typeof supportedExtensions)[number]
+export const imageIsSupported = (ext: string): ext is supportedExtensions =>
+  supportedExtensions.includes(ext as any)
+
 // 1mb = 2^20 bytes
 export const maxFileSizeBytes = 100 * Math.pow(2, 10)
 

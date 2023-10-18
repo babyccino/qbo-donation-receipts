@@ -1,16 +1,12 @@
+"use client"
+
 import { InformationCircleIcon } from "@heroicons/react/24/solid"
 import { Alert, Button, Label, Select } from "flowbite-react"
-import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
+import DatePicker from "react-tailwindcss-datepicker"
 import dynamic from "next/dynamic"
-import { useRouter } from "next/router"
-import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
+import { ChangeEventHandler, useRef, useState } from "react"
 
-import { Fieldset, Legend, Toggle } from "@/components/form"
-import { buttonStyling } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
-import { getItems } from "@/lib/qbo-api"
+import { Fieldset, Legend, Toggle } from "@/components/form-server"
 import {
   DateRange,
   DateRangeType,
@@ -21,11 +17,6 @@ import {
   startOfThisYear,
   utcEpoch,
 } from "@/lib/util/date"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
-import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
-import { postJsonData } from "@/lib/util/request"
-import { DataType as ItemsApiDataType } from "@/app/api/items/route"
 import { Item } from "@/types/qbo-api"
 
 const DumbDatePicker = () => (
@@ -55,14 +46,15 @@ const DumbDatePicker = () => (
     </button>
   </div>
 )
-const DatePicker = dynamic(import("react-tailwindcss-datepicker"), {
-  loading: props => <DumbDatePicker />,
-})
+// const DatePicker = dynamic(
+//   import("react-tailwindcss-datepicker").then(imp => imp.default),
+//   {
+//     loading: props => <DumbDatePicker />,
+//   },
+// )
 
 type Props = {
   items: Item[]
-  session: Session
-  detailsFilledIn: boolean
 } & (
   | { itemsFilledIn: false }
   | {
@@ -71,7 +63,6 @@ type Props = {
       dateRange: DateRange
     }
 )
-type SerialisedProps = SerialiseDates<Props>
 
 type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
 
@@ -87,20 +78,18 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
   return DateRangeType.Custom
 }
 
-export default function Items(serialisedProps: SerialisedProps) {
-  const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
-  const { items, detailsFilledIn } = props
-  const router = useRouter()
+export default function ClientForm(props: Props) {
+  const { items, itemsFilledIn } = props
+
   const inputRefs = useRef<HTMLInputElement[]>([])
-  const formRef = useRef<HTMLFormElement>(null)
 
   const [dateRangeState, setDateRangeState] = useState<DateRangeType>(
-    props.itemsFilledIn ? getDateRangeType(props.dateRange) : DateRangeType.LastYear,
+    itemsFilledIn ? getDateRangeType(props.dateRange) : DateRangeType.LastYear,
   )
   const dateRangeIsCustom = dateRangeState === DateRangeType.Custom
 
   const [customDateState, setCustomDateState] = useState(
-    props.itemsFilledIn ? props.dateRange : defaultDateState,
+    itemsFilledIn ? (props.dateRange as DateRange) : defaultDateState,
   )
   const onDateChange = (date: DateValueType) => {
     if (!date || !date.endDate || !date.startDate) return
@@ -134,32 +123,8 @@ export default function Items(serialisedProps: SerialisedProps) {
   const checkAll = (_: any) => inputRefs.current.forEach(el => (el.checked = true))
   const unCheckAll = (_: any) => inputRefs.current.forEach(el => (el.checked = false))
 
-  const getItems = () => {
-    if (!formRef.current) throw new Error("Form html element has not yet been initialised")
-
-    const formData = new FormData(formRef.current)
-    return (formData.getAll("items") as string[]).map(item => parseInt(item))
-  }
-
-  const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
-    event.preventDefault()
-
-    const items = getItems()
-    const postData: ItemsApiDataType = { items, dateRange: customDateState }
-    await postJsonData("/api/items", postData)
-
-    const destination = detailsFilledIn ? "/generate-receipts" : "/details"
-    router.push({
-      pathname: destination,
-    })
-  }
-
   return (
-    <form
-      ref={formRef}
-      onSubmit={onSubmit}
-      className="m-auto flex w-full max-w-lg flex-col items-center justify-center space-y-4 p-4"
-    >
+    <>
       <Fieldset>
         <Legend className="mb-3">Selected items</Legend>
         <Alert
@@ -174,7 +139,7 @@ export default function Items(serialisedProps: SerialisedProps) {
             key={id}
             id={id}
             label={name}
-            defaultChecked={props.itemsFilledIn ? props.selectedItems.includes(id) : true}
+            defaultChecked={itemsFilledIn ? props.selectedItems.includes(id) : true}
             ref={el => (el ? inputRefs.current.push(el) : null)}
           />
         ))}
@@ -211,56 +176,18 @@ export default function Items(serialisedProps: SerialisedProps) {
             onChange={onDateChange}
             disabled={!dateRangeIsCustom}
           />
-          {/* <DumbDatePicker
-            value={`${formatDateHtmlReverse(customDateState.startDate)} ~ ${formatDateHtmlReverse(
-              customDateState.endDate,
-            )}`}
-          /> */}
+          <input
+            name="dateRange.startDate"
+            value={customDateState.startDate.toISOString()}
+            className="hidden"
+          />
+          <input
+            name="dateRange.endDate"
+            value={customDateState.endDate.toISOString()}
+            className="hidden"
+          />
         </p>
       </Fieldset>
-      <input
-        className={buttonStyling + " text-l"}
-        type="submit"
-        value={detailsFilledIn ? "Generate Receipts" : "Enter Donee Details"}
-      />
-    </form>
+    </>
   )
-}
-
-// --- server-side props --- //
-
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
-  const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
-
-  const [user, items] = await Promise.all([
-    getUserData(session.user.id),
-    getItems(session.accessToken, session.realmId),
-  ])
-  if (!user) throw new Error("User has no corresponding db entry")
-  const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
-
-  if (user.dateRange && user.items) {
-    const props = {
-      itemsFilledIn: true,
-      session,
-      items,
-      detailsFilledIn,
-      selectedItems: user.items,
-      dateRange: user.dateRange,
-    } satisfies Props
-    return {
-      props: serialiseDates(props),
-    }
-  }
-
-  const props = {
-    itemsFilledIn: false,
-    session,
-    items,
-    detailsFilledIn,
-  } satisfies Props
-  return {
-    props: serialiseDates(props),
-  }
 }
