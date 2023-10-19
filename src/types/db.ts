@@ -1,6 +1,7 @@
 import { DateRange } from "@/lib/util/date"
+import { DeepPartial } from "@/lib/util/etc"
 import { CompanyInfo, Donation } from "@/types/qbo-api"
-import { WhereFilterOp } from "firebase-admin/firestore"
+import type { PartialWithFieldValue, WhereFilterOp } from "firebase-admin/firestore"
 import Stripe from "stripe"
 
 type UploadOptions = {
@@ -56,14 +57,13 @@ type PartialUser = Omit<
   billingAddress?: Partial<BillingAddress>
 }
 
-interface Collection<T> {
+export type Collection<T> = {
   get(id: string): Promise<T | undefined>
   getOrThrow(id: string): Promise<T>
-  set(id: string, data: Partial<T>): Promise<void>
+  set(id: string, data: DeepPartial<T>): Promise<void>
   delete(id: string): Promise<void>
 }
-export interface UserData extends Collection<User> {
-  set(id: string, data: PartialUser): Promise<void>
+export type UserData = Collection<User> & {
   queryFirst<T extends keyof User>(
     param: T,
     op: WhereFilterOp,
@@ -71,7 +71,6 @@ export interface UserData extends Collection<User> {
   ): Promise<User | undefined>
   append(id: string, data: ArrayFields<PartialUser>): Promise<void>
 }
-type hi = PartialUser["billingAddress"]
 
 type BillingAddress = {
   phone: string
@@ -107,7 +106,7 @@ export type Product = {
   name?: string
   metadata?: Stripe.Metadata
 }
-export interface ProudctData extends Collection<Product> {}
+export type ProudctData = Collection<Product>
 
 export type Price = {
   id: string
@@ -119,4 +118,4 @@ export type Price = {
   intervalCount?: number
   metadata?: Stripe.Metadata
 }
-export interface PriceData extends Collection<Price> {}
+export type PriceData = Collection<Price>

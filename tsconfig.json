@@ -4,7 +4,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@/public/*": ["public/*"]
+      "@/public/*": ["public/*"],
+      "@/tests/*": ["__tests__/*"]
     },
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],

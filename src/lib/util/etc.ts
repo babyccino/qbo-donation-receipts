@@ -1,7 +1,9 @@
 export type DeepPartial<T> = T extends object
-  ? {
-      [P in keyof T]?: DeepPartial<T[P]>
-    }
+  ? T extends Date
+    ? T
+    : {
+        [P in keyof T]?: DeepPartial<T[P]>
+      }
   : T
 
 export type RequiredField<T, K extends keyof T> = T & Required<Pick<T, K>>

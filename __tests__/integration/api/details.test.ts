@@ -1,12 +1,12 @@
 import { describe, test } from "bun:test"
-import { encode } from "next-auth/jwt"
 import { NextApiRequest, NextApiResponse } from "next"
+import { encode } from "next-auth/jwt"
 
 import { config } from "@/lib/util/config"
 import { createAuthorisedHandler } from "@/lib/util/request-server"
 import { DataType, createHandler } from "@/pages/api/_details"
-import { user, fileStorage } from "../db"
-import { authOptions } from "../auth"
+import { authOptions } from "@/tests/integration/auth"
+import { fileStorage, user } from "@/tests/integration/db"
 
 const req = {
   _readableState: {
@@ -163,10 +163,14 @@ describe("details api route", () => {
       body,
     }
     try {
-      await createAuthorisedHandler(authOptions, createHandler(user, fileStorage), ["POST"])(
-        request as unknown as NextApiRequest,
-        res as unknown as NextApiResponse,
-      )
-    } catch {}
+      const response = await createAuthorisedHandler(
+        authOptions,
+        createHandler(user, fileStorage),
+        ["POST"],
+      )(request as unknown as NextApiRequest, res as unknown as NextApiResponse)
+      console.log(response)
+    } catch (error) {
+      console.error(error)
+    }
   })
 })
