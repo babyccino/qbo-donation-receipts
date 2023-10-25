@@ -2,7 +2,7 @@ import { NextApiHandler, NextApiRequest } from "next"
 import { Readable } from "node:stream"
 import Stripe from "stripe"
 
-import { price as firebasePrice, product as firebaseProduct, user as firebaseUser } from "@/lib/db"
+import { firestorePrice, firestoreProduct, firestoreUser } from "@/lib/db"
 import { hooks, stripe } from "@/lib/stripe"
 import { config as envConfig } from "@/lib/util/config"
 
@@ -41,7 +41,7 @@ const relevantEvents = new Set([
   "customer.subscription.deleted",
 ])
 
-const firebaseHooks = hooks(firebaseUser, firebaseProduct, firebasePrice)
+const firebaseHooks = hooks(firestoreUser, firestoreProduct, firestorePrice)
 async function handleEvent(event: Stripe.Event) {
   switch (event.type) {
     case "product.created":

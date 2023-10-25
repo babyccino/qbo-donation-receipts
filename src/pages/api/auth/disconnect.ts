@@ -4,6 +4,7 @@ import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
+import { firestoreUser } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
 import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
@@ -11,9 +12,8 @@ import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-s
 import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { QboPermission } from "@/types/next-auth-helper"
 import { UserData } from "@/types/db"
-import { user as firebaseUser } from "@/lib/db"
+import { QboPermission } from "@/types/next-auth-helper"
 
 const {
   qboClientId,
@@ -114,4 +114,4 @@ export const createHandler = (user: UserData) =>
       else res.status(200).json({ redirect: "/auth/disconnected" })
     }
   }) satisfies NextApiHandler
-export default createHandler(firebaseUser)
+export default createHandler(firestoreUser)

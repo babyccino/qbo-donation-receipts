@@ -7,19 +7,13 @@ import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { EmailSentToast, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
-import { fileStorage, user } from "@/lib/db"
+import { firebaseFileStorage, firestoreUser } from "@/lib/db"
 import {
   checkUserDataCompletion,
   downloadImagesForDonee,
   isUserDataComplete,
 } from "@/lib/db/db-helper"
-import {
-  formatEmailBody,
-  makeDefaultEmailBody,
-  templateDonorName,
-  trimHistoryById,
-  trimHistoryByIdAndDateRange,
-} from "@/lib/email"
+import { formatEmailBody, makeDefaultEmailBody, templateDonorName, trimHistory } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
@@ -28,7 +22,7 @@ import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
-import { EmailDataType } from "@/pages/api/email"
+import { EmailDataType } from "@/api/email"
 import { DoneeInfo, EmailHistoryItem } from "@/types/db"
 import { WithBodyProps } from "@/types/receipt"
 
@@ -234,7 +228,7 @@ function CompleteAccountEmail({ donee, recipients, emailHistory }: CompleteAccou
   )
 
   const trimmedHistory =
-    customRecipients && emailHistory ? trimHistoryById(recipientIds, emailHistory) : emailHistory
+    customRecipients && emailHistory ? trimHistory(recipientIds, emailHistory) : emailHistory
 
   return (
     <section className="flex h-full w-full max-w-2xl flex-col justify-center gap-4 p-8 align-middle">
@@ -338,7 +332,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const session = await getServerSessionOrThrow(req, res)
   assertSessionIsQboConnected(session)
 
-  const userData = await user.getOrThrow(session.user.id)
+  const userData = await firestoreUser.getOrThrow(session.user.id)
   if (!userData.donee) throw new ApiError(500, "User is connected but is missing donee info in db")
 
   if (!isUserSubscribed(userData))
@@ -370,13 +364,13 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   }))
   const props: Props = {
     accountStatus: AccountStatus.Complete,
-    donee: await downloadImagesForDonee(session.user.id, userData.donee, fileStorage),
+    donee: await downloadImagesForDonee(session.user.id, userData.donee, firebaseFileStorage),
     recipients,
     emailHistory: userData.emailHistory
-      ? trimHistoryByIdAndDateRange(
+      ? trimHistory(
           new Set(recipients.map(({ id }) => id)),
-          userData.dateRange,
           userData.emailHistory,
+          userData.dateRange,
         )
       : null,
   }

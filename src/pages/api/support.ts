@@ -1,7 +1,7 @@
 import { NextApiHandler } from "next"
 import { z } from "zod"
 
-import resend from "@/lib/resend"
+import { resendEmailService } from "@/lib/resend"
 import { regularCharactersRegex } from "@/lib/util/etc"
 import { parseRequestBody } from "@/lib/util/request-server"
 
@@ -20,7 +20,7 @@ const handler: NextApiHandler = async (req, res) => {
   try {
     const data = parseRequestBody(parser, req.body)
 
-    await resend.emails.send({
+    await resendEmailService.send({
       from: "contact@donationreceipt.online",
       to: "gus.ryan163@gmail.com",
       subject: `A user submitted a support ticket: ${data.subject}`,

@@ -1,6 +1,10 @@
-import { fileStorage, user } from "@/lib/db"
+import { firebaseFileStorage, firestoreUser } from "@/lib/db"
 import { createAuthorisedHandler } from "@/lib/util/request-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { createHandler } from "./_details"
+import { createHandler } from "../../api/details"
 
-export default createAuthorisedHandler(authOptions, createHandler(user, fileStorage), ["POST"])
+export default createAuthorisedHandler(
+  authOptions,
+  createHandler(firestoreUser, firebaseFileStorage),
+  ["POST"],
+)

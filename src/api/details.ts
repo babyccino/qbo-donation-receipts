@@ -55,7 +55,7 @@ export const parser = z.object({
   signature: z.string().optional().refine(dataUrlRefiner),
   smallLogo: z.string().optional().refine(dataUrlRefiner),
 })
-export type DataType = z.infer<typeof parser>
+export type DetailsDataType = z.infer<typeof parser>
 
 export const createHandler = (user: UserData, fileStorage: FileStorage) =>
   (async (req, res, session) => {

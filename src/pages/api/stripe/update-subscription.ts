@@ -9,7 +9,7 @@ import {
 } from "@/lib/util/request-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 
-import { user as firebaseUser } from "@/lib/db"
+import { firestoreUser } from "@/lib/db"
 import { UserData } from "@/types/db"
 export const parser = z.object({
   cancelAtPeriodEnd: z.boolean(),
@@ -31,4 +31,4 @@ export const createHandler = (user: UserData) =>
     res.status(200).json({ subscription })
   }) satisfies AuthorisedHandler
 
-export default createAuthorisedHandler(authOptions, createHandler(firebaseUser), ["POST"])
+export default createAuthorisedHandler(authOptions, createHandler(firestoreUser), ["POST"])

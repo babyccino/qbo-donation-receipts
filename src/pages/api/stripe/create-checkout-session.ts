@@ -1,7 +1,7 @@
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
-import { user as firebaseUser } from "@/lib/db"
+import { firestoreUser } from "@/lib/db"
 import { isUserSubscribed, stripe } from "@/lib/stripe"
 import { config } from "@/lib/util/config"
 import { getBaseUrl } from "@/lib/util/request"
@@ -50,4 +50,4 @@ export const createHandler = (user: UserData) =>
     if (!stripeSession.url) throw new ApiError(502, "stripe did not send a redirect url")
   }) satisfies AuthorisedHandler
 
-export default createAuthorisedHandler(authOptions, createHandler(firebaseUser), ["POST"])
+export default createAuthorisedHandler(authOptions, createHandler(firestoreUser), ["POST"])

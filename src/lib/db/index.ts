@@ -35,9 +35,9 @@ try {
   firestore.settings({ ignoreUndefinedProperties: true })
 } catch {}
 
-const _user = firestore.collection("user").withConverter(userConverter)
-export const user: UserData = {
-  ...makeFirebaseCollection(_user),
+const user = firestore.collection("user").withConverter(userConverter)
+export const firestoreUser: UserData = {
+  ...makeFirebaseCollection(user),
   async append(id, data) {
     for (const key in data) {
       // @ts-ignore
@@ -45,19 +45,19 @@ export const user: UserData = {
       // @ts-ignore
       data[key] = FieldValue.arrayUnion(data[key])
     }
-    await _user.doc(id).update(data)
+    await user.doc(id).update(data)
   },
   async queryFirst(key, op, value) {
-    const query = await _user.where(key, op, value).get()
+    const query = await user.where(key, op, value).get()
     return query.docs[0]?.data()
   },
 }
 
 const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
-export const fileStorage = makeFirebaseFilestorage(storageBucket)
+export const firebaseFileStorage = makeFirebaseFilestorage(storageBucket)
 
 const _product = firestore.collection("product").withConverter(productConverter)
-export const product: ProudctData = makeFirebaseCollection(_product)
+export const firestoreProduct: ProudctData = makeFirebaseCollection(_product)
 
 const _price = firestore.collection("price").withConverter(priceConverter)
-export const price: PriceData = makeFirebaseCollection(_price)
+export const firestorePrice: PriceData = makeFirebaseCollection(_price)

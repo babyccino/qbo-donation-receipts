@@ -9,7 +9,9 @@
     "prettier": "prettier --write .",
     "email-dev": "email dev --port 3001 --dir ./src/emails",
     "stripe-forward": "stripe listen --forward-to localhost:3000/api/stripe/webhooks",
-    "firebase-emulator": "cd firebase && firebase emulators:start --import=./data --export-on-exit=./data"
+    "firebase-emulator": "cd firebase && firebase emulators:start --import=./data --export-on-exit=./data",
+    "test:unit": "bun test */unit/*",
+    "test:integration": "bun test */integration/*"
   },
   "dependencies": {
     "@heroicons/react": "^2.0.18",

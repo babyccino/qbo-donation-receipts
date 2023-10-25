@@ -7,7 +7,7 @@ import { ReactNode } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { Link as StyledLink } from "@/components/link"
-import { user } from "@/lib/db"
+import { firestoreUser } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db/db-helper"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
@@ -130,7 +130,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       },
     }
 
-  const userData = await user.getOrThrow(session.user.id)
+  const userData = await firestoreUser.getOrThrow(session.user.id)
   const filledIn = checkUserDataCompletion(userData)
 
   return {

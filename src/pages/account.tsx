@@ -17,7 +17,7 @@ import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { DisconnectBody } from "@/pages/api/auth/disconnect"
 import { DataType } from "@/pages/api/stripe/update-subscription"
-import { user } from "@/lib/db"
+import { firestoreUser } from "@/lib/db"
 
 type Account = { name: string; logo: string | null; companyName: string | null }
 type PropsSubscription = {
@@ -166,7 +166,7 @@ export default function AccountPage(props: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSessionOrThrow(req, res)
 
-  const userData = await user.getOrThrow(session.user.id)
+  const userData = await firestoreUser.getOrThrow(session.user.id)
   const subscribed = isUserSubscribed(userData)
   const { billingAddress, donee } = userData
   const account = {

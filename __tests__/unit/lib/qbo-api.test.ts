@@ -7,6 +7,7 @@ import {
   addBillingAddressesToDonations,
   formatItemQuery,
   parseCompanyInfo,
+  getAddressArray,
 } from "@/lib/qbo-api"
 import {
   CustomerSalesReport,
@@ -908,5 +909,79 @@ describe("parseCompanyInfo", () => {
     expect(() => {
       parseCompanyInfo(companyInfoQueryResult)
     }).toThrow("No company info found")
+  })
+})
+
+describe("getAddressArray function", () => {
+  test("should return an array with Line1", () => {
+    const address = {
+      Id: "1",
+      Line1: "123 Main St",
+    }
+
+    const result = getAddressArray(address)
+
+    expect(result).toEqual(["123 Main St"])
+  })
+
+  test("should include Line2 if provided", () => {
+    const address = {
+      Id: "1",
+      Line1: "123 Main St",
+      Line2: "Apt 4B",
+    }
+
+    const result = getAddressArray(address)
+
+    expect(result).toEqual(["123 Main St", "Apt 4B"])
+  })
+
+  test("should include Line3 if provided", () => {
+    const address = {
+      Id: "1",
+      Line1: "123 Main St",
+      Line2: "Apt 4B",
+      Line3: "Building C",
+    }
+
+    const result = getAddressArray(address)
+
+    expect(result).toEqual(["123 Main St", "Apt 4B", "Building C"])
+  })
+
+  test("should include City, PostalCode, and CountrySubDivisionCode if provided", () => {
+    const address = {
+      Id: "1",
+      Line1: "123 Main St",
+      City: "New York",
+      PostalCode: "10001",
+      CountrySubDivisionCode: "NY",
+    }
+
+    const result = getAddressArray(address)
+
+    expect(result).toEqual(["123 Main St", "New York, 10001, NY"])
+  })
+
+  test("should not include City, PostalCode, and CountrySubDivisionCode if not provided", () => {
+    const address = {
+      Id: "1",
+      Line1: "123 Main St",
+    }
+
+    const result = getAddressArray(address)
+
+    expect(result).toEqual(["123 Main St"])
+  })
+
+  test("should handle empty Line1", () => {
+    const address = {
+      Id: "1",
+      Line1: "",
+    }
+
+    const result = getAddressArray(address)
+
+    expect(result).toEqual([""])
   })
 })

@@ -5,6 +5,22 @@ export const templateDonorName = "FULL_NAME"
 export const formatEmailBody = (str: string, donorName: string) =>
   str.replaceAll(templateDonorName, donorName)
 
+export function trimHistory(
+  recipientIds: Set<number>,
+  emailHistory: EmailHistoryItem[],
+  dateRange?: DateRange,
+): EmailHistoryItem[] | null {
+  const relevantEmailHistory: EmailHistoryItem[] = []
+  for (const entry of emailHistory) {
+    if (dateRange && !doDateRangesIntersect(entry.dateRange, dateRange)) continue
+    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.id))
+    if (customerOverlap.length === 0) continue
+    relevantEmailHistory.push({ ...entry, donations: customerOverlap })
+  }
+  if (relevantEmailHistory.length === 0) return null
+  else return relevantEmailHistory
+}
+
 export const makeDefaultEmailBody = (orgName: string) => `Dear ${templateDonorName},
 
 We hope this message finds you in good health and high spirits. On behalf of ${orgName}, we would like to extend our heartfelt gratitude for your recent contribution. Your generosity and support play a vital role in our mission to [state the mission or purpose of the organization].
@@ -22,33 +38,3 @@ Thank you once again for your generosity, compassion, and belief in our mission.
 Attached is your Income Tax Receipt for the ${getThisYear()} taxation year.
 
 With gratitude,`
-
-export function trimHistoryById(
-  recipientIds: Set<number>,
-  emailHistory: EmailHistoryItem[],
-): EmailHistoryItem[] | null {
-  const relevantEmailHistory: EmailHistoryItem[] = []
-  for (const entry of emailHistory) {
-    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.id))
-    if (customerOverlap.length === 0) continue
-    relevantEmailHistory.push({ ...entry, donations: customerOverlap })
-  }
-  if (relevantEmailHistory.length === 0) return null
-  else return relevantEmailHistory
-}
-
-export function trimHistoryByIdAndDateRange(
-  recipientIds: Set<number>,
-  dateRange: DateRange,
-  emailHistory: EmailHistoryItem[],
-): EmailHistoryItem[] | null {
-  const relevantEmailHistory: EmailHistoryItem[] = []
-  for (const entry of emailHistory) {
-    if (!doDateRangesIntersect(entry.dateRange, dateRange)) continue
-    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.id))
-    if (customerOverlap.length === 0) continue
-    relevantEmailHistory.push({ ...entry, donations: customerOverlap })
-  }
-  if (relevantEmailHistory.length === 0) return null
-  else return relevantEmailHistory
-}

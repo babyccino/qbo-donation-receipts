@@ -3,10 +3,11 @@ import { NextApiRequest, NextApiResponse } from "next"
 import { encode } from "next-auth/jwt"
 
 import { config } from "@/lib/util/config"
+import { createDateRange } from "@/lib/util/date"
 import { createAuthorisedHandler } from "@/lib/util/request-server"
-import { DataType, createHandler } from "@/api/details"
+import { DataType, createHandler } from "@/api/items"
 import { authOptions } from "../auth"
-import { fileStorage, firestore, user, userCollection } from "../db"
+import { firestore, user, userCollection } from "../db"
 
 const res = {
   getHeader: () => {},
@@ -17,11 +18,9 @@ const res = {
 }
 const userId = "testId"
 
-describe("details api route", () => {
+describe("items api route", () => {
   beforeEach(async () => {
-    try {
-      await firestore.recursiveDelete(userCollection)
-    } catch {}
+    await firestore.recursiveDelete(userCollection)
   })
 
   test("sets all fields of test user", async () => {
@@ -38,20 +37,23 @@ describe("details api route", () => {
       },
     })
     const body: DataType = {
-      companyAddress: "testCompanyAddress",
-      companyName: "testCompanyName",
-      country: "testCountry",
-      registrationNumber: "123456789RR1234",
-      signatoryName: "gus",
+      dateRange: createDateRange("01-01-2022", "12-31-2022"),
+      items: [1, 2, 3],
     }
     const request = {
       method: "POST",
       cookies: {
         "next-auth.session-token": cookie,
       },
-      body,
+      body: {
+        ...body,
+        dateRange: {
+          startDate: body.dateRange.startDate.toISOString(),
+          endDate: body.dateRange.endDate.toISOString(),
+        },
+      },
     }
-    const handler = createAuthorisedHandler(authOptions, createHandler(user, fileStorage), ["POST"])
+    const handler = createAuthorisedHandler(authOptions, createHandler(user), ["POST"])
     const response = await handler(
       request as unknown as NextApiRequest,
       res as unknown as NextApiResponse,
@@ -61,6 +63,6 @@ describe("details api route", () => {
     const data = doc.data()
     expect(data).toBeDefined()
     if (!data) return
-    expect(data.donee).toEqual(body)
+    expect(data).toEqual(body)
   })
 })

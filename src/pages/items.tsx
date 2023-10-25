@@ -8,7 +8,7 @@ import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from 
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { user } from "@/lib/db"
+import { firestoreUser } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db/db-helper"
 import { getItems } from "@/lib/qbo-api"
 import {
@@ -25,7 +25,7 @@ import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
-import { DataType as ItemsApiDataType } from "@/pages/api/items"
+import { ItemsDataType } from "@/api/items"
 import { Item } from "@/types/qbo-api"
 
 const DumbDatePicker = () => (
@@ -145,7 +145,7 @@ export default function Items(serialisedProps: SerialisedProps) {
     event.preventDefault()
 
     const items = getItems()
-    const postData: ItemsApiDataType = { items, dateRange: customDateState }
+    const postData: ItemsDataType = { items, dateRange: customDateState }
     await postJsonData("/api/items", postData)
 
     const destination = detailsFilledIn ? "/generate-receipts" : "/details"
@@ -234,7 +234,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   assertSessionIsQboConnected(session)
 
   const [userData, items] = await Promise.all([
-    user.getOrThrow(session.user.id),
+    firestoreUser.getOrThrow(session.user.id),
     getItems(session.accessToken, session.realmId),
   ])
   if (!userData) throw new Error("User has no corresponding db entry")

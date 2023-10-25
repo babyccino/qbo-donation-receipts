@@ -1,24 +1,24 @@
 import { ApiError } from "next/dist/server/api-utils"
 
+import { config } from "@/lib/util/config"
 import { formatDateHtmlReverse } from "@/lib/util/date"
 import { fetchJsonData } from "@/lib/util/request"
-import { config } from "@/lib/util/config"
 import {
-  ItemQueryResponse,
-  Item,
-  SalesRow,
-  SalesSectionRow,
-  Donation,
-  DonationWithoutAddress,
-  CompanyInfoQueryResult,
-  CompanyInfo,
   Address,
+  ColData,
+  CompanyInfo,
+  CompanyInfoQueryResult,
   CustomerQueryResult,
   CustomerSalesReport,
-  CustomerSalesReportRow,
   CustomerSalesReportError,
-  ColData,
+  CustomerSalesReportRow,
+  Donation,
+  DonationWithoutAddress,
+  Item,
+  ItemQueryResponse,
   RowData,
+  SalesRow,
+  SalesSectionRow,
 } from "@/types/qbo-api"
 
 const padIfExists = (str: string | null | undefined) => (str ? ` ${str}` : "")
@@ -43,8 +43,11 @@ export function getAddressArray({
   if (Line2) ret.push(Line2)
   if (Line3) ret.push(Line3)
   if (!(City || PostalCode || CountrySubDivisionCode)) return ret
-  const line4 = padIfExists(City) + padIfExists(PostalCode) + padIfExists(CountrySubDivisionCode)
-  ret.push(line4)
+  const line4 = []
+  if (City) line4.push(City)
+  if (PostalCode) line4.push(PostalCode)
+  if (CountrySubDivisionCode) line4.push(CountrySubDivisionCode)
+  ret.push(line4.join(", "))
   return ret
 }
 

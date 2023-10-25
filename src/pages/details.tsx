@@ -5,14 +5,14 @@ import { FormEventHandler, useRef } from "react"
 
 import { Fieldset, ImageInput, Legend, TextInput } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { user } from "@/lib/db"
+import { firestoreUser } from "@/lib/db"
 import { checkUserDataCompletion } from "@/lib/db/db-helper"
 import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
 import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { postJsonData } from "@/lib/util/request"
-import { DataType as DetailsApiDataType } from "@/pages/api/details"
+import { DetailsDataType } from "@/api/details"
 import { DoneeInfo } from "@/types/db"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
@@ -55,7 +55,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const formData: DetailsApiDataType = await getFormData()
+    const formData: DetailsDataType = await getFormData()
     await postJsonData("/api/details", formData)
 
     const destination = itemsFilledIn ? "/generate-receipts" : "/items"
@@ -139,7 +139,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   const session = await getServerSessionOrThrow(req, res)
   assertSessionIsQboConnected(session)
 
-  const userData = await user.getOrThrow(session.user.id)
+  const userData = await firestoreUser.getOrThrow(session.user.id)
   if (!userData.donee) return disconnectedRedirect
 
   return {

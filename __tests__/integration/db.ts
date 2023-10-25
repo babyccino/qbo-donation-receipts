@@ -1,6 +1,5 @@
 import admin from "firebase-admin"
 import { initializeFirestore } from "firebase-admin/firestore"
-import {} from "firebase-admin/storage"
 
 import {
   getApp,
@@ -24,11 +23,11 @@ try {
 
 // firestore converts dates to its own timestamp type
 
-const _user = firestore.collection("test-user").withConverter(userConverter)
-const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
+export const userCollection = firestore.collection("test-user").withConverter(userConverter)
+export const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
 
 export const user: UserData = {
-  ...makeFirebaseCollection(_user),
+  ...makeFirebaseCollection(userCollection),
   async append(id, data) {},
   async queryFirst(param, op, value) {
     return {} as any

@@ -2,7 +2,7 @@ import JSZip from "jszip"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { ReceiptPdfDocument } from "@/components/receipt/pdf"
-import { fileStorage as firebaseFileStorage, user as firebaseUser } from "@/lib/db"
+import { firebaseFileStorage as firebaseFileStorage, firestoreUser as firebaseUser } from "@/lib/db"
 import { downloadImagesForDonee, isUserDataComplete } from "@/lib/db/db-helper"
 import { getDonations } from "@/lib/qbo-api"
 import { getThisYear } from "@/lib/util/date"

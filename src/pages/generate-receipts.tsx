@@ -14,7 +14,7 @@ import {
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
-import { fileStorage, user } from "@/lib/db"
+import { firebaseFileStorage, firestoreUser } from "@/lib/db"
 import { checkUserDataCompletion, isUserDataComplete } from "@/lib/db/db-helper"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -280,7 +280,7 @@ export default function IndexPage(props: Props) {
 // --- server-side props ---
 
 export async function downloadImageAndConvertToPng(id: string, name: string) {
-  const inputBuf = await fileStorage.downloadFileBuffer(id, name)
+  const inputBuf = await firebaseFileStorage.downloadFileBuffer(id, name)
   return bufferToPngDataUrl(inputBuf)
 }
 
@@ -289,7 +289,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   assertSessionIsQboConnected(session)
 
   const id = session.user.id
-  const userData = await user.getOrThrow(id)
+  const userData = await firestoreUser.getOrThrow(id)
 
   if (!isUserDataComplete(userData))
     return {

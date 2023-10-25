@@ -13,7 +13,6 @@ function getVitalEnvVariable(environmentVariable: string): string {
       )
       return "test val"
     }
-    console.error("process.env: ", process.env)
     throw new Error(`Couldn't find vital environment variable: ${environmentVariable}`)
   } else {
     return unvalidatedEnvironmentVariable
