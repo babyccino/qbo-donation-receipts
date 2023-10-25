@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install && npm run patch",
-  "buildCommand": "npx next build",
+  "buildCommand": "npm run build",
   "headers": [
     {
       "source": "/:path*",
@@ -8,6 +8,11 @@
         {
           "key": "Cache-Control",
           "value": "no-cache"
+        },
+        { "key": "X-Frame-Options", "value": "deny" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' http: https:; img-src 'self' storage.googleapis.com; style-src 'self'; object-src 'none'; frame-ancestors 'none';"
         }
       ]
     }
