@@ -1,17 +1,19 @@
-import NextAuth, { NextAuthOptions } from "next-auth"
+import NextAuth, { CallbacksOptions, NextAuthOptions } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import { OAuthConfig } from "next-auth/providers"
-import { CallbacksOptions } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 
-import { user as firestoreUser } from "@/lib/db"
+import { DrizzleAdapter } from "@/lib/auth/drizzle-adapter"
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { QBOProfile, OpenIdUserInfo, QboAccount, CompanyInfo } from "@/types/qbo-api"
+import { db, getUserDataWithDonee } from "@/lib/test"
+import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
 import { fetchJsonData } from "@/lib/util/request"
-import { config } from "@/lib/util/config"
-import { QboPermission } from "@/types/next-auth-helper"
 import { User } from "@/types/db"
+import { QboPermission } from "@/types/next-auth-helper"
+import { CompanyInfo, OpenIdUserInfo, QBOProfile, QboAccount } from "@/types/qbo-api"
+import { doneeInfos, users } from "db/schema"
+import { eq } from "drizzle-orm"
 
 const {
   qboClientId,
@@ -81,47 +83,65 @@ type QboCallbacksOptions = CallbacksOptions<QBOProfile, QboAccount>
 const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile }) => {
   if (!account || !profile) return "/404"
 
-  const { access_token: accessToken, providerAccountId: id } = account
+  const { id } = user
+  const { access_token: accessToken, providerAccountId: qboId } = account
   if (!accessToken) throw new ApiError(500, "access token not provided")
 
   // realmId will be undefined if the user doesn't have qbo accounting permission
   const { realmid: realmId } = profile
   const connectUser = Boolean(realmId)
-  const doc = firestoreUser.doc(id)
 
   // all the fetch/database requests are done at the same time for performance
   // then all the necessary information for the other steps of the sign-in process
   // is passed down through the user/account/profile/token/session/etc.
-  const [userInfo, companyInfo, dbUser] = await Promise.all([
-    fetchJsonData<OpenIdUserInfo>(
-      `${qboAccountsBaseRoute}/openid_connect/userinfo`,
-      accessToken as string,
-    ),
+  const userInfo = await fetchJsonData<OpenIdUserInfo>(
+    `${qboAccountsBaseRoute}/openid_connect/userinfo`,
+    accessToken as string,
+  )
+  const { email, givenName: name } = userInfo
+  if (typeof email !== "string") throw new ApiError(500, "email not returned by openid request")
+  if (typeof name !== "string") throw new ApiError(500, "name not returned by openid request")
+  const [companyInfo, rows] = await Promise.all([
     connectUser ? getCompanyInfo(accessToken, realmId as string) : null,
-    doc.get(),
+    db
+      .select({ user: users, doneeInfo: doneeInfos })
+      .from(users)
+      .where(eq(users.email, email))
+      .leftJoin(doneeInfos, eq(doneeInfos.userId, users.id))
+      .limit(1),
   ])
 
   // if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
   if (!userInfo.emailVerified) return "/terms/email-verified"
 
-  const { email, givenName: name } = userInfo
   user.email = email
   user.name = name
 
-  const dbUserData = dbUser.data()
-
+  const row = rows[0] as (typeof rows)[number] | undefined
   // if user has previously been connected but has signed in without accounting permission
   // then sign them in with accounting permissions
-  if (dbUserData?.connected && !connectUser) return "/api/auth/sso"
+  if (row && row.user?.connected && !connectUser) return "/api/auth/sso"
 
-  const set: Partial<User> = { id, name, email, connected: connectUser }
+  const set: Partial<User> = {
+    id,
+    name,
+    email,
+    connected: connectUser,
+    qboId,
+    updatedAt: new Date(),
+  }
   if (realmId) set.realmId = realmId
 
   // if the user is new or they have no donee info we can save the data
-  if (connectUser && (!dbUserData || (dbUserData && !dbUserData.donee)))
-    set.donee = companyInfo as CompanyInfo
-
-  await doc.set(set, { merge: true })
+  const shouldUpdateDonee = connectUser && (!row || (row && !row.doneeInfo))
+  await Promise.all([
+    db.update(users).set(set).where(eq(users.id, id)),
+    shouldUpdateDonee &&
+      db
+        .update(doneeInfos)
+        .set({ ...(companyInfo as CompanyInfo), updatedAt: new Date() })
+        .where(eq(doneeInfos.userId, id)),
+  ])
   return true
 }
 
@@ -133,6 +153,18 @@ const jwt: QboCallbacksOptions["jwt"] = async ({
   trigger,
   session,
 }) => {
+  const [dbUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, token.email || ""))
+    .limit(1)
+
+  if (!dbUser && user) {
+    token.id = user?.id
+  }
+
+  token = { ...token, id: dbUser.id, name: dbUser.name, email: dbUser.email, picture: dbUser.image }
+
   if (account && profile) {
     const {
       access_token: accessToken,
@@ -151,7 +183,7 @@ const jwt: QboCallbacksOptions["jwt"] = async ({
       accessToken,
       refreshToken,
       accessTokenExpires,
-      id,
+      qboId: id ?? null,
       realmId: realmId ?? null,
       qboPermission: realmId ? QboPermission.Accounting : QboPermission.Profile,
       name: user.name as string,
@@ -167,21 +199,30 @@ const jwt: QboCallbacksOptions["jwt"] = async ({
   else return token
 }
 
-const session: QboCallbacksOptions["session"] = async ({ session, token }) => {
+const session: QboCallbacksOptions["session"] = async ({
+  session,
+  token,
+  newSession,
+  trigger,
+  user,
+}) => {
   return {
     ...session,
-    accessToken: token.accessToken as string | null,
-    realmId: token.realmId as string | null,
-    qboPermission: token.qboPermission as QboPermission,
     user: {
-      id: token.id as string,
-      name: token.name as string,
-      email: token.email as string,
+      id: user.id ?? session.user.id,
+      name: user.name ?? session.user.name,
+      email: user.email ?? session.user.email,
+      qboId: user.qboId ?? session.user.qboId,
     },
   }
 }
 
 export const authOptions: NextAuthOptions = {
+  adapter: DrizzleAdapter(db),
+  session: {
+    strategy: "database",
+    maxAge: 60 * 30,
+  },
   pages: {
     signIn: "/auth/signin",
   },
@@ -196,7 +237,6 @@ export const authOptions: NextAuthOptions = {
     jwt,
     session,
   },
-  session: { maxAge: 60 * 30 },
   secret: nextauthSecret,
 }
 

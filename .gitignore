@@ -24,3 +24,6 @@ credentials.csv
 rootkey.csv
 
 .react-email
+
+/drizzle
+/test.*
