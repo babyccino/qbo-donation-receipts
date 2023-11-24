@@ -157,7 +157,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
       ),
     )
-    .rightJoin(users, or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id)))
+    .rightJoin(
+      users,
+      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
+    )
     .where(realmId ? and(eqUserId, eq(doneeInfos.realmId, realmId)) : eqUserId)
     .limit(1)
 
