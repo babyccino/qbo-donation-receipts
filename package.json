@@ -11,7 +11,7 @@
     "stripe-forward": "stripe listen --forward-to localhost:3000/api/stripe/webhooks",
     "firebase-emulator": "cd firebase && firebase emulators:start --import=./data --export-on-exit=./data",
     "drizzle:migrate": "npm exec drizzle-kit generate:sqlite --out migrations --schema db/schema.ts",
-    "drizzel:push": "npm exec drizzle-kit push:sqlite"
+    "drizzle:push": "npm exec drizzle-kit push:sqlite"
   },
   "dependencies": {
     "@heroicons/react": "^2.0.18",

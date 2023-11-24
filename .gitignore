@@ -26,4 +26,4 @@ rootkey.csv
 .react-email
 
 /drizzle
-/test.*
+/test.db*
