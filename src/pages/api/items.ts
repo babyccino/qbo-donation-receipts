@@ -42,7 +42,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     })
     .onConflictDoUpdate({
       target: [userDatas.userId, userDatas.realmId],
-      set: { startDate, endDate, items },
+      set: { startDate, endDate, items, updatedAt: new Date() },
     })
   // const set = await db
   //   .select()
