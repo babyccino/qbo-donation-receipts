@@ -23,7 +23,7 @@ export const accounts = sqliteTable(
     token_type: text("token_type", { length: 191 }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
-    realmId: text("realmid"),
+    realmId: integer("realmid"),
   },
   account => ({
     providerProviderAccountIdIndex: uniqueIndex("accounts__provider__providerAccountId__idx").on(
@@ -75,7 +75,7 @@ export const userDatas = sqliteTable(
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
     userId: text("user_id", { length: 191 }).notNull(),
-    realmId: text("realmid").notNull(),
+    realmId: integer("realmid").notNull(),
     items: text("items"),
     startDate: integer("start_date", { mode: "timestamp_ms" }).notNull(),
     endDate: integer("end_date", { mode: "timestamp_ms" }).notNull(),
@@ -96,7 +96,7 @@ export const doneeInfos = sqliteTable(
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
     userId: text("user_id", { length: 191 }).unique().notNull(),
-    realmId: text("realmid").notNull(),
+    realmId: integer("realmid").notNull(),
     companyName: text("company_name").notNull(),
     companyAddress: text("company_address").notNull(),
     country: text("country").notNull(),

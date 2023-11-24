@@ -58,6 +58,7 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
       await db.delete(users).where(eq(users.id, userId))
     },
     async linkAccount(account) {
+      const realmId = typeof account.realmId === "string" ? parseInt(account.realmId) : undefined
       await db.insert(accounts).values({
         id: createId(),
         userId: account.userId,
@@ -71,7 +72,7 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
         refresh_token_expires_in: account.refresh_token_expires_in as number,
         scope: account.scope,
         token_type: account.token_type,
-        realmId: account.realmId as string | undefined,
+        realmId: realmId,
       })
     },
     async unlinkAccount({ providerAccountId, provider }) {

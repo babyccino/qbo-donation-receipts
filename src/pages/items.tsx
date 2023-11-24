@@ -64,7 +64,7 @@ type Props = {
   items: Item[]
   session: Session
   detailsFilledIn: boolean
-  realmId: string
+  realmId: number
 } & (
   | { itemsFilledIn: false }
   | {
@@ -238,7 +238,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
 }) => {
   const session = await getServerSessionOrThrow(req, res)
 
-  const queryRealmId = query.realmid as string | undefined
+  const queryRealmId = typeof query.realmid === "string" ? parseInt(query.realmid) : undefined
 
   const rows = await db
     .select({

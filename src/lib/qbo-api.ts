@@ -198,8 +198,8 @@ export function getCustomerData(accessToken: string, realmId: string) {
   return fetchJsonData<CustomerQueryResult>(url, accessToken)
 }
 
-export async function getItems(accessToken: string, realmId: string) {
-  const url = makeQueryUrl(realmId, "select * from Item")
+export async function getItems(accessToken: string, realmId: number) {
+  const url = makeQueryUrl(realmId.toString(), "select * from Item")
   const itemQuery = await fetchJsonData<ItemQueryResponse>(url, accessToken)
   return formatItemQuery(itemQuery)
 }
