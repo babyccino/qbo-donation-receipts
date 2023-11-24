@@ -1,17 +1,18 @@
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
+import { and, eq, or } from "drizzle-orm"
 import { GetServerSideProps } from "next"
-import { getServerSession, Session } from "next-auth"
-import { useSession } from "next-auth/react"
+import { Session, getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 import Link from "next/link"
 import { ReactNode } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { Link as StyledLink } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { db } from "@/lib/db/test"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"
+import { accounts, doneeInfos, userDatas, users } from "db/schema"
 
 import HandDrawnUpArrow from "@/public/svg/hand-drawn-up-arrow.svg"
 
@@ -51,11 +52,14 @@ const Arrow = () => <HandDrawnUpArrow className="mt-3 h-10 w-10 rotate-180 text-
 
 type Props =
   | { session: null; filledIn: false }
-  | { session: Session; filledIn: { items: boolean; doneeDetails: boolean } }
+  | {
+      session: Session
+      filledIn: { items: boolean; doneeDetails: boolean }
+      qboPermission: QboPermission
+    }
 
-export default function IndexPage({ filledIn }: Props) {
-  const { data: session } = useSession()
-
+export default function IndexPage(props: Props) {
+  const { filledIn } = props
   return (
     <section className="mx-auto max-w-screen-xl space-y-12 p-4 px-4 text-center sm:py-8 lg:py-16">
       <div>
@@ -73,12 +77,12 @@ export default function IndexPage({ filledIn }: Props) {
         </Show>
       </div>
       <div className="flex w-full flex-col items-center">
-        <Card href={session ? "/account" : "/api/auth/signin"}>
+        <Card href={filledIn ? "/account" : "/api/auth/signin"}>
           <Card.Title>Link your account</Card.Title>
           <Card.Body>
             Sign in with your QuickBooks Online account and authorise our application
           </Card.Body>
-          {session?.qboPermission === QboPermission.Accounting && <Card.Tick />}
+          {filledIn && props?.qboPermission === QboPermission.Accounting && <Card.Tick />}
         </Card>
         <Arrow />
         <Card href="/items" className="mt-4">
@@ -119,24 +123,57 @@ export default function IndexPage({ filledIn }: Props) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
+  console.log(session)
 
-  if (!session)
+  if (session === null) {
     return {
       props: {
-        session,
+        session: null,
         filledIn: false,
       },
     }
+  }
 
-  const user = await getUserData(session.user.id)
-  const filledIn = checkUserDataCompletion(user)
+  const realmId = query.realmid as string | undefined
+
+  const eqUserId = eq(users.id, session.user.id)
+  const rows = await db
+    .select({
+      userData: userDatas.id,
+      doneeInfo: doneeInfos.id,
+      qboPermission: accounts.scope,
+    })
+    .from(doneeInfos)
+    .fullJoin(
+      userDatas,
+      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
+    )
+    .fullJoin(
+      accounts,
+      or(
+        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
+        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
+      ),
+    )
+    .rightJoin(users, or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id)))
+    .where(realmId ? and(eqUserId, eq(doneeInfos.realmId, realmId)) : eqUserId)
+    .limit(1)
+
+  const row = rows.at(0)
+  if (!row) throw new ApiError(500, "user not found in db")
+
+  // const user = await getUserDataOrThrow(session.user.id)
+  const filledIn = { items: Boolean(row.userData), doneeDetails: Boolean(row.doneeInfo) }
+  const qboPermission =
+    row.qboPermission === "accounting" ? QboPermission.Accounting : QboPermission.Profile
 
   return {
     props: {
       session,
       filledIn,
+      qboPermission,
     },
   }
 }

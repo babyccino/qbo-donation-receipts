@@ -1,15 +1,17 @@
 import { InformationCircleIcon } from "@heroicons/react/24/solid"
+import { and, eq, isNotNull, or } from "drizzle-orm"
 import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/router"
 import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db/test"
 import { getItems } from "@/lib/qbo-api"
 import {
   DateRange,
@@ -21,12 +23,11 @@ import {
   startOfThisYear,
   utcEpoch,
 } from "@/lib/util/date"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
+import { accounts, doneeInfos, userDatas, users } from "db/schema"
 
 const DumbDatePicker = () => (
   <div className="relative w-full text-gray-700">
@@ -63,6 +64,7 @@ type Props = {
   items: Item[]
   session: Session
   detailsFilledIn: boolean
+  realmId: string
 } & (
   | { itemsFilledIn: false }
   | {
@@ -89,7 +91,7 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
 
 export default function Items(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
-  const { items, detailsFilledIn } = props
+  const { items, detailsFilledIn, realmId } = props
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
@@ -145,7 +147,7 @@ export default function Items(serialisedProps: SerialisedProps) {
     event.preventDefault()
 
     const items = getItems()
-    const postData: ItemsApiDataType = { items, dateRange: customDateState }
+    const postData: ItemsApiDataType = { items, dateRange: customDateState, realmId }
     await postJsonData("/api/items", postData)
 
     const destination = detailsFilledIn ? "/generate-receipts" : "/details"
@@ -229,25 +231,74 @@ export default function Items(serialisedProps: SerialisedProps) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
+  req,
+  res,
+  query,
+}) => {
   const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
 
-  const [user, items] = await Promise.all([
-    getUserData(session.user.id),
-    getItems(session.accessToken, session.realmId),
-  ])
-  if (!user) throw new Error("User has no corresponding db entry")
-  const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
+  const queryRealmId = query.realmid as string | undefined
 
-  if (user.dateRange && user.items) {
+  const rows = await db
+    .select({
+      userData: {
+        items: userDatas.items,
+        startDate: userDatas.startDate,
+        endDate: userDatas.endDate,
+      },
+      doneeInfo: doneeInfos.id,
+      account: {
+        scope: accounts.scope,
+        accessToken: accounts.access_token,
+        realmId: accounts.realmId,
+      },
+    })
+    .from(doneeInfos)
+    .fullJoin(
+      userDatas,
+      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
+    )
+    .fullJoin(
+      accounts,
+      or(
+        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
+        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
+      ),
+    )
+    .rightJoin(
+      users,
+      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
+    )
+    .where(
+      and(
+        eq(users.id, session.user.id),
+        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
+      ),
+    )
+    .limit(1)
+
+  const row = rows.at(0)
+  if (!row) throw new ApiError(500, "user not found in db")
+  if (!row.account || row.account.scope !== "accounting" || !row.account.accessToken)
+    return disconnectedRedirect
+  const realmId = queryRealmId ?? row.account.realmId
+  if (!realmId) return disconnectedRedirect
+
+  const items = await getItems(row.account.accessToken, realmId)
+  const detailsFilledIn = Boolean(row.doneeInfo)
+
+  if (row.userData) {
+    const { userData } = row
+    const selectedItems = userData.items ? userData.items.split(",").map(id => parseInt(id)) : []
     const props = {
       itemsFilledIn: true,
       session,
       items,
       detailsFilledIn,
-      selectedItems: user.items,
-      dateRange: user.dateRange,
+      selectedItems,
+      realmId,
+      dateRange: { startDate: userData.startDate, endDate: userData.endDate },
     } satisfies Props
     return {
       props: serialiseDates(props),
@@ -259,6 +310,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
     session,
     items,
     detailsFilledIn,
+    realmId,
   } satisfies Props
   return {
     props: serialiseDates(props),
