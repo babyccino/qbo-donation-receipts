@@ -1,10 +1,6 @@
 import admin from "firebase-admin"
-import type { Timestamp } from "@google-cloud/firestore"
-import { ApiError } from "next/dist/server/api-utils"
 
-import { Price, Product, User } from "@/types/db"
 import { config } from "@/lib/util/config"
-import { timestampToDate } from "./db-helper"
 const { firebaseProjectId, firebaseClientEmail, firebasePrivateKey } = config
 
 // set env variable FIRESTORE_EMULATOR_HOST to use firebase emulator
@@ -40,42 +36,5 @@ try {
   firestore.settings({ ignoreUndefinedProperties: true })
 } catch {}
 
-// firestore converts dates to its own timestamp type
-type DateToTimestamp<T> = T extends Date
-  ? Timestamp
-  : T extends object
-  ? {
-      [K in keyof T]: DateToTimestamp<T[K]>
-    }
-  : T
-type FirebaseSnap = FirebaseFirestore.QueryDocumentSnapshot<DateToTimestamp<User>>
-const userConverter = {
-  toFirestore: (data: User) => data,
-  fromFirestore: (snap: FirebaseSnap) => {
-    const rawData = snap.data()
-    return timestampToDate(rawData) satisfies User
-  },
-}
-
-const productConverter = {
-  toFirestore: (data: Product) => data,
-  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as Product,
-}
-const priceConverter = {
-  toFirestore: (data: Price) => data,
-  fromFirestore: (snap: FirebaseFirestore.QueryDocumentSnapshot) => snap.data() as Price,
-}
-
-export const user = firestore.collection("user").withConverter(userConverter)
-export async function getUserData(id: string) {
-  const doc = await user.doc(id).get()
-  const dbUser = doc.data()
-  if (!dbUser) throw new ApiError(500, "user was not found in db")
-  return dbUser
-}
-
-export const product = firestore.collection("product").withConverter(productConverter)
-export const price = (id: string) =>
-  product.doc(id).collection("price").withConverter(priceConverter)
 export const storageBucket = admin.storage().bucket(`${firebaseProjectId}.appspot.com`)
 export type Bucket = typeof storageBucket
