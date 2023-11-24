@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { and, eq } from "drizzle-orm"
 import { LibSQLDatabase } from "drizzle-orm/libsql"
-import { Adapter, AdapterSession, AdapterUser } from "next-auth/adapters"
+import { Adapter, AdapterSession } from "next-auth/adapters"
 
 import { accounts, sessions, users, verificationTokens } from "db/schema"
 import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
@@ -9,15 +9,18 @@ import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adapter {
   return {
     async createUser(userData) {
-      console.log("createUser")
-      console.log("adapter userData: ", userData)
       await db.insert(users).values({
         ...userData,
+        emailVerified: new Date(),
         id: createId(),
       })
-      const [user] = await db.select().from(users).where(eq(users.email, userData.email)).limit(1)
-      if (!user) throw new Error("User not found")
-      return user
+      const [newUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, userData.email))
+        .limit(1)
+      if (!newUser) throw new Error("User not found")
+      return newUser
     },
     async getUser(id) {
       console.log("getUser")
@@ -55,7 +58,6 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
       await db.delete(users).where(eq(users.id, userId))
     },
     async linkAccount(account) {
-      console.log("linkAccount")
       await db.insert(accounts).values({
         id: createId(),
         userId: account.userId,
@@ -69,6 +71,7 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
         refresh_token_expires_in: account.refresh_token_expires_in as number,
         scope: account.scope,
         token_type: account.token_type,
+        realmId: account.realmId as string | undefined,
       })
     },
     async unlinkAccount({ providerAccountId, provider }) {
@@ -80,7 +83,6 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
         )
     },
     async createSession(data) {
-      console.log("createSession")
       await db.insert(sessions).values({
         id: createId(),
         expires: data.expires?.getTime(),
@@ -124,7 +126,6 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
       }
     },
     async updateSession(session) {
-      console.log("updateSession")
       await db
         .update(sessions)
         .set({ ...session, expires: session.expires?.getTime() })
@@ -138,11 +139,9 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
       return { ...dbSession, expires: new Date(dbSession.expires) }
     },
     async deleteSession(sessionToken) {
-      console.log("deleteSession")
       await db.delete(sessions).where(eq(sessions.sessionToken, sessionToken))
     },
     async createVerificationToken(verificationToken) {
-      console.log("createVerificationToken")
       await db.insert(verificationTokens).values({
         expires: verificationToken.expires.getTime(),
         identifier: verificationToken.identifier,
@@ -157,7 +156,6 @@ export function DrizzleAdapter(db: BetterSQLite3Database | LibSQLDatabase): Adap
       return { ...dbToken, expires: new Date(dbToken.expires) }
     },
     async useVerificationToken({ identifier, token }) {
-      console.log("useVerificationToken")
       const [dbToken] = await db
         .select()
         .from(verificationTokens)

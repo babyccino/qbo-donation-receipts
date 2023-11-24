@@ -1,8 +1,9 @@
-import { drizzle } from "drizzle-orm/better-sqlite3"
 import Database from "better-sqlite3"
-import { doneeInfos, users } from "db/schema"
 import { eq, sql } from "drizzle-orm"
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { drizzle } from "drizzle-orm/better-sqlite3"
+import { integer } from "drizzle-orm/sqlite-core"
+
+import { doneeInfos, users } from "db/schema"
 
 const timestamp = (name: string) =>
   integer(name, { mode: "timestamp_ms" }).default(sql`(cast(strftime('%s', 'now') as int) * 1000)`)

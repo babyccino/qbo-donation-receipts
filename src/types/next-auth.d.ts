@@ -1,6 +1,7 @@
 import NextAuth from "next-auth"
 
 import { QboPermission } from "./next-auth-helper"
+import { AdapterUser, AdapterSession } from "next-auth/adapters"
 
 declare module "next-auth" {
   /**
@@ -13,13 +14,16 @@ declare module "next-auth" {
       image: string
       email: string
     }
-    expires: string
-    accessToken: string | null
-    qboPermission: QboPermission
-    realmId: string | null
   }
 
   interface Profile {
     realmid: string
+  }
+}
+
+declare module "next-auth/adapters" {
+  /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
+  interface AdapterSession {
+    id: string
   }
 }

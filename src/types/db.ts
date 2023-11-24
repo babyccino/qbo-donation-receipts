@@ -2,26 +2,40 @@ import { DateRange } from "@/lib/util/date"
 import { CompanyInfo, Donation } from "@/types/qbo-api"
 import Stripe from "stripe"
 
-export type DoneeInfo = CompanyInfo & {
-  registrationNumber?: string
-  signatoryName?: string
-  signature?: string
-  smallLogo?: string
-  largeLogo?: string
+export type DoneeInfo = {
+  signature: string | null
+  smallLogo: string | null
+  companyName: string
+  companyAddress: string
+  country: string
+  registrationNumber: string | null
+  signatoryName: string | null
+  id: string
+  userId: string
+  largeLogo: string | null
+  createdAt: Date
+  updatedAt: Date
 }
 
+export type DateToTimestamp<T> = T extends Date
+  ? number
+  : T extends object
+  ? {
+      [K in keyof T]: DateToTimestamp<T[K]>
+    }
+  : T
+
 export type User = {
-  email: string
+  emailVerified: Date | null
+  image: string | null
   id: string
-  name: string
-  connected: boolean
-  realmId?: string
-  items?: number[]
-  dateRange?: DateRange
-  emailHistory?: EmailHistoryItem[]
-  donee?: DoneeInfo
-  subscription?: Subscription
-  billingAddress?: BillingAddress
+  qboId: string | null
+  name: string | null
+  email: string
+  connected: boolean | null
+  realmId: string | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 type BillingAddress = {
