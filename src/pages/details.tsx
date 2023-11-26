@@ -13,7 +13,7 @@ import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-a
 import { RemoveTimestamps } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
 import { getCompanyInfo, refreshAccessToken } from "@/lib/qbo-api"
-import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
+import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
@@ -88,7 +88,7 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
             defaultValue={doneeInfo.companyAddress}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <p>
@@ -101,7 +101,7 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
             defaultValue={doneeInfo.companyName}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <p>
@@ -115,7 +115,7 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
             defaultValue={doneeInfo.country}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <p>
@@ -143,7 +143,7 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
             defaultValue={doneeInfo.signatoryName ?? undefined}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <ImageInput
