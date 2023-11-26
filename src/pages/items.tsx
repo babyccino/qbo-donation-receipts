@@ -10,9 +10,10 @@ import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from 
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { buttonStyling } from "@/components/link"
+import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
 import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db/test"
-import { getItems } from "@/lib/qbo-api"
+import { getItems, refreshAccessToken } from "@/lib/qbo-api"
 import {
   DateRange,
   DateRangeType,
@@ -64,7 +65,7 @@ type Props = {
   items: Item[]
   session: Session
   detailsFilledIn: boolean
-  realmId: number
+  realmId: string
 } & (
   | { itemsFilledIn: false }
   | {
@@ -238,7 +239,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
 }) => {
   const session = await getServerSessionOrThrow(req, res)
 
-  const queryRealmId = typeof query.realmid === "string" ? parseInt(query.realmid) : undefined
+  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
   const rows = await db
     .select({
@@ -249,9 +250,14 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
       },
       doneeInfo: doneeInfos.id,
       account: {
-        scope: accounts.scope,
-        accessToken: accounts.access_token,
+        id: accounts.id,
+        accessToken: accounts.accessToken,
         realmId: accounts.realmId,
+        createdAt: accounts.createdAt,
+        expiresAt: accounts.expiresAt,
+        refreshToken: accounts.refreshToken,
+        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
+        scope: accounts.scope,
       },
     })
     .from(doneeInfos)
@@ -280,37 +286,63 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
 
   const row = rows.at(0)
   if (!row) throw new ApiError(500, "user not found in db")
-  if (!row.account || row.account.scope !== "accounting" || !row.account.accessToken)
+  const { account } = row
+  if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
-  const realmId = queryRealmId ?? row.account.realmId
+  const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
 
-  const items = await getItems(row.account.accessToken, realmId)
+  const items = await getItems(account.accessToken, realmId)
   const detailsFilledIn = Boolean(row.doneeInfo)
 
-  if (row.userData) {
-    const { userData } = row
-    const selectedItems = userData.items ? userData.items.split(",").map(id => parseInt(id)) : []
+  if (!row.userData) {
     const props = {
-      itemsFilledIn: true,
+      itemsFilledIn: false,
       session,
       items,
       detailsFilledIn,
-      selectedItems,
       realmId,
-      dateRange: { startDate: userData.startDate, endDate: userData.endDate },
     } satisfies Props
     return {
       props: serialiseDates(props),
     }
   }
 
+  const currentAccountStatus = accountStatus(account)
+  if (currentAccountStatus === AccountStatus.AccessExpired) {
+    const token = await refreshAccessToken(account.refreshToken)
+    const expiresAt = new Date(Date.now() + 1000 * (token.expires_in ?? 60 * 60))
+    const refreshTokenExpiresAt = new Date(
+      Date.now() + 1000 * (token.x_refresh_token_expires_in ?? 60 * 60 * 24 * 101),
+    )
+    const updatedAt = new Date()
+    await db
+      .update(accounts)
+      .set({
+        accessToken: token.access_token,
+        expiresAt,
+        refreshToken: token.refresh_token,
+        refreshTokenExpiresAt,
+        updatedAt,
+      })
+      .where(eq(accounts.id, account.id))
+    account.accessToken = token.access_token
+    account.refreshTokenExpiresAt = refreshTokenExpiresAt
+  } else if (currentAccountStatus === AccountStatus.RefreshExpired) {
+    // implement refresh token expired logicS
+    throw new ApiError(400, "refresh token expired")
+  }
+
+  const { userData } = row
+  const selectedItems = userData.items ? userData.items.split(",").map(id => parseInt(id)) : []
   const props = {
-    itemsFilledIn: false,
+    itemsFilledIn: true,
     session,
     items,
     detailsFilledIn,
+    selectedItems,
     realmId,
+    dateRange: { startDate: userData.startDate, endDate: userData.endDate },
   } satisfies Props
   return {
     props: serialiseDates(props),

@@ -15,7 +15,7 @@ export const parser = z.object({
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
   }),
-  realmId: z.number().int(),
+  realmId: z.string(),
 })
 
 export type DataType = z.infer<typeof parser>
