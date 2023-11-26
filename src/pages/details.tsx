@@ -8,11 +8,10 @@ import { FormEventHandler, useRef } from "react"
 
 import { Fieldset, ImageInput, Legend } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
 import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
-import { RemoveTimestamps } from "@/lib/db/db-helper"
+import { RemoveTimestamps, refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
-import { getCompanyInfo, refreshAccessToken } from "@/lib/qbo-api"
+import { getCompanyInfo } from "@/lib/qbo-api"
 import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { postJsonData } from "@/lib/util/request"
@@ -233,30 +232,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
 
-  const currentAccountStatus = accountStatus(account)
-  if (currentAccountStatus === AccountStatus.AccessExpired) {
-    const token = await refreshAccessToken(account.refreshToken)
-    const expiresAt = new Date(Date.now() + 1000 * (token.expires_in ?? 60 * 60))
-    const refreshTokenExpiresAt = new Date(
-      Date.now() + 1000 * (token.x_refresh_token_expires_in ?? 60 * 60 * 24 * 101),
-    )
-    const updatedAt = new Date()
-    await db
-      .update(accounts)
-      .set({
-        accessToken: token.access_token,
-        expiresAt,
-        refreshToken: token.refresh_token,
-        refreshTokenExpiresAt,
-        updatedAt,
-      })
-      .where(eq(accounts.id, account.id))
-    account.accessToken = token.access_token
-    account.refreshTokenExpiresAt = refreshTokenExpiresAt
-  } else if (currentAccountStatus === AccountStatus.RefreshExpired) {
-    // implement refresh token expired logicS
-    throw new ApiError(400, "refresh token expired")
-  }
+  // @ts-ignore
+  refreshTokenIfNeeded(account)
 
   const doneeInfo = row.doneeInfo
     ? row.doneeInfo

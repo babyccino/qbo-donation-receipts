@@ -1,5 +1,5 @@
 import { InformationCircleIcon } from "@heroicons/react/24/solid"
-import { and, eq, isNotNull, or } from "drizzle-orm"
+import { and, eq, isNotNull, or, InferInsertModel } from "drizzle-orm"
 import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
@@ -29,6 +29,7 @@ import { postJsonData } from "@/lib/util/request"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
 import { accounts, doneeInfos, userDatas, users } from "db/schema"
+import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 
 const DumbDatePicker = () => (
   <div className="relative w-full text-gray-700">
@@ -308,30 +309,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     }
   }
 
-  const currentAccountStatus = accountStatus(account)
-  if (currentAccountStatus === AccountStatus.AccessExpired) {
-    const token = await refreshAccessToken(account.refreshToken)
-    const expiresAt = new Date(Date.now() + 1000 * (token.expires_in ?? 60 * 60))
-    const refreshTokenExpiresAt = new Date(
-      Date.now() + 1000 * (token.x_refresh_token_expires_in ?? 60 * 60 * 24 * 101),
-    )
-    const updatedAt = new Date()
-    await db
-      .update(accounts)
-      .set({
-        accessToken: token.access_token,
-        expiresAt,
-        refreshToken: token.refresh_token,
-        refreshTokenExpiresAt,
-        updatedAt,
-      })
-      .where(eq(accounts.id, account.id))
-    account.accessToken = token.access_token
-    account.refreshTokenExpiresAt = refreshTokenExpiresAt
-  } else if (currentAccountStatus === AccountStatus.RefreshExpired) {
-    // implement refresh token expired logicS
-    throw new ApiError(400, "refresh token expired")
-  }
+  //@ts-ignore
+  refreshTokenIfNeeded(account)
 
   const { userData } = row
   const selectedItems = userData.items ? userData.items.split(",").map(id => parseInt(id)) : []
