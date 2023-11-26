@@ -1,8 +1,11 @@
+import { createId } from "@paralleldrive/cuid2"
+import { and, eq } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
 import sharp from "sharp"
 import { z } from "zod"
 
-import { storageBucket, user } from "@/lib/db"
+import { storageBucket } from "@/lib/db"
+import { db } from "@/lib/db/test"
 import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import {
   base64FileSize,
@@ -16,7 +19,9 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
+import { doneeInfos } from "db/schema"
 
+// TODO move file storage to another service
 async function resizeAndUploadImage(
   dataUrl: string,
   dimensions: { width?: number; height?: number },
@@ -58,6 +63,7 @@ export const parser = z.object({
   signatoryName: zodRegularString,
   signature: z.string().optional().refine(dataUrlRefiner),
   smallLogo: z.string().optional().refine(dataUrlRefiner),
+  realmId: z.string(),
 })
 export type DataType = z.infer<typeof parser>
 
@@ -75,10 +81,27 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       : undefined,
   ])
 
-  const newData = { donee: { ...data, signature: signatureUrl, smallLogo: smallLogoUrl } }
-  await user.doc(id).set(newData, { merge: true })
+  await db
+    .insert(doneeInfos)
+    .values({
+      id: createId(),
+      userId: id,
+      ...data,
+      signature: signatureUrl ?? "",
+      smallLogo: smallLogoUrl ?? "",
+      largeLogo: "",
+    })
+    .onConflictDoUpdate({
+      target: [doneeInfos.userId, doneeInfos.realmId],
+      set: { ...data, updatedAt: new Date() },
+    })
+  const set = await db
+    .select()
+    .from(doneeInfos)
+    .where(and(eq(doneeInfos.userId, id), eq(doneeInfos.realmId, data.realmId)))
+  console.log(set)
 
-  res.status(200).json(newData)
+  res.status(200).json(set)
 }
 
 export default createAuthorisedHandler(handler, ["POST"])

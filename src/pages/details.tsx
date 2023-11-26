@@ -1,20 +1,24 @@
-import { GetServerSideProps } from "next"
+import { and, eq, isNotNull, or } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
+import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 import { useRouter } from "next/router"
 import { FormEventHandler, useRef } from "react"
 
 import { Fieldset, ImageInput, Legend } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
+import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { RemoveTimestamps } from "@/lib/db/db-helper"
+import { db } from "@/lib/db/test"
+import { getCompanyInfo, refreshAccessToken } from "@/lib/qbo-api"
 import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo } from "@/types/db"
+import { accounts, doneeInfos, userDatas, users } from "db/schema"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -24,13 +28,16 @@ const imageNotRequiredHelper = (
   </>
 )
 
+type PDoneeInfo = Partial<Omit<RemoveTimestamps<DoneeInfo>, "id" | "userId">>
+
 type Props = {
-  doneeInfo: DoneeInfo
+  doneeInfo: PDoneeInfo
   session: Session
   itemsFilledIn: boolean
+  realmId: string
 }
 
-export default function Details({ doneeInfo, itemsFilledIn }: Props) {
+export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -56,13 +63,14 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const formData: DetailsApiDataType = await getFormData()
-    await postJsonData("/api/details", formData)
+    const formData = await getFormData()
+    await postJsonData("/api/details", { ...formData, realmId } satisfies DetailsApiDataType)
 
     const destination = itemsFilledIn ? "/generate-receipts" : "/items"
-    router.push({
-      pathname: destination,
-    })
+    // router.push({
+    //   pathname: destination,
+    // })
+    router.reload()
   }
 
   return (
@@ -118,7 +126,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             name="registrationNumber"
             id="registrationNumber"
             minLength={15}
-            defaultValue={doneeInfo.registrationNumber}
+            defaultValue={doneeInfo.registrationNumber ?? undefined}
             required
             title="Canadian registration numbers are of the format: 123456789AA1234"
             pattern={charityRegistrationNumberRegex}
@@ -132,7 +140,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             name="signatoryName"
             id="signatoryName"
             minLength={5}
-            defaultValue={doneeInfo.signatoryName}
+            defaultValue={doneeInfo.signatoryName ?? undefined}
             required
             title="alphanumeric as well as '-', '_', ','"
             pattern={regularCharactersRegex}
@@ -166,18 +174,102 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
 
-  const user = await getUserData(session.user.id)
-  if (!user.donee) return disconnectedRedirect
+  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
+
+  const rows = await db
+    .select({
+      doneeInfo: {
+        companyAddress: doneeInfos.companyAddress,
+        companyName: doneeInfos.companyName,
+        country: doneeInfos.country,
+        registrationNumber: doneeInfos.registrationNumber,
+        signatoryName: doneeInfos.signatoryName,
+        smallLogo: doneeInfos.smallLogo,
+      },
+      userData: userDatas.id,
+      account: {
+        id: accounts.id,
+        accessToken: accounts.accessToken,
+        realmId: accounts.realmId,
+        createdAt: accounts.createdAt,
+        expiresAt: accounts.expiresAt,
+        refreshToken: accounts.refreshToken,
+        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
+        scope: accounts.scope,
+      },
+    })
+    .from(doneeInfos)
+    .fullJoin(
+      userDatas,
+      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
+    )
+    .fullJoin(
+      accounts,
+      or(
+        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
+        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
+      ),
+    )
+    .rightJoin(
+      users,
+      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
+    )
+    .where(
+      and(
+        eq(users.id, session.user.id),
+        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
+      ),
+    )
+    .limit(1)
+
+  const row = rows.at(0)
+  if (!row) throw new ApiError(500, "user not found in db")
+  const { account } = row
+  if (!account || account.scope !== "accounting" || !account.accessToken)
+    return disconnectedRedirect
+  const realmId = queryRealmId ?? account.realmId
+  if (!realmId) return disconnectedRedirect
+
+  const currentAccountStatus = accountStatus(account)
+  if (currentAccountStatus === AccountStatus.AccessExpired) {
+    const token = await refreshAccessToken(account.refreshToken)
+    const expiresAt = new Date(Date.now() + 1000 * (token.expires_in ?? 60 * 60))
+    const refreshTokenExpiresAt = new Date(
+      Date.now() + 1000 * (token.x_refresh_token_expires_in ?? 60 * 60 * 24 * 101),
+    )
+    const updatedAt = new Date()
+    await db
+      .update(accounts)
+      .set({
+        accessToken: token.access_token,
+        expiresAt,
+        refreshToken: token.refresh_token,
+        refreshTokenExpiresAt,
+        updatedAt,
+      })
+      .where(eq(accounts.id, account.id))
+    account.accessToken = token.access_token
+    account.refreshTokenExpiresAt = refreshTokenExpiresAt
+  } else if (currentAccountStatus === AccountStatus.RefreshExpired) {
+    // implement refresh token expired logicS
+    throw new ApiError(400, "refresh token expired")
+  }
+
+  const doneeInfo = row.doneeInfo
+    ? row.doneeInfo
+    : await getCompanyInfo(account.accessToken, realmId)
+
+  const itemsFilledIn = Boolean(row.userData)
 
   return {
     props: {
       session,
-      doneeInfo: user.donee,
-      itemsFilledIn: checkUserDataCompletion(user).items,
-    },
+      doneeInfo,
+      itemsFilledIn,
+      realmId,
+    } satisfies Props,
   }
 }
