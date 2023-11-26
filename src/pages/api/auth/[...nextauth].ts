@@ -49,33 +49,6 @@ export const qboProviderDisconnected: OAuthConfig<QBOProfile> = {
   },
 }
 
-async function refreshAccessToken(token: JWT): Promise<JWT> {
-  console.log("refreshing access token")
-
-  const url = `${qboOauthRoute}/tokens/bearer`
-  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Basic ${encoded}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: `grant_type=refresh_token&refresh_token=${token.refreshToken}`,
-  })
-  const refreshedTokens = await response.json()
-  if (!response.ok) {
-    throw refreshedTokens
-  }
-
-  return {
-    ...token,
-    accessToken: refreshedTokens.access_token,
-    accessTokenExpires: Date.now() + MS_IN_HOUR,
-    refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-  }
-}
-
 type QboCallbacksOptions = CallbacksOptions<QBOProfile, QboAccount>
 const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile }) => {
   if (!account || !profile) return "/404"

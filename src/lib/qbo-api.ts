@@ -1,24 +1,25 @@
 import { ApiError } from "next/dist/server/api-utils"
 
-import { formatDateHtmlReverse } from "@/lib/util/date"
-import { fetchJsonData } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
+import { formatDateHtmlReverse } from "@/lib/util/date"
+import { base64EncodeString } from "@/lib/util/image-helper"
+import { fetchJsonData } from "@/lib/util/request"
 import {
-  ItemQueryResponse,
-  Item,
-  SalesRow,
-  SalesSectionRow,
-  Donation,
-  DonationWithoutAddress,
-  CompanyInfoQueryResult,
-  CompanyInfo,
   Address,
+  ColData,
+  CompanyInfo,
+  CompanyInfoQueryResult,
   CustomerQueryResult,
   CustomerSalesReport,
-  CustomerSalesReportRow,
   CustomerSalesReportError,
-  ColData,
+  CustomerSalesReportRow,
+  Donation,
+  DonationWithoutAddress,
+  Item,
+  ItemQueryResponse,
   RowData,
+  SalesRow,
+  SalesSectionRow,
 } from "@/types/qbo-api"
 
 const padIfExists = (str: string | null | undefined) => (str ? ` ${str}` : "")
@@ -198,7 +199,7 @@ export function getCustomerData(accessToken: string, realmId: string) {
   return fetchJsonData<CustomerQueryResult>(url, accessToken)
 }
 
-export async function getItems(accessToken: string, realmId: number) {
+export async function getItems(accessToken: string, realmId: string) {
   const url = makeQueryUrl(realmId.toString(), "select * from Item")
   const itemQuery = await fetchJsonData<ItemQueryResponse>(url, accessToken)
   return formatItemQuery(itemQuery)
@@ -251,4 +252,33 @@ export async function getDonations(
 
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, items)
   return addBillingAddressesToDonations(donationDataWithoutAddresses, customerQueryResult)
+}
+
+type RefreshToken = {
+  token_type: string
+  expires_in: number
+  refresh_token: string
+  x_refresh_token_expires_in: number
+  access_token: string
+}
+export async function refreshAccessToken(refreshToken: string): Promise<RefreshToken> {
+  console.log("refreshing access token")
+
+  const url = `${config.qboOauthRoute}/tokens/bearer`
+  const encoded = base64EncodeString(`${config.qboClientId}:${config.qboClientSecret}`)
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${encoded}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: `grant_type=refresh_token&refresh_token=${refreshToken}`,
+  })
+  const refreshedTokens = await response.json()
+  if (!response.ok) {
+    throw refreshedTokens
+  }
+
+  return refreshedTokens as RefreshToken
 }
