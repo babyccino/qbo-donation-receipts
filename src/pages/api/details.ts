@@ -19,7 +19,7 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { doneeInfos } from "db/schema"
+import { accounts, doneeInfos } from "db/schema"
 
 // TODO move file storage to another service
 async function resizeAndUploadImage(
@@ -70,7 +70,44 @@ export type DataType = z.infer<typeof parser>
 const handler: AuthorisedHandler = async (req, res, session) => {
   const id = session.user.id
 
-  const data = parseRequestBody(parser, req.body)
+  const { realmId, ...data } = parseRequestBody(parser, req.body)
+
+  const account = await db.query.accounts.findFirst({
+    where: and(eq(accounts.userId, id), eq(accounts.realmId, realmId)),
+    columns: {
+      id: true,
+    },
+    with: { userData: { columns: { id: true } } },
+  })
+
+  if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
+
+  if (!account.userData) {
+    if (!data.signature || !data.smallLogo)
+      throw new ApiError(
+        400,
+        "when setting user data for the first time, signature and logo images must be provided",
+      )
+
+    const [signatureUrl, smallLogoUrl] = await Promise.all([
+      resizeAndUploadImage(data.signature, { height: 150 }, `${id}/signature`, false),
+      resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true),
+    ])
+
+    await db.insert(doneeInfos).values({
+      id: createId(),
+      accountId: account.id,
+      signature: signatureUrl,
+      smallLogo: smallLogoUrl,
+      largeLogo: "",
+      ...data,
+    })
+    const set = await db
+      .select()
+      .from(doneeInfos)
+      .where(and(eq(doneeInfos.accountId, account.id)))
+    res.status(200).json(set)
+  }
 
   const [signatureUrl, smallLogoUrl] = await Promise.all([
     data.signature
@@ -81,26 +118,19 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       : undefined,
   ])
 
-  await db
-    .insert(doneeInfos)
-    .values({
-      id: createId(),
-      userId: id,
-      ...data,
-      signature: signatureUrl ?? "",
-      smallLogo: smallLogoUrl ?? "",
-      largeLogo: "",
-    })
-    .onConflictDoUpdate({
-      target: [doneeInfos.userId, doneeInfos.realmId],
-      set: { ...data, updatedAt: new Date() },
-    })
+  await db.update(doneeInfos).set({
+    id: createId(),
+    accountId: account.id,
+    signature: signatureUrl,
+    smallLogo: smallLogoUrl,
+    largeLogo: "",
+    ...data,
+    updatedAt: new Date(),
+  })
   const set = await db
     .select()
     .from(doneeInfos)
-    .where(and(eq(doneeInfos.userId, id), eq(doneeInfos.realmId, data.realmId)))
-  console.log(set)
-
+    .where(and(eq(doneeInfos.accountId, account.id)))
   res.status(200).json(set)
 }
 

@@ -1,10 +1,10 @@
 import { Timestamp } from "@google-cloud/firestore"
 import sharp from "sharp"
 
-import { DoneeInfo, User } from "@/types/db"
 import { config } from "@/lib/util/config"
 import { Bucket } from "@/lib/db"
 import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
+import type { DoneeInfo } from "db/schema"
 
 const { firebaseProjectId, firebaseStorageEmulatorHost } = config
 
@@ -23,10 +23,10 @@ export function getImageUrl(path: string) {
   return `https://storage.googleapis.com/${firebaseProjectId}.appspot.com/${path}`
 }
 
-export async function downloadImagesForDonee(
-  donee: Required<DoneeInfo>,
+export async function downloadImagesForDonee<T extends Pick<DoneeInfo, "signature" | "smallLogo">>(
+  donee: T,
   storageBucket: Bucket,
-): Promise<Required<DoneeInfo>> {
+): Promise<T> {
   const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
     downloadImageAsDataUrl(storageBucket, donee.signature),
     downloadImageAsDataUrl(storageBucket, donee.smallLogo),
@@ -53,48 +53,6 @@ export async function bufferToPngDataUrl(buffer: Buffer) {
 export async function downloadImageAndConvertToPng(storageBucket: Bucket, firestorePath: string) {
   const inputBuf = await downloadImageAsBuffer(storageBucket, firestorePath)
   return bufferToPngDataUrl(inputBuf)
-}
-
-export type UserDataComplete = User & {
-  items: Required<User>["items"]
-  donee: Required<DoneeInfo>
-  dateRange: Required<User>["dateRange"]
-}
-export function isUserDataComplete(user: User): user is UserDataComplete {
-  const { items, donee, dateRange } = user
-  if (!donee) return false
-
-  return Boolean(
-    items &&
-      dateRange &&
-      donee.companyAddress &&
-      donee.companyName &&
-      donee.country &&
-      donee.registrationNumber &&
-      donee.signatoryName &&
-      donee.signature &&
-      donee.smallLogo,
-  )
-}
-export function checkUserDataCompletion({ items, donee, dateRange }: User): {
-  items: boolean
-  doneeDetails: boolean
-} {
-  const itemsComplete = Boolean(items && dateRange)
-  if (!donee) return { items: itemsComplete, doneeDetails: false }
-
-  return {
-    items: itemsComplete,
-    doneeDetails: Boolean(
-      donee.companyAddress &&
-        donee.companyName &&
-        donee.country &&
-        donee.registrationNumber &&
-        donee.signatoryName &&
-        donee.signature &&
-        donee.smallLogo,
-    ),
-  }
 }
 
 type TimestampToDate<T> = T extends Timestamp

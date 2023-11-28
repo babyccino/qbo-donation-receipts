@@ -1,64 +1,57 @@
+import { and, eq } from "drizzle-orm"
 import JSZip from "jszip"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { ReceiptPdfDocument } from "@/components/receipt/pdf"
 import { storageBucket } from "@/lib/db"
-import { downloadImagesForDonee, isUserDataComplete } from "@/lib/db-helper"
+import { downloadImagesForDonee } from "@/lib/db-helper"
+import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
+import { db } from "@/lib/db/test"
 import { getDonations } from "@/lib/qbo-api"
 import { getThisYear } from "@/lib/util/date"
-import { assertSessionIsQboConnected } from "@/lib/auth/next-auth-helper"
 import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/util/request-server"
 import { renderToBuffer } from "@react-pdf/renderer"
-import { db } from "@/lib/db/test"
-import { accounts, doneeInfos, userDatas, users } from "db/schema"
-import { and, eq, or } from "drizzle-orm"
-import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
+import { accounts } from "db/schema"
 
 const handler: AuthorisedHandler = async (req, res, session) => {
   const { realmid: realmId } = req.query
+
   if (typeof realmId !== "string") throw new ApiError(500, "realmid not provided")
 
-  const rows = await db
-    .select({
+  const account = await db.query.accounts.findFirst({
+    where: and(eq(accounts.userId, session.user.id), eq(accounts.realmId, realmId)),
+    columns: {
+      id: true,
+      accessToken: true,
+      realmId: true,
+      createdAt: true,
+      expiresAt: true,
+      refreshToken: true,
+      refreshTokenExpiresAt: true,
+      scope: true,
+    },
+    with: {
       userData: {
-        items: userDatas.items,
-        startDate: userDatas.startDate,
-        endDate: userDatas.endDate,
+        columns: {
+          items: true,
+          startDate: true,
+          endDate: true,
+        },
       },
-      doneeInfo: doneeInfos,
-      account: {
-        id: accounts.id,
-        accessToken: accounts.accessToken,
-        realmId: accounts.realmId,
-        createdAt: accounts.createdAt,
-        expiresAt: accounts.expiresAt,
-        refreshToken: accounts.refreshToken,
-        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
-        scope: accounts.scope,
+      doneeInfo: {
+        columns: {
+          accountId: false,
+          createdAt: false,
+          id: false,
+          updatedAt: false,
+        },
       },
-    })
-    .from(doneeInfos)
-    .fullJoin(
-      userDatas,
-      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
-    )
-    .fullJoin(
-      accounts,
-      or(
-        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
-        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
-      ),
-    )
-    .rightJoin(
-      users,
-      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
-    )
-    .where(and(eq(users.id, session.user.id), eq(accounts.realmId, realmId)))
-    .limit(1)
+    },
+  })
 
-  const row = rows.at(0)
-  if (!row) throw new ApiError(500, "user not found in db")
-  const { account, doneeInfo, userData } = row
+  if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
+
+  const { doneeInfo, userData } = account
   if (!account || account.scope !== "accounting" || !account.accessToken)
     throw new ApiError(401, "client not qbo-connected")
 

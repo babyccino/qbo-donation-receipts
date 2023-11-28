@@ -28,16 +28,21 @@ import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
 import { EmailDataType } from "@/pages/api/email"
-import { DoneeInfo, EmailHistoryItem } from "@/types/db"
-import { WithBodyProps } from "@/types/receipt"
+import { EmailProps, WithBodyProps } from "@/types/receipt"
 import {
+  EmailHistory as DbEmailHistory,
+  Donation as DbDonation,
   accounts,
   donations as donationsSchema,
-  doneeInfos,
   emailHistories,
-  userDatas,
   users,
 } from "db/schema"
+import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
+
+type DoneeInfo = EmailProps["donee"]
+type EmailHistory = (Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
+  donations: Pick<DbDonation, "name" | "donorId">[]
+})[]
 
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
@@ -110,7 +115,7 @@ function EmailPreview({ donee }: { donee: DoneeInfo }) {
   )
 }
 
-const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistoryItem[] }) => (
+const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory }) => (
   <details className="group flex w-full items-center justify-between rounded-xl border border-gray-200 p-3 text-left font-medium   text-gray-500 open:bg-gray-100 open:p-5 hover:bg-gray-100 dark:border-gray-500 dark:text-gray-400 dark:open:bg-gray-800 dark:hover:bg-gray-800">
     <summary className="mb-2 flex items-center justify-between gap-2">
       <Info className="mr-2 h-8 w-8" />
@@ -163,7 +168,7 @@ function SendEmails({
   realmId,
 }: {
   recipients: Set<string>
-  emailHistory: EmailHistoryItem[] | null
+  emailHistory: EmailHistory | null
   realmId: string
 }) {
   const [showModal, setShowModal] = useState(false)
@@ -250,7 +255,7 @@ type CompleteAccountProps = {
   accountStatus: AccountStatus.Complete
   donee: DoneeInfo
   recipients: Recipient[]
-  emailHistory: EmailHistoryItem[] | null
+  emailHistory: EmailHistory | null
   realmId: string
 }
 function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: CompleteAccountProps) {
@@ -377,52 +382,28 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  const rows = await db
-    .select({
-      userData: {
-        items: userDatas.items,
-        startDate: userDatas.startDate,
-        endDate: userDatas.endDate,
-      },
-      doneeInfo: doneeInfos,
-      account: {
-        id: accounts.id,
-        accessToken: accounts.accessToken,
-        realmId: accounts.realmId,
-        createdAt: accounts.createdAt,
-        expiresAt: accounts.expiresAt,
-        refreshToken: accounts.refreshToken,
-        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
-        scope: accounts.scope,
-      },
-    })
-    .from(doneeInfos)
-    .fullJoin(
-      userDatas,
-      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
-    )
-    .fullJoin(
-      accounts,
-      or(
-        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
-        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
-      ),
-    )
-    .rightJoin(
-      users,
-      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
-    )
-    .where(
-      and(
-        eq(users.id, session.user.id),
-        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
-      ),
-    )
-    .limit(1)
+  const eqUserId = eq(users.id, session.user.id)
+  const account = await db.query.accounts.findFirst({
+    // if the realmId is specified get that account otherwise just get the first account for the user
+    where: queryRealmId ? and(eq(accounts.realmId, queryRealmId), eqUserId) : eqUserId,
+    columns: {
+      id: true,
+      accessToken: true,
+      scope: true,
+      realmId: true,
+      createdAt: true,
+      expiresAt: true,
+      refreshToken: true,
+      refreshTokenExpiresAt: true,
+    },
+    with: {
+      doneeInfo: { columns: { accountId: false, createdAt: false, id: false, updatedAt: false } },
+      userData: { columns: { items: true, startDate: true, endDate: true } },
+    },
+  })
 
-  const row = rows.at(0)
-  if (!row) throw new ApiError(500, "user not found in db")
-  const { account, doneeInfo, userData } = row
+  if (!account) throw new ApiError(500, "user not found in db")
+  const { doneeInfo, userData } = account
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
   const realmId = queryRealmId ?? account.realmId
@@ -438,8 +419,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     return { props: serialiseDates(props) }
   }
 
-  // @ts-ignore
-  refreshTokenIfNeeded(account)
+  await refreshTokenIfNeeded(account)
 
   // sub
   // if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }

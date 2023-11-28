@@ -1,7 +1,6 @@
-import { DateRange } from "@/lib/util/date"
-import { Donation } from "@/types/qbo-api"
 import { relations, sql } from "drizzle-orm"
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import type { Stripe } from "stripe"
 
 const timestamp = (name: string) =>
   integer(name, { mode: "timestamp_ms" })
@@ -23,6 +22,7 @@ export const users = sqliteTable(
     emailIndex: uniqueIndex("users__email__idx").on(user.email),
   }),
 )
+export type User = typeof users.$inferSelect
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
@@ -60,13 +60,23 @@ export const accounts = sqliteTable(
     userIdIndex: index("accounts__userId__idx").on(account.userId),
   }),
 )
+export type Account = typeof accounts.$inferSelect
+
+export const accountsRelations = relations(accounts, ({ many, one }) => ({
+  user: one(users, {
+    fields: [accounts.userId],
+    references: [users.id],
+  }),
+  userData: one(userDatas),
+  doneeInfo: one(doneeInfos),
+  emailHistories: many(emailHistories),
+}))
 
 export const userDatas = sqliteTable(
   "user_datas",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
-    userId: text("user_id", { length: 191 }).notNull(),
-    realmId: text("realmid").notNull(),
+    accountId: text("account_id", { length: 191 }).notNull(),
     items: text("items"),
     startDate: integer("start_date", { mode: "timestamp_ms" }).notNull(),
     endDate: integer("end_date", { mode: "timestamp_ms" }).notNull(),
@@ -74,20 +84,23 @@ export const userDatas = sqliteTable(
     updatedAt: timestamp("updated_at"),
   },
   userData => ({
-    userIdIndex: uniqueIndex("user_data__user_id__idx").on(userData.userId),
-    userIdRealmIdIndex: uniqueIndex("user_data__user_id__realmid__idx").on(
-      userData.userId,
-      userData.realmId,
-    ),
+    accountIdIndex: uniqueIndex("user_data__account_id__idx").on(userData.accountId),
   }),
 )
+export type UserDatas = typeof userDatas.$inferSelect
+
+export const userDatasRelations = relations(userDatas, ({ one }) => ({
+  account: one(accounts, {
+    fields: [userDatas.accountId],
+    references: [accounts.id],
+  }),
+}))
 
 export const doneeInfos = sqliteTable(
   "donee_infos",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
-    userId: text("user_id", { length: 191 }).unique().notNull(),
-    realmId: text("realmid").notNull(),
+    accountId: text("account_id", { length: 191 }).notNull(),
     companyName: text("company_name").notNull(),
     companyAddress: text("company_address").notNull(),
     country: text("country").notNull(),
@@ -100,38 +113,39 @@ export const doneeInfos = sqliteTable(
     updatedAt: timestamp("updated_at"),
   },
   doneeInfo => ({
-    userIdIndex: uniqueIndex("donee_infos__user_id__idx").on(doneeInfo.userId),
-    userIdRealmIdIndex: uniqueIndex("donee_infos__user_id__realmid__idx").on(
-      doneeInfo.userId,
-      doneeInfo.realmId,
-    ),
+    accountIdIndex: uniqueIndex("donee_infos__account_id__idx").on(doneeInfo.accountId),
   }),
 )
+export type DoneeInfo = typeof doneeInfos.$inferSelect
+
+export const doneeInfosRelations = relations(doneeInfos, ({ one }) => ({
+  account: one(accounts, {
+    fields: [doneeInfos.accountId],
+    references: [accounts.id],
+  }),
+}))
 
 export const emailHistories = sqliteTable(
   "email_histories",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
-    userId: text("user_id", { length: 191 }).notNull(),
-    realmId: text("realmid").notNull(),
+    accountId: text("account_id", { length: 191 }).notNull(),
     startDate: integer("start_date", { mode: "timestamp_ms" }).notNull(),
     endDate: integer("end_date", { mode: "timestamp_ms" }).notNull(),
     createdAt: timestamp("created_at"),
   },
   emailHistory => ({
-    userIdRealmIdIndex: index("email_histories__user_id__realmid__idx").on(
-      emailHistory.userId,
-      emailHistory.realmId,
-    ),
+    accountIndex: index("email_histories__account_id__idx").on(emailHistory.accountId),
   }),
 )
+export type EmailHistory = typeof emailHistories.$inferSelect
 
 export const emailHistoriesRelations = relations(emailHistories, ({ many, one }) => ({
-  donations: many(donations),
-  user: one(users, {
-    fields: [emailHistories.userId],
-    references: [users.id],
+  account: one(accounts, {
+    fields: [emailHistories.accountId],
+    references: [accounts.id],
   }),
+  donations: many(donations),
 }))
 
 export const donations = sqliteTable(
@@ -149,6 +163,7 @@ export const donations = sqliteTable(
     emailHistoryIndex: uniqueIndex("donations__email_history_id__idx").on(donation.emailHistoryId),
   }),
 )
+export type Donation = typeof donations.$inferSelect
 
 export const donationsRelations = relations(donations, ({ one }) => ({
   emailHistory: one(emailHistories, {
@@ -157,6 +172,7 @@ export const donationsRelations = relations(donations, ({ one }) => ({
   }),
 }))
 
+export type Session = typeof sessions.$inferSelect
 export const sessions = sqliteTable(
   "sessions",
   {
@@ -186,3 +202,43 @@ export const verificationTokens = sqliteTable(
     tokenIndex: uniqueIndex("verification_tokens__token__idx").on(verificationToken.token),
   }),
 )
+export type VerificationToken = typeof verificationTokens.$inferSelect
+
+// TODO models still to migrate:
+
+export type Subscription = {
+  id: string
+  status?: Stripe.Subscription.Status
+  metadata?: Stripe.Metadata
+  cancelAtPeriodEnd?: boolean
+  created: Date
+  currentPeriodStart: Date
+  currentPeriodEnd: Date
+  endedAt?: Date
+  cancelAt?: Date
+  canceledAt?: Date
+}
+
+export type Product = {
+  id: string
+  active?: boolean
+  name?: string
+  metadata?: Stripe.Metadata
+}
+
+export type Price = {
+  id: string
+  active?: boolean
+  unitAmount?: number
+  currency?: string
+  type?: Stripe.Price.Type
+  interval?: Stripe.Price.Recurring.Interval
+  intervalCount?: number
+  metadata?: Stripe.Metadata
+}
+
+export type BillingAddress = {
+  phone: string
+  address: Stripe.Address
+  name: string
+}

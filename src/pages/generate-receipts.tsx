@@ -7,6 +7,8 @@ import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { Link } from "@/components/link"
+import { and, eq } from "drizzle-orm"
+import { ApiError } from "next/dist/server/api-utils"
 import {
   DownloadReceiptLoading,
   DummyDownloadReceipt,
@@ -25,12 +27,9 @@ import { randInt } from "@/lib/util/etc"
 import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { fetchJsonData, subscribe } from "@/lib/util/request"
-import { DoneeInfo } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
-import { accounts, doneeInfos, userDatas, users } from "db/schema"
-import { and, eq, isNotNull, or } from "drizzle-orm"
-import { ApiError } from "next/dist/server/api-utils"
+import { DoneeInfo, accounts, users } from "db/schema"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -137,7 +136,7 @@ type Props =
       receiptsReady: true
       session: Session
       donations: Donation[]
-      doneeInfo: DoneeInfo
+      doneeInfo: Omit<DoneeInfo, "accountId" | "createdAt" | "id" | "updatedAt">
       subscribed: boolean
       realmId: string
     }
@@ -213,7 +212,7 @@ export default function IndexPage(props: Props) {
     }
 
     return (
-      <Tr key={entry.id}>
+      <Tr key={entry.donorId}>
         <Th>{entry.name}</Th>
         <Td>{formatter.format(entry.total)}</Td>
         <Td>
@@ -287,52 +286,28 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  const rows = await db
-    .select({
-      userData: {
-        items: userDatas.items,
-        startDate: userDatas.startDate,
-        endDate: userDatas.endDate,
-      },
-      doneeInfo: doneeInfos,
-      account: {
-        id: accounts.id,
-        accessToken: accounts.accessToken,
-        realmId: accounts.realmId,
-        createdAt: accounts.createdAt,
-        expiresAt: accounts.expiresAt,
-        refreshToken: accounts.refreshToken,
-        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
-        scope: accounts.scope,
-      },
-    })
-    .from(doneeInfos)
-    .fullJoin(
-      userDatas,
-      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
-    )
-    .fullJoin(
-      accounts,
-      or(
-        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
-        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
-      ),
-    )
-    .rightJoin(
-      users,
-      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
-    )
-    .where(
-      and(
-        eq(users.id, session.user.id),
-        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
-      ),
-    )
-    .limit(1)
+  const eqUserId = eq(users.id, session.user.id)
+  const account = await db.query.accounts.findFirst({
+    // if the realmId is specified get that account otherwise just get the first account for the user
+    where: queryRealmId ? and(eq(accounts.realmId, queryRealmId), eqUserId) : eqUserId,
+    columns: {
+      id: true,
+      accessToken: true,
+      scope: true,
+      realmId: true,
+      createdAt: true,
+      expiresAt: true,
+      refreshToken: true,
+      refreshTokenExpiresAt: true,
+    },
+    with: {
+      doneeInfo: { columns: { accountId: false, createdAt: false, id: false, updatedAt: false } },
+      userData: { columns: { items: true, startDate: true, endDate: true } },
+    },
+  })
 
-  const row = rows.at(0)
-  if (!row) throw new ApiError(500, "user not found in db")
-  const { account, doneeInfo, userData } = row
+  if (!account) throw new ApiError(500, "user not found in db")
+  const { doneeInfo, userData } = account
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
   const realmId = queryRealmId ?? account.realmId
@@ -347,7 +322,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       },
     }
 
-  // @ts-ignore
   refreshTokenIfNeeded(account)
 
   const [donations, pngSignature, pngLogo] = await Promise.all([
@@ -355,7 +329,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       account.accessToken,
       realmId,
       { startDate: userData.startDate, endDate: userData.endDate },
-      userData.items ? userData.items.split(",").map(str => parseInt(str)) : [],
+      userData.items ? userData.items.split(",") : [],
     ),
     downloadImageAndConvertToPng(storageBucket, doneeInfo.signature),
     downloadImageAndConvertToPng(storageBucket, doneeInfo.smallLogo),

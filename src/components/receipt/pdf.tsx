@@ -102,6 +102,8 @@ export function ReceiptPdfDocument({
 
   if (!donee.registrationNumber) throw new Error("")
   if (!donee.signatoryName) throw new Error("")
+  if (!donee.smallLogo) throw new Error("")
+  if (!donee.signature) throw new Error("")
 
   return (
     <Document>
@@ -146,23 +148,21 @@ export function ReceiptPdfDocument({
           <PdfText style={styleSheet.productsTitle}>Donations</PdfText>
         </View>
         <View>
-          {donation.items.map(
-            ({ name, total, id }: { name: string; id: number; total: number }) => (
-              <View
-                key={id}
-                style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
-              >
-                <View style={{ paddingLeft: "22px" }}>
-                  <PdfText style={styleSheet.productTitle}>{name}</PdfText>
-                  <PdfText style={styleSheet.productDescription}>{""}</PdfText>
-                </View>
-
-                <View style={styleSheet.productPriceWrapper}>
-                  <PdfText style={styleSheet.productPrice}>{formatCurrency(total)}</PdfText>
-                </View>
+          {donation.items.map(({ name, total, id }) => (
+            <View
+              key={id}
+              style={{ display: "flex", flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <View style={{ paddingLeft: "22px" }}>
+                <PdfText style={styleSheet.productTitle}>{name}</PdfText>
+                <PdfText style={styleSheet.productDescription}>{""}</PdfText>
               </View>
-            ),
-          )}
+
+              <View style={styleSheet.productPriceWrapper}>
+                <PdfText style={styleSheet.productPrice}>{formatCurrency(total)}</PdfText>
+              </View>
+            </View>
+          ))}
         </View>
         <View style={styleSheet.totalContainer}>
           <PdfText style={styleSheet.productPriceTotal}>Eligible Gift For Tax Purposes</PdfText>

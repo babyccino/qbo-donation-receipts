@@ -136,41 +136,22 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     }
   }
 
-  const realmId = query.realmid as string | undefined
+  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
   const eqUserId = eq(users.id, session.user.id)
-  const rows = await db
-    .select({
-      userData: userDatas.id,
-      doneeInfo: doneeInfos.id,
-      qboPermission: accounts.scope,
-    })
-    .from(doneeInfos)
-    .fullJoin(
-      userDatas,
-      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
-    )
-    .fullJoin(
-      accounts,
-      or(
-        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
-        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
-      ),
-    )
-    .rightJoin(
-      users,
-      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
-    )
-    .where(realmId ? and(eqUserId, eq(doneeInfos.realmId, realmId)) : eqUserId)
-    .limit(1)
-
-  const row = rows.at(0)
-  if (!row) throw new ApiError(500, "user not found in db")
+  const account = await db.query.accounts.findFirst({
+    // if the realmId is specified get that account otherwise just get the first account for the user
+    where: queryRealmId ? and(eq(accounts.realmId, queryRealmId), eqUserId) : eqUserId,
+    columns: { scope: true },
+    with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
+  })
+  if (!account)
+    throw new ApiError(500, "account for given user and company realmId not found in db")
 
   // const user = await getUserDataOrThrow(session.user.id)
-  const filledIn = { items: Boolean(row.userData), doneeDetails: Boolean(row.doneeInfo) }
+  const filledIn = { items: Boolean(account.userData), doneeDetails: Boolean(account.doneeInfo) }
   const qboPermission =
-    row.qboPermission === "accounting" ? QboPermission.Accounting : QboPermission.Profile
+    account.scope === "accounting" ? QboPermission.Accounting : QboPermission.Profile
 
   return {
     props: {

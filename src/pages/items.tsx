@@ -1,5 +1,5 @@
 import { InformationCircleIcon } from "@heroicons/react/24/solid"
-import { and, eq, isNotNull, or, InferInsertModel } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
@@ -10,10 +10,10 @@ import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from 
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
 import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
-import { getItems, refreshAccessToken } from "@/lib/qbo-api"
+import { getItems } from "@/lib/qbo-api"
 import {
   DateRange,
   DateRangeType,
@@ -28,8 +28,7 @@ import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nex
 import { postJsonData } from "@/lib/util/request"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
-import { accounts, doneeInfos, userDatas, users } from "db/schema"
-import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
+import { accounts, users } from "db/schema"
 
 const DumbDatePicker = () => (
   <div className="relative w-full text-gray-700">
@@ -242,61 +241,37 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  const rows = await db
-    .select({
-      userData: {
-        items: userDatas.items,
-        startDate: userDatas.startDate,
-        endDate: userDatas.endDate,
-      },
-      doneeInfo: doneeInfos.id,
-      account: {
-        id: accounts.id,
-        accessToken: accounts.accessToken,
-        realmId: accounts.realmId,
-        createdAt: accounts.createdAt,
-        expiresAt: accounts.expiresAt,
-        refreshToken: accounts.refreshToken,
-        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
-        scope: accounts.scope,
-      },
-    })
-    .from(doneeInfos)
-    .fullJoin(
-      userDatas,
-      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
-    )
-    .fullJoin(
-      accounts,
-      or(
-        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
-        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
-      ),
-    )
-    .rightJoin(
-      users,
-      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
-    )
-    .where(
-      and(
-        eq(users.id, session.user.id),
-        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
-      ),
-    )
-    .limit(1)
-
-  const row = rows.at(0)
-  if (!row) throw new ApiError(500, "user not found in db")
-  const { account } = row
+  const eqUserId = eq(users.id, session.user.id)
+  const account = await db.query.accounts.findFirst({
+    // if the realmId is specified get that account otherwise just get the first account for the user
+    where: queryRealmId ? and(eq(accounts.realmId, queryRealmId), eqUserId) : eqUserId,
+    columns: {
+      id: true,
+      accessToken: true,
+      scope: true,
+      realmId: true,
+      createdAt: true,
+      expiresAt: true,
+      refreshToken: true,
+      refreshTokenExpiresAt: true,
+    },
+    with: {
+      userData: { columns: { items: true, startDate: true, endDate: true } },
+      doneeInfo: { columns: { id: true } },
+    },
+  })
+  if (!account)
+    throw new ApiError(500, "account for given user and company realmId not found in db")
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
+
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
 
   const items = await getItems(account.accessToken, realmId)
-  const detailsFilledIn = Boolean(row.doneeInfo)
+  const detailsFilledIn = Boolean(account.doneeInfo)
 
-  if (!row.userData) {
+  if (!account.userData) {
     const props = {
       itemsFilledIn: false,
       session,
@@ -309,10 +284,9 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     }
   }
 
-  //@ts-ignore
   refreshTokenIfNeeded(account)
 
-  const { userData } = row
+  const { userData } = account
   const selectedItems = userData.items ? userData.items.split(",") : []
   const props = {
     itemsFilledIn: true,

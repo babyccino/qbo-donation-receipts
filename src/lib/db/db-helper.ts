@@ -1,9 +1,10 @@
-import { accounts } from "db/schema"
-import { AccountStatus, accountStatus } from "../auth/drizzle-adapter"
-import { refreshAccessToken } from "../qbo-api"
-import { db } from "./test"
 import { eq } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
+
+import { Account, accounts } from "db/schema"
+import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
+import { refreshAccessToken } from "@/lib/qbo-api"
+import { db } from "@/lib/db/test"
 
 export type RemoveTimestamps<T extends { createdAt: Date; updatedAt: Date }> = Omit<
   T,
@@ -20,20 +21,19 @@ export function removeTimestamps<T extends { createdAt: Date; updatedAt: Date }>
   return obj
 }
 
-export async function refreshTokenIfNeeded(account: {
-  id: string
-  accessToken: string
-  expiresAt: Date
-  refreshToken: string
-  refreshTokenExpiresAt: Date
-}) {
+export async function refreshTokenIfNeeded<
+  T extends Pick<
+    Account,
+    "id" | "accessToken" | "expiresAt" | "refreshToken" | "refreshTokenExpiresAt"
+  >,
+>(account: T): Promise<{ account: T; currentAccountStatus: AccountStatus }> {
   const currentAccountStatus = accountStatus(account)
   console.log({ currentAccountStatus })
   if (currentAccountStatus === AccountStatus.RefreshExpired) {
-    // implement refresh token expired logicS
+    // implement refresh token expired logic
     throw new ApiError(400, "refresh token expired")
   } else if (currentAccountStatus === AccountStatus.Active) {
-    return account
+    return { account, currentAccountStatus }
   }
   const token = await refreshAccessToken(account.refreshToken)
   const expiresAt = new Date(Date.now() + 1000 * (token.expires_in ?? 60 * 60))

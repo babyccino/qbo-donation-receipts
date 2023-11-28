@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, or } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session } from "next-auth"
@@ -16,8 +16,7 @@ import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/li
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
-import { DoneeInfo } from "@/types/db"
-import { accounts, doneeInfos, userDatas, users } from "db/schema"
+import { DoneeInfo, accounts, users } from "db/schema"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -178,68 +177,48 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  const rows = await db
-    .select({
+  const eqUserId = eq(users.id, session.user.id)
+  const account = await db.query.accounts.findFirst({
+    // if the realmId is specified get that account otherwise just get the first account for the user
+    where: queryRealmId ? and(eq(accounts.realmId, queryRealmId), eqUserId) : eqUserId,
+    columns: {
+      id: true,
+      accessToken: true,
+      scope: true,
+      realmId: true,
+      createdAt: true,
+      expiresAt: true,
+      refreshToken: true,
+      refreshTokenExpiresAt: true,
+    },
+    with: {
       doneeInfo: {
-        companyAddress: doneeInfos.companyAddress,
-        companyName: doneeInfos.companyName,
-        country: doneeInfos.country,
-        registrationNumber: doneeInfos.registrationNumber,
-        signatoryName: doneeInfos.signatoryName,
-        smallLogo: doneeInfos.smallLogo,
+        columns: {
+          companyAddress: true,
+          companyName: true,
+          country: true,
+          registrationNumber: true,
+          signatoryName: true,
+          smallLogo: true,
+        },
       },
-      userData: userDatas.id,
-      account: {
-        id: accounts.id,
-        accessToken: accounts.accessToken,
-        realmId: accounts.realmId,
-        createdAt: accounts.createdAt,
-        expiresAt: accounts.expiresAt,
-        refreshToken: accounts.refreshToken,
-        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
-        scope: accounts.scope,
-      },
-    })
-    .from(doneeInfos)
-    .fullJoin(
-      userDatas,
-      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
-    )
-    .fullJoin(
-      accounts,
-      or(
-        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
-        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
-      ),
-    )
-    .rightJoin(
-      users,
-      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
-    )
-    .where(
-      and(
-        eq(users.id, session.user.id),
-        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
-      ),
-    )
-    .limit(1)
+      userData: { columns: { id: true } },
+    },
+  })
 
-  const row = rows.at(0)
-  if (!row) throw new ApiError(500, "user not found in db")
-  const { account } = row
+  if (!account) throw new ApiError(500, "user not found in db")
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
 
-  // @ts-ignore
   refreshTokenIfNeeded(account)
 
-  const doneeInfo = row.doneeInfo
-    ? row.doneeInfo
+  const doneeInfo = account.doneeInfo
+    ? account.doneeInfo
     : await getCompanyInfo(account.accessToken, realmId)
 
-  const itemsFilledIn = Boolean(row.userData)
+  const itemsFilledIn = Boolean(account.userData)
 
   return {
     props: {

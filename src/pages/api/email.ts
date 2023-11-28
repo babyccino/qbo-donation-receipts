@@ -1,5 +1,6 @@
+import { createId } from "@paralleldrive/cuid2"
 import { renderToBuffer } from "@react-pdf/renderer"
-import { and, eq, gt, or, sql } from "drizzle-orm"
+import { and, eq, gt, sql } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
@@ -21,15 +22,7 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { Donation } from "@/types/qbo-api"
-import { createId } from "@paralleldrive/cuid2"
-import {
-  accounts,
-  doneeInfos,
-  emailHistories,
-  userDatas,
-  users,
-  donations as donationsSchema,
-} from "db/schema"
+import { accounts, donations as donationsSchema, emailHistories, users } from "db/schema"
 import { Awaitable } from "next-auth"
 
 const { testEmail } = config
@@ -49,51 +42,33 @@ const hasEmail = (donation: Donation): donation is DonationWithEmail => Boolean(
 const handler: AuthorisedHandler = async (req, res, session) => {
   const userId = session.user.id
   const { emailBody, recipientIds, realmId } = parseRequestBody(parser, req.body)
-  if (typeof realmId !== "string") throw new ApiError(500, "realmid not provided")
 
   const [row] = await Promise.all([
-    db
-      .select({
-        userData: {
-          items: userDatas.items,
-          startDate: userDatas.startDate,
-          endDate: userDatas.endDate,
+    db.query.accounts
+      .findFirst({
+        // if the realmId is specified get that account otherwise just get the first account for the user
+        where: and(eq(accounts.realmId, realmId), eq(users.id, session.user.id)),
+        columns: {
+          id: true,
+          accessToken: true,
+          scope: true,
+          realmId: true,
+          createdAt: true,
+          expiresAt: true,
+          refreshToken: true,
+          refreshTokenExpiresAt: true,
         },
-        doneeInfo: doneeInfos,
-        account: {
-          id: accounts.id,
-          accessToken: accounts.accessToken,
-          realmId: accounts.realmId,
-          createdAt: accounts.createdAt,
-          expiresAt: accounts.expiresAt,
-          refreshToken: accounts.refreshToken,
-          refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
-          scope: accounts.scope,
+        with: {
+          doneeInfo: {
+            columns: { accountId: false, createdAt: false, id: false, updatedAt: false },
+          },
+          userData: { columns: { items: true, startDate: true, endDate: true } },
+          user: { columns: { email: true } },
         },
-        email: users.email,
       })
-      .from(doneeInfos)
-      .fullJoin(
-        userDatas,
-        and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
-      )
-      .fullJoin(
-        accounts,
-        or(
-          and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
-          and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
-        ),
-      )
-      .rightJoin(
-        users,
-        or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
-      )
-      .where(and(eq(users.id, userId), eq(accounts.realmId, realmId)))
-      .limit(1)
-      .then(rows => {
-        const row = rows.at(0)
+      .then(row => {
         if (!row) throw new ApiError(500, "user not found in db")
-        const { account, doneeInfo, userData } = row
+        const { doneeInfo, userData, user, ...account } = row
         if (!account || account.scope !== "accounting" || !account.accessToken)
           throw new ApiError(401, "client not qbo-connected")
 
@@ -105,7 +80,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
           account,
           doneeInfo,
           userData: userData as { items: string; startDate: Date; endDate: Date },
-          email: row.email,
+          email: user.email,
         }
       }),
     db
@@ -113,7 +88,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       .from(emailHistories)
       .where(
         and(
-          eq(emailHistories.userId, userId),
+          eq(emailHistories.accountId, userId),
           gt(emailHistories.createdAt, new Date(Date.now() - DAY_LENGTH_MS)),
         ),
       )
@@ -123,6 +98,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   ])
 
   const { account, doneeInfo, userData, email } = row
+
   await refreshTokenIfNeeded(account)
 
   const [donations, signatureWebpDataUrl, logoWebpDataUrl] = await Promise.all([
@@ -154,7 +130,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     db
       .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(emailHistories)
-      .where(and(eq(emailHistories.userId, userId))),
+      .where(and(eq(emailHistories.accountId, userId))),
   ])
   const counter = counterRows[0]?.count || 0
 
@@ -241,10 +217,9 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   insertPromises.push(
     db.insert(emailHistories).values({
       id: emailHistoryId,
-      userId,
-      realmId,
       endDate: userData.endDate,
       startDate: userData.startDate,
+      accountId: account.id,
     }),
   )
   await Promise.all(insertPromises)
