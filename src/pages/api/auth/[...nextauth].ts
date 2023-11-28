@@ -11,6 +11,7 @@ import { base64EncodeString } from "@/lib/util/image-helper"
 import { fetchJsonData } from "@/lib/util/request"
 import { OpenIdUserInfo, QBOProfile, QboAccount } from "@/types/qbo-api"
 import { accounts, users } from "db/schema"
+import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 
 const {
   qboClientId,
@@ -102,7 +103,7 @@ const session: QboCallbacksOptions["session"] = async ({ session, user }) => {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(db),
+  adapter: DrizzleAdapter(db as BetterSQLite3Database<any>),
   session: {
     strategy: "database",
     maxAge: 60 * 30,

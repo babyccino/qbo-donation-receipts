@@ -85,6 +85,8 @@ export const DrizzleAdapter = (db: BetterSQLite3Database | LibSQLDatabase): Adap
           : DEFAULT_QBO_REFRESH_PERIOD_MS),
     )
     if (!account.access_token) throw new ApiError(500, "qbo did not return access code")
+    if (account.scope !== "profile" && account.scope !== "accounting")
+      throw new ApiError(500, "invalid account scope")
     await db.insert(accounts).values({
       id: createId(),
       userId: account.userId,

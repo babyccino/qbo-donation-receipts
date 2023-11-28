@@ -38,9 +38,10 @@ export type DateRange = {
   endDate: Date
 }
 export function doDateRangesIntersect(date1: DateRange, date2: DateRange): boolean {
-  if (date1.endDate.getTime() > date2.startDate.getTime())
-    return date1.startDate.getTime() < date2.endDate.getTime()
-  return false
+  return (
+    date1.endDate.getTime() > date2.startDate.getTime() &&
+    date1.startDate.getTime() < date2.endDate.getTime()
+  )
 }
 export const createDateRange = (startDateString: string, endDateString: string): DateRange => ({
   startDate: new Date(startDateString),
