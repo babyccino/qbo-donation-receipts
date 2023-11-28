@@ -71,7 +71,7 @@ type Props = {
   | { itemsFilledIn: false }
   | {
       itemsFilledIn: true
-      selectedItems: number[]
+      selectedItems: string[]
       dateRange: DateRange
     }
 )
@@ -142,7 +142,7 @@ export default function Items(serialisedProps: SerialisedProps) {
     if (!formRef.current) throw new Error("Form html element has not yet been initialised")
 
     const formData = new FormData(formRef.current)
-    return (formData.getAll("items") as string[]).map(item => parseInt(item))
+    return formData.getAll("items") as string[]
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
@@ -313,7 +313,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
   refreshTokenIfNeeded(account)
 
   const { userData } = row
-  const selectedItems = userData.items ? userData.items.split(",").map(id => parseInt(id)) : []
+  const selectedItems = userData.items ? userData.items.split(",") : []
   const props = {
     itemsFilledIn: true,
     session,

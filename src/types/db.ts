@@ -3,16 +3,16 @@ import { CompanyInfo, Donation } from "@/types/qbo-api"
 import Stripe from "stripe"
 
 export type DoneeInfo = {
-  signature: string | null
-  smallLogo: string | null
+  signature: string
+  smallLogo: string
   companyName: string
   companyAddress: string
   country: string
-  registrationNumber: string | null
-  signatoryName: string | null
+  registrationNumber: string
+  signatoryName: string
   id: string
   userId: string
-  largeLogo: string | null
+  largeLogo: string
   createdAt: Date
   updatedAt: Date
 }
@@ -47,10 +47,14 @@ type BillingAddress = {
 type DonationWithEmail = Donation & { email: string }
 type NotSent = Pick<Donation, "name" | "id">
 export type EmailHistoryItem = {
-  timeStamp: Date
-  dateRange: DateRange
-  donations: DonationWithEmail[]
-  notSent: NotSent[]
+  createdAt: Date
+  startDate: Date
+  endDate: Date
+  donations: { name: string; donorId: string }[]
+  // createdAt: Date
+  // dateRange: DateRange
+  // donations: DonationWithEmail[]
+  // notSent: NotSent[]
 }
 
 export type Subscription = {

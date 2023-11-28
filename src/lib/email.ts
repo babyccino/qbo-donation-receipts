@@ -24,12 +24,12 @@ Attached is your Income Tax Receipt for the ${getThisYear()} taxation year.
 With gratitude,`
 
 export function trimHistoryById(
-  recipientIds: Set<number>,
+  recipientIds: Set<string>,
   emailHistory: EmailHistoryItem[],
 ): EmailHistoryItem[] | null {
   const relevantEmailHistory: EmailHistoryItem[] = []
   for (const entry of emailHistory) {
-    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.id))
+    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.donorId))
     if (customerOverlap.length === 0) continue
     relevantEmailHistory.push({ ...entry, donations: customerOverlap })
   }
@@ -38,14 +38,15 @@ export function trimHistoryById(
 }
 
 export function trimHistoryByIdAndDateRange(
-  recipientIds: Set<number>,
+  recipientIds: Set<string>,
   dateRange: DateRange,
   emailHistory: EmailHistoryItem[],
 ): EmailHistoryItem[] | null {
   const relevantEmailHistory: EmailHistoryItem[] = []
   for (const entry of emailHistory) {
-    if (!doDateRangesIntersect(entry.dateRange, dateRange)) continue
-    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.id))
+    if (!doDateRangesIntersect({ startDate: entry.startDate, endDate: entry.endDate }, dateRange))
+      continue
+    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.donorId))
     if (customerOverlap.length === 0) continue
     relevantEmailHistory.push({ ...entry, donations: customerOverlap })
   }

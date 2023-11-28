@@ -10,7 +10,7 @@ import {
 import { userDatas } from "db/schema"
 
 export const parser = z.object({
-  items: z.array(z.number()),
+  items: z.array(z.string()),
   dateRange: z.object({
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
