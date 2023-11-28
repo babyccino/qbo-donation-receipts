@@ -3,8 +3,10 @@ import Stripe from "stripe"
 import { Readable } from "node:stream"
 
 import { stripe, manageSubscriptionStatusChange } from "@/lib/stripe"
-import { price, product, user } from "@/lib/db"
 import { config as envConfig } from "@/lib/util/config"
+import { db } from "@/lib/db/test"
+import { billingAddresses, prices, products } from "db/schema"
+import { eq } from "drizzle-orm"
 
 export const config = {
   api: {
@@ -67,6 +69,7 @@ async function handleEvent(event: Stripe.Event) {
     case "product.updated":
     case "product.deleted":
       await updateProduct(event.data.object as Stripe.Product)
+
       break
     case "price.created":
     case "price.updated":
@@ -105,27 +108,34 @@ function getId(product: string | { id: string } | null) {
 }
 
 async function updateProduct(data: Stripe.Product) {
-  const doc = product.doc(data.id)
-  if (data.deleted) await doc.delete()
+  if (data.deleted) await db.delete(products).where(eq(products.id, data.id))
   else
-    await doc.set(
-      {
+    await db
+      .insert(products)
+      .values({
         id: data.id,
         active: data.active,
         name: data.name,
         metadata: data.metadata,
-      },
-      { merge: true },
-    )
+      })
+      .onConflictDoUpdate({
+        target: [products.id],
+        set: {
+          active: data.active,
+          name: data.name,
+          metadata: data.metadata,
+          updatedAt: new Date(),
+        },
+      })
 }
 
 async function upsertPrice(data: Stripe.Price) {
   const productId = getId(data.product)
-  const doc = price(productId).doc(data.id)
-  if (data.deleted) await doc.delete()
+  if (data.deleted) await db.delete(prices).where(eq(prices.id, productId))
   else
-    await doc.set(
-      {
+    await db
+      .insert(prices)
+      .values({
         id: data.id,
         active: data.active,
         unitAmount: data.unit_amount ?? undefined,
@@ -134,9 +144,20 @@ async function upsertPrice(data: Stripe.Price) {
         metadata: data.metadata,
         interval: data.recurring?.interval,
         intervalCount: data.recurring?.interval_count,
-      },
-      { merge: true },
-    )
+      })
+      .onConflictDoUpdate({
+        target: [prices.id],
+        set: {
+          active: data.active,
+          unitAmount: data.unit_amount ?? undefined,
+          currency: data.currency,
+          type: data.type,
+          metadata: data.metadata,
+          interval: data.recurring?.interval,
+          intervalCount: data.recurring?.interval_count,
+          updatedAt: new Date(),
+        },
+      })
 }
 
 async function getSubscriptionFromCheckoutSession({
@@ -166,14 +187,22 @@ async function addBillingAddress(subscription: Stripe.Subscription) {
   const paymentMethod = await getPaymentMethodFromSubscription(subscription)
   const { address, phone, name } = paymentMethod.billing_details
 
-  return await user.doc(clientId).set(
-    {
-      billingAddress: {
-        address: address ?? undefined,
+  await db
+    .insert(billingAddresses)
+    .values({
+      id: subscription.id,
+      userId: clientId,
+      ...address,
+      phone: phone ?? undefined,
+      name: name ?? undefined,
+    })
+    .onConflictDoUpdate({
+      target: [billingAddresses.userId],
+      set: {
+        ...address,
         phone: phone ?? undefined,
         name: name ?? undefined,
+        updatedAt: new Date(),
       },
-    },
-    { merge: true },
-  )
+    })
 }

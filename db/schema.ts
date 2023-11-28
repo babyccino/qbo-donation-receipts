@@ -1,11 +1,29 @@
 import { relations, sql } from "drizzle-orm"
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { customType, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 import type { Stripe } from "stripe"
 
 const timestamp = (name: string) =>
   integer(name, { mode: "timestamp_ms" })
     .default(sql`(cast(strftime('%s', 'now') as int) * 1000)`)
     .notNull()
+
+function stringEnum<TData extends string>(name: string) {
+  return customType<{
+    data: TData
+    driverData: string
+  }>({
+    dataType: config => "text",
+  })(name)
+}
+
+const metadata = customType<{
+  data: Stripe.Metadata
+  driverData: string
+}>({
+  dataType: () => "text",
+  fromDriver: value => JSON.parse(value) as Stripe.Metadata,
+  toDriver: value => JSON.stringify(value),
+})
 
 export const users = sqliteTable(
   "users",
@@ -31,14 +49,16 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   billingAddress: one(billingAddresses),
 }))
 
+type hi = Stripe.Subscription.Status
+
 export const subscriptions = sqliteTable(
   "subscriptions",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
     userId: text("user_id", { length: 191 }).notNull(),
-    status: text("status"),
-    metadata: text("metadata", { mode: "json" }),
-    cancelAtPeriodEnd: integer(""),
+    status: stringEnum<Stripe.Subscription.Status>("status"),
+    metadata: metadata("metadata"),
+    cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }),
     currentPeriodStart: integer("current_period_start", { mode: "timestamp_ms" }).notNull(),
     currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }).notNull(),
     endedAt: integer("ended_at", { mode: "timestamp_ms" }),
@@ -108,7 +128,7 @@ export const accounts = sqliteTable(
     idToken: text("id_token"),
     refreshToken: text("refresh_token").notNull(),
     refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp_ms" }).notNull(),
-    scope: text("scope", { length: 191 }),
+    scope: stringEnum<"accounting" | "profile">("scope"),
     tokenType: text("token_type", { length: 191 }),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
@@ -270,22 +290,26 @@ export const verificationTokens = sqliteTable(
 )
 export type VerificationToken = typeof verificationTokens.$inferSelect
 
-// TODO models still to migrate:
+export const products = sqliteTable("verification_tokens", {
+  id: text("id", { length: 191 }).primaryKey().notNull(),
+  active: integer("active", { mode: "boolean" }),
+  name: text("name"),
+  metadata: metadata("metadata"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+})
+export type Product = typeof products.$inferSelect
 
-export type Product = {
-  id: string
-  active?: boolean
-  name?: string
-  metadata?: Stripe.Metadata
-}
-
-export type Price = {
-  id: string
-  active?: boolean
-  unitAmount?: number
-  currency?: string
-  type?: Stripe.Price.Type
-  interval?: Stripe.Price.Recurring.Interval
-  intervalCount?: number
-  metadata?: Stripe.Metadata
-}
+export const prices = sqliteTable("verification_tokens", {
+  id: text("id", { length: 191 }).primaryKey().notNull(),
+  active: integer("active", { mode: "boolean" }),
+  unitAmount: integer("unit_amount"),
+  currency: text("currency"),
+  type: stringEnum<Stripe.Price.Type>("type"),
+  interval: stringEnum<Stripe.Price.Recurring.Interval>("interval"),
+  intervalCount: integer("interval_count"),
+  metadata: metadata("metadata"),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
+})
+export type Price = typeof prices.$inferSelect

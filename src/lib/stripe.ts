@@ -1,9 +1,8 @@
 import Stripe from "stripe"
 
-import { user } from "@/lib/db"
-import { User } from "@/types/db"
 import { config } from "@/lib/util/config"
-import { RequiredField } from "@/lib/util/etc"
+import { Subscription, subscriptions } from "db/schema"
+import { db } from "@/lib/db/test"
 
 export const stripe = new Stripe(config.stripePrivateKey, { apiVersion: "2023-08-16" })
 
@@ -13,31 +12,44 @@ function getDate(timeStamp: number | null | undefined) {
   if (typeof timeStamp === "number") return new Date(timeStamp * 1000)
   else return undefined
 }
+
 export async function manageSubscriptionStatusChange(subscription: Stripe.Subscription) {
   const { clientId } = subscription.metadata
   if (!clientId) throw new Error("user id not found in subscription metadata")
 
-  return await user.doc(clientId).set(
-    {
-      subscription: {
+  await db
+    .insert(subscriptions)
+    .values({
+      id: subscription.id,
+      userId: clientId,
+      status: subscription.status,
+      metadata: subscription.metadata,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      createdAt: getDate(subscription.created),
+      currentPeriodStart: getDate(subscription.current_period_start),
+      currentPeriodEnd: getDate(subscription.current_period_end),
+      endedAt: getDate(subscription.ended_at),
+      cancelAt: getDate(subscription.cancel_at),
+      canceledAt: getDate(subscription.canceled_at),
+    })
+    .onConflictDoUpdate({
+      target: [subscriptions.userId],
+      set: {
         id: subscription.id,
         status: subscription.status,
         metadata: subscription.metadata,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        created: getDate(subscription.created),
+        createdAt: getDate(subscription.created),
         currentPeriodStart: getDate(subscription.current_period_start),
         currentPeriodEnd: getDate(subscription.current_period_end),
         endedAt: getDate(subscription.ended_at),
         cancelAt: getDate(subscription.cancel_at),
         canceledAt: getDate(subscription.canceled_at),
       },
-    },
-    { merge: true },
-  )
+    })
 }
 
-export function isUserSubscribed(user: User): user is RequiredField<User, "subscription"> {
-  const { subscription } = user
+export function isUserSubscribed(subscription: Pick<Subscription, "status" | "currentPeriodEnd">) {
   if (!subscription) return false
   if (subscription.status) return subscription.status === "active"
   return subscription.currentPeriodEnd.getTime() >= new Date().getTime()
