@@ -14,24 +14,23 @@ import {
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
-import { getUserData, storageBucket } from "@/lib/db"
-import {
-  checkUserDataCompletion,
-  downloadImageAndConvertToPng,
-  isUserDataComplete
-} from "@/lib/db-helper"
+import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { storageBucket } from "@/lib/db"
+import { downloadImageAndConvertToPng } from "@/lib/db-helper"
+import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
+import { db } from "@/lib/db/test"
 import { getDonations } from "@/lib/qbo-api"
-import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
-import { subscribe } from "@/lib/util/request"
+import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { DoneeInfo } from "@/types/db"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
+import { accounts, doneeInfos, userDatas, users } from "db/schema"
+import { and, eq, isNotNull, or } from "drizzle-orm"
+import { ApiError } from "next/dist/server/api-utils"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -47,12 +46,12 @@ const ShowReceipt = dynamic(() => import("@/components/receipt/pdf").then(imp =>
   loadImmediately: true,
 })
 
-function DownloadAllFiles() {
+function DownloadAllFiles({ realmId }: { realmId: string }) {
   const [loading, setLoading] = useState(false)
 
   const onClick = async () => {
     setLoading(true)
-    const response = await fetch("/api/receipts")
+    const response = await fetchJsonData(`/api/receipts/${realmId}`)
     if (!response.ok) throw new Error("There was an issue downloading the ZIP file")
     setLoading(false)
     download(await response.blob())
@@ -140,6 +139,7 @@ type Props =
       donations: Donation[]
       doneeInfo: DoneeInfo
       subscribed: boolean
+      realmId: string
     }
   | {
       receiptsReady: false
@@ -197,7 +197,7 @@ export default function IndexPage(props: Props) {
 
   if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
-  const { doneeInfo, subscribed } = props
+  const { doneeInfo, subscribed, realmId } = props
   const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
@@ -230,7 +230,7 @@ export default function IndexPage(props: Props) {
     <section className="flex h-full w-full flex-col p-8">
       <Show when={subscribed}>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <DownloadAllFiles />
+          <DownloadAllFiles realmId={realmId} />
           <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
             <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
             <Link href="/email">Email</Link>
@@ -282,38 +282,97 @@ export default function IndexPage(props: Props) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
 
-  const user = await getUserData(session.user.id)
-  if (!user) throw new Error("No user data found in database")
+  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  if (!isUserDataComplete(user))
+  const rows = await db
+    .select({
+      userData: {
+        items: userDatas.items,
+        startDate: userDatas.startDate,
+        endDate: userDatas.endDate,
+      },
+      doneeInfo: doneeInfos,
+      account: {
+        id: accounts.id,
+        accessToken: accounts.accessToken,
+        realmId: accounts.realmId,
+        createdAt: accounts.createdAt,
+        expiresAt: accounts.expiresAt,
+        refreshToken: accounts.refreshToken,
+        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
+        scope: accounts.scope,
+      },
+    })
+    .from(doneeInfos)
+    .fullJoin(
+      userDatas,
+      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
+    )
+    .fullJoin(
+      accounts,
+      or(
+        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
+        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
+      ),
+    )
+    .rightJoin(
+      users,
+      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
+    )
+    .where(
+      and(
+        eq(users.id, session.user.id),
+        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
+      ),
+    )
+    .limit(1)
+
+  const row = rows.at(0)
+  if (!row) throw new ApiError(500, "user not found in db")
+  const { account, doneeInfo, userData } = row
+  if (!account || account.scope !== "accounting" || !account.accessToken)
+    return disconnectedRedirect
+  const realmId = queryRealmId ?? account.realmId
+  if (!realmId) return disconnectedRedirect
+  account.realmId = realmId
+
+  if (!doneeInfo || !userData)
     return {
       props: {
         receiptsReady: false,
-        filledIn: checkUserDataCompletion(user),
+        filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
       },
     }
 
-  const { donee } = user
+  // @ts-ignore
+  refreshTokenIfNeeded(account)
+
   const [donations, pngSignature, pngLogo] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, user.dateRange, user.items),
-    downloadImageAndConvertToPng(storageBucket, donee.signature),
-    downloadImageAndConvertToPng(storageBucket, donee.smallLogo),
+    getDonations(
+      account.accessToken,
+      realmId,
+      { startDate: userData.startDate, endDate: userData.endDate },
+      userData.items ? userData.items.split(",").map(str => parseInt(str)) : [],
+    ),
+    downloadImageAndConvertToPng(storageBucket, doneeInfo.signature),
+    downloadImageAndConvertToPng(storageBucket, doneeInfo.smallLogo),
   ])
-  donee.signature = pngSignature
-  donee.smallLogo = pngLogo
-  const subscribed = isUserSubscribed(user)
+  doneeInfo.signature = pngSignature
+  doneeInfo.smallLogo = pngLogo
+  // const subscribed = isUserSubscribed(user)
+  const subscribed = true
 
   return {
     props: {
       receiptsReady: true,
       session,
       donations: subscribed ? donations : donations.slice(0, 3),
-      doneeInfo: donee,
+      doneeInfo,
       subscribed,
-    },
+      realmId,
+    } satisfies Props,
   }
 }

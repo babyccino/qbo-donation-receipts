@@ -1,10 +1,33 @@
-import { sql } from "drizzle-orm"
+import { DateRange } from "@/lib/util/date"
+import { Donation } from "@/types/qbo-api"
+import { relations, sql } from "drizzle-orm"
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
 
 const timestamp = (name: string) =>
   integer(name, { mode: "timestamp_ms" })
     .default(sql`(cast(strftime('%s', 'now') as int) * 1000)`)
     .notNull()
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: text("id", { length: 191 }).primaryKey().notNull(),
+    name: text("name", { length: 191 }),
+    email: text("email", { length: 191 }).notNull(),
+    emailVerified: timestamp("emailVerified"),
+    image: text("image", { length: 191 }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  user => ({
+    emailIndex: uniqueIndex("users__email__idx").on(user.email),
+  }),
+)
+
+export const usersRelations = relations(users, ({ many }) => ({
+  accounts: many(accounts),
+  sessions: many(sessions),
+}))
 
 export const accounts = sqliteTable(
   "accounts",
@@ -14,7 +37,7 @@ export const accounts = sqliteTable(
     type: text("type", { length: 191 }).notNull(),
     provider: text("provider", { length: 191 }).notNull(),
     providerAccountId: text("provider_account_id", { length: 191 }).notNull(),
-    accessToken: text("access_token"),
+    accessToken: text("access_token").notNull(),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     idToken: text("id_token"),
     refreshToken: text("refresh_token").notNull(),
@@ -35,38 +58,6 @@ export const accounts = sqliteTable(
       account.realmId,
     ),
     userIdIndex: index("accounts__userId__idx").on(account.userId),
-  }),
-)
-
-export const sessions = sqliteTable(
-  "sessions",
-  {
-    id: text("id", { length: 191 }).primaryKey().notNull(),
-    sessionToken: text("sessionToken", { length: 191 }).notNull(),
-    userId: text("userId", { length: 191 }).notNull(),
-    expires: integer("expires").notNull(),
-    createdAt: timestamp("created_at"),
-    updatedAt: timestamp("updated_at"),
-  },
-  session => ({
-    sessionTokenIndex: uniqueIndex("sessions__sessionToken__idx").on(session.sessionToken),
-    userIdIndex: index("sessions__userId__idx").on(session.userId),
-  }),
-)
-
-export const users = sqliteTable(
-  "users",
-  {
-    id: text("id", { length: 191 }).primaryKey().notNull(),
-    name: text("name", { length: 191 }),
-    email: text("email", { length: 191 }).notNull(),
-    emailVerified: timestamp("emailVerified"),
-    image: text("image", { length: 191 }),
-    createdAt: timestamp("created_at"),
-    updatedAt: timestamp("updated_at"),
-  },
-  user => ({
-    emailIndex: uniqueIndex("users__email__idx").on(user.email),
   }),
 )
 
@@ -114,6 +105,71 @@ export const doneeInfos = sqliteTable(
       doneeInfo.userId,
       doneeInfo.realmId,
     ),
+  }),
+)
+
+export const emailHistories = sqliteTable(
+  "email_histories",
+  {
+    id: text("id", { length: 191 }).primaryKey().notNull(),
+    userId: text("user_id", { length: 191 }).notNull(),
+    realmId: text("realmid").notNull(),
+    startDate: integer("start_date", { mode: "timestamp_ms" }).notNull(),
+    endDate: integer("end_date", { mode: "timestamp_ms" }).notNull(),
+    createdAt: timestamp("created_at"),
+  },
+  emailHistory => ({
+    userIdRealmIdIndex: index("email_histories__user_id__realmid__idx").on(
+      emailHistory.userId,
+      emailHistory.realmId,
+    ),
+  }),
+)
+
+export const emailHistoriesRelations = relations(emailHistories, ({ many, one }) => ({
+  donations: many(donations),
+  user: one(users, {
+    fields: [emailHistories.userId],
+    references: [users.id],
+  }),
+}))
+
+export const donations = sqliteTable(
+  "donations",
+  {
+    id: text("id", { length: 191 }).primaryKey().notNull(),
+    emailHistoryId: text("email_history_id", { length: 191 }).notNull(),
+    donorId: text("id", { length: 191 }).notNull(),
+    total: integer("total", { mode: "number" }).notNull(),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    createdAt: timestamp("created_at"),
+  },
+  donation => ({
+    emailHistoryIndex: uniqueIndex("donations__email_history_id__idx").on(donation.emailHistoryId),
+  }),
+)
+
+export const donationsRelations = relations(donations, ({ one }) => ({
+  emailHistory: one(emailHistories, {
+    fields: [donations.donorId],
+    references: [emailHistories.id],
+  }),
+}))
+
+export const sessions = sqliteTable(
+  "sessions",
+  {
+    id: text("id", { length: 191 }).primaryKey().notNull(),
+    sessionToken: text("sessionToken", { length: 191 }).notNull(),
+    userId: text("userId", { length: 191 }).notNull(),
+    expires: integer("expires").notNull(),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  session => ({
+    sessionTokenIndex: uniqueIndex("sessions__sessionToken__idx").on(session.sessionToken),
+    userIdIndex: index("sessions__userId__idx").on(session.userId),
   }),
 )
 
