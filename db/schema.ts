@@ -24,10 +24,74 @@ export const users = sqliteTable(
 )
 export type User = typeof users.$inferSelect
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
+  subscription: one(subscriptions),
+  billingAddress: one(billingAddresses),
 }))
+
+export const subscriptions = sqliteTable(
+  "subscriptions",
+  {
+    id: text("id", { length: 191 }).primaryKey().notNull(),
+    userId: text("user_id", { length: 191 }).notNull(),
+    status: text("status"),
+    metadata: text("metadata", { mode: "json" }),
+    cancelAtPeriodEnd: integer(""),
+    currentPeriodStart: integer("current_period_start", { mode: "timestamp_ms" }).notNull(),
+    currentPeriodEnd: integer("current_period_end", { mode: "timestamp_ms" }).notNull(),
+    endedAt: integer("ended_at", { mode: "timestamp_ms" }),
+    cancelAt: integer("cancel_at", { mode: "timestamp_ms" }),
+    canceledAt: integer("canceled_at", { mode: "timestamp_ms" }),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  subscription => ({
+    userIdIndex: uniqueIndex("subscriptions__user_id__idx").on(subscription.userId),
+  }),
+)
+export type Subscription = typeof subscriptions.$inferSelect
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [subscriptions.userId],
+    references: [users.id],
+  }),
+}))
+
+export const billingAddresses = sqliteTable(
+  "billing_addresses",
+  {
+    id: text("id", { length: 191 }).primaryKey().notNull(),
+    userId: text("user_id", { length: 191 }).notNull(),
+    city: text("city"),
+    country: text("country"),
+    line1: text("line1"),
+    line2: text("line2"),
+    postalCode: text("postal_code"),
+    state: text("state"),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  billingAddress => ({
+    userIdIndex: uniqueIndex("billing_addresses__user_id__idx").on(billingAddress.userId),
+  }),
+)
+export type BillingAddress = typeof billingAddresses.$inferSelect
+
+export const billingAddressesRelations = relations(billingAddresses, ({ one }) => ({
+  user: one(users, {
+    fields: [billingAddresses.userId],
+    references: [users.id],
+  }),
+}))
+
+export type BillingAddress2 = {
+  phone: string
+  address: Stripe.Address
+  name: string
+}
 
 export const accounts = sqliteTable(
   "accounts",
@@ -206,19 +270,6 @@ export type VerificationToken = typeof verificationTokens.$inferSelect
 
 // TODO models still to migrate:
 
-export type Subscription = {
-  id: string
-  status?: Stripe.Subscription.Status
-  metadata?: Stripe.Metadata
-  cancelAtPeriodEnd?: boolean
-  created: Date
-  currentPeriodStart: Date
-  currentPeriodEnd: Date
-  endedAt?: Date
-  cancelAt?: Date
-  canceledAt?: Date
-}
-
 export type Product = {
   id: string
   active?: boolean
@@ -235,10 +286,4 @@ export type Price = {
   interval?: Stripe.Price.Recurring.Interval
   intervalCount?: number
   metadata?: Stripe.Metadata
-}
-
-export type BillingAddress = {
-  phone: string
-  address: Stripe.Address
-  name: string
 }
