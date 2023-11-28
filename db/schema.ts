@@ -65,6 +65,8 @@ export const billingAddresses = sqliteTable(
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
     userId: text("user_id", { length: 191 }).notNull(),
+    name: text("name"),
+    phone: text("phone"),
     city: text("city"),
     country: text("country"),
     line1: text("line1"),
