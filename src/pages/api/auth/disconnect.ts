@@ -1,18 +1,17 @@
-import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
+import { and, eq } from "drizzle-orm"
+import { NextApiHandler } from "next"
 import { getServerSession } from "next-auth"
-import { getToken } from "next-auth/jwt"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
-import { user } from "@/lib/db"
+import { serverSignIn } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db/test"
 import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
-import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
-import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-server"
 import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { QboPermission } from "@/types/next-auth-helper"
+import { accounts } from "db/schema"
 
 const {
   qboClientId,
@@ -44,23 +43,6 @@ async function revokeAccessToken(token: string): Promise<void> {
   }
 }
 
-async function disconnectClient(req: NextApiRequest, res: NextApiResponse) {
-  const token = await getToken({ req, secret, secureCookie: Boolean(vercelEnv) })
-  if (!token) throw new ApiError(500, "Client has session but session token was not found")
-
-  token.accessToken = null
-  token.realmId = null
-  token.qboPermission = QboPermission.None
-  return updateServerSession(res, token)
-}
-
-async function disconnectUserByRealmId(realmId: string) {
-  const query = await user.where("realmId", "==", realmId).get()
-  if (query.empty) return
-  const promises = query.docs.map(doc => doc.ref.set({ connected: false }, { merge: true }))
-  await Promise.all(promises)
-}
-
 export const parser = z.object({
   redirect: z.boolean().default(true),
   reconnect: z.boolean().default(false),
@@ -71,10 +53,8 @@ const handler: NextApiHandler = async (req, res) => {
   if (!(req.method === "GET" || req.method === "POST")) return res.status(405).end()
 
   const session = await getServerSession(req, res, authOptions)
-
   const realmId = req.query["realmId"]
-  if (session) user.doc(session.user.id).set({ connected: false }, { merge: true })
-  else if (typeof realmId === "string") disconnectUserByRealmId(realmId)
+  if (typeof realmId !== "string") throw new ApiError(400, "realmId not provided")
 
   // the caller can specify whether or not they want their access token to be disconnected
   // this is because if the user has been disconnected from within QBO then they will have
@@ -82,11 +62,32 @@ const handler: NextApiHandler = async (req, res) => {
   // if the user is disconnecting from within the application the tokens will need to be
   // revoked by us
   const shouldRevokeAccessToken = req.query["revoke"] === "true"
-  if (session && session.accessToken && shouldRevokeAccessToken)
-    await revokeAccessToken(session.accessToken)
+  if (session && shouldRevokeAccessToken) {
+    const account = await db.query.accounts.findFirst({
+      where: and(eq(accounts.userId, session.user.id), eq(accounts.realmId, realmId)),
+      columns: {
+        accessToken: true,
+      },
+    })
+    if (account?.accessToken) await revokeAccessToken(account?.accessToken)
+    // if the user is signed in already and disconnected there is nothing for us to do
+    else return res.redirect(302, "/auth/disconnected")
+  }
 
-  // if the user is signed in already and disconnected there is nothing for us to do
-  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
+  await db
+    .update(accounts)
+    .set({
+      accessToken: null,
+      expiresAt: null,
+      refreshToken: null,
+      refreshTokenExpiresAt: null,
+    })
+    .where(
+      and(
+        eq(accounts.realmId, realmId),
+        session ? eq(accounts.userId, session.user.id) : undefined,
+      ),
+    )
 
   const { redirect, reconnect } = parseRequestBody(parser, req.body || {})
 
@@ -106,9 +107,6 @@ const handler: NextApiHandler = async (req, res) => {
     if (redirect) return
     else res.status(200).json({ redirect: redirectUrl })
   } else {
-    // no longer valid access tokens need to be removed from the user's session
-    await disconnectClient(req, res)
-
     if (redirect) res.redirect(302, "/auth/disconnected")
     else res.status(200).json({ redirect: "/auth/disconnected" })
   }

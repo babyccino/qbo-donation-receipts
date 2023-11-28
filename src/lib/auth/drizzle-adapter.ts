@@ -5,7 +5,7 @@ import { LibSQLDatabase } from "drizzle-orm/libsql"
 import { Adapter, AdapterSession } from "next-auth/adapters"
 import { ApiError } from "next/dist/server/api-utils"
 
-import { accounts, sessions, users, verificationTokens } from "db/schema"
+import { accounts, sessions, users, verificationTokens, Account } from "db/schema"
 
 const DEFAULT_QBO_REFRESH_PERIOD_DAYS = 101
 const SECONDS_IN_DAY = 60 * 60 * 24
@@ -19,10 +19,8 @@ export enum AccountStatus {
 export function accountStatus({
   expiresAt,
   refreshTokenExpiresAt,
-}: {
-  expiresAt: Date
-  refreshTokenExpiresAt: Date
-}) {
+}: Pick<Account, "expiresAt" | "refreshTokenExpiresAt">) {
+  if (!expiresAt || !refreshTokenExpiresAt) return AccountStatus.RefreshExpired
   if (Date.now() > refreshTokenExpiresAt.getTime()) return AccountStatus.RefreshExpired
   if (Date.now() > expiresAt.getTime()) return AccountStatus.AccessExpired
   return AccountStatus.Active
@@ -87,21 +85,38 @@ export const DrizzleAdapter = (db: BetterSQLite3Database | LibSQLDatabase): Adap
     if (!account.access_token) throw new ApiError(500, "qbo did not return access code")
     if (account.scope !== "profile" && account.scope !== "accounting")
       throw new ApiError(500, "invalid account scope")
-    await db.insert(accounts).values({
-      id: createId(),
-      userId: account.userId,
-      realmId,
-      type: account.type,
-      provider: account.provider,
-      providerAccountId: account.providerAccountId,
-      accessToken: account.access_token,
-      expiresAt,
-      idToken: account.id_token as string,
-      refreshToken: account.refresh_token as string,
-      refreshTokenExpiresAt,
-      scope: account.scope,
-      tokenType: account.token_type,
-    })
+    await db
+      .insert(accounts)
+      .values({
+        id: createId(),
+        userId: account.userId,
+        realmId,
+        type: account.type,
+        provider: account.provider,
+        providerAccountId: account.providerAccountId,
+        accessToken: account.access_token,
+        expiresAt,
+        idToken: account.id_token as string,
+        refreshToken: account.refresh_token as string,
+        refreshTokenExpiresAt,
+        scope: account.scope,
+        tokenType: account.token_type,
+      })
+      .onConflictDoUpdate({
+        target: [accounts.userId, accounts.realmId],
+        set: {
+          type: account.type,
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+          accessToken: account.access_token,
+          expiresAt,
+          idToken: account.id_token as string,
+          refreshToken: account.refresh_token as string,
+          refreshTokenExpiresAt,
+          scope: account.scope,
+          tokenType: account.token_type,
+        },
+      })
   },
   async unlinkAccount({ providerAccountId, provider }) {
     await db
