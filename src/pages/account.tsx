@@ -31,6 +31,7 @@ type Props = {
   smallLogo: string | null
   companyName: string | null
   connected: boolean
+  realmId: string
 } & (
   | { subscribed: false }
   | {
@@ -48,12 +49,14 @@ function ProfileCard({
   name,
   subscription,
   connected,
+  realmId,
 }: {
   name: string
   smallLogo: string | null
   companyName: string | null
   subscription?: Subscription
   connected: boolean
+  realmId: string
 }) {
   const router = useRouter()
   const { data: session } = useSession()
@@ -124,7 +127,10 @@ function ProfileCard({
           className="flex-shrink"
           onClick={async () => {
             const body: DisconnectBody = { redirect: false }
-            const res = await postJsonData("/api/auth/disconnect?revoke=true", body)
+            const res = await postJsonData(
+              `/api/auth/disconnect?revoke=true&realmId=${realmId}`,
+              body,
+            )
             router.push("/auth/disconnected")
             // router.push(res.redirect)
           }}
@@ -141,7 +147,7 @@ function ProfileCard({
 }
 
 export default function AccountPage(props: Props) {
-  const { subscribed, connected, name, companyName, smallLogo } = props
+  const { subscribed, connected, name, companyName, smallLogo, realmId } = props
   return (
     <section className="flex min-h-screen flex-col p-4 sm:flex-row sm:justify-center sm:p-10">
       <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
@@ -169,6 +175,7 @@ export default function AccountPage(props: Props) {
           name={name}
           subscription={subscribed ? props.subscription : undefined}
           connected={connected}
+          realmId={realmId}
         />
       </div>
     </section>
@@ -209,6 +216,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   const { billingAddress, subscription } = user
   const { doneeInfo } = account
   const connected = account.scope === "accounting"
+  const realmId = account.realmId ?? queryRealmId
+  if (!realmId) throw new ApiError(500, "realmId not provided by either client or db")
 
   // if (!subscribed)
   if (subscription && isUserSubscribed(subscription)) {
@@ -221,6 +230,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         smallLogo: doneeInfo?.smallLogo ? getImageUrl(doneeInfo.smallLogo) : null,
         name: billingAddress?.name ?? user.name ?? "",
         connected,
+        realmId,
       } satisfies Props,
     }
   }
@@ -232,6 +242,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       smallLogo: doneeInfo?.smallLogo ? getImageUrl(doneeInfo.smallLogo) : null,
       name: billingAddress?.name ?? user.name ?? "",
       connected,
+      realmId,
     } satisfies Props,
   }
 }

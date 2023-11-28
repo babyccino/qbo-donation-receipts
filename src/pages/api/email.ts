@@ -103,7 +103,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   const [donations, signatureWebpDataUrl, logoWebpDataUrl] = await Promise.all([
     getDonations(
-      account.accessToken,
+      account.accessToken as string,
       realmId,
       { startDate: userData.startDate, endDate: userData.endDate },
       userData.items.split(","),

@@ -35,7 +35,7 @@ export async function refreshTokenIfNeeded<
   } else if (currentAccountStatus === AccountStatus.Active) {
     return { account, currentAccountStatus }
   }
-  const token = await refreshAccessToken(account.refreshToken)
+  const token = await refreshAccessToken(account.refreshToken as string)
   const expiresAt = new Date(Date.now() + 1000 * (token.expires_in ?? 60 * 60))
   const refreshTokenExpiresAt = new Date(
     Date.now() + 1000 * (token.x_refresh_token_expires_in ?? 60 * 60 * 24 * 101),
