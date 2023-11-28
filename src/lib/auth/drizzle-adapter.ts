@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm"
 import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 import { LibSQLDatabase } from "drizzle-orm/libsql"
 import { Adapter, AdapterSession } from "next-auth/adapters"
+import { ApiError } from "next/dist/server/api-utils"
 
 import { accounts, sessions, users, verificationTokens } from "db/schema"
 
@@ -83,6 +84,7 @@ export const DrizzleAdapter = (db: BetterSQLite3Database | LibSQLDatabase): Adap
           ? refreshTokenExpiresInSeconds * 1000
           : DEFAULT_QBO_REFRESH_PERIOD_MS),
     )
+    if (!account.access_token) throw new ApiError(500, "qbo did not return access code")
     await db.insert(accounts).values({
       id: createId(),
       userId: account.userId,

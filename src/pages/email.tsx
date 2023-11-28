@@ -3,6 +3,7 @@ import {
   InformationCircleIcon as Info,
   ChevronUpIcon as UpArrow,
 } from "@heroicons/react/24/solid"
+import { and, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { ApiError } from "next/dist/server/api-utils"
@@ -11,30 +12,32 @@ import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { EmailSentToast, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
-import { getUserData, storageBucket } from "@/lib/db"
-import {
-  checkUserDataCompletion,
-  downloadImagesForDonee,
-  isUserDataComplete,
-} from "@/lib/db-helper"
+import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { storageBucket } from "@/lib/db"
+import { downloadImagesForDonee } from "@/lib/db-helper"
+import { db } from "@/lib/db/test"
 import {
   formatEmailBody,
   makeDefaultEmailBody,
   templateDonorName,
   trimHistoryById,
-  trimHistoryByIdAndDateRange,
 } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
-import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
 import { EmailDataType } from "@/pages/api/email"
 import { DoneeInfo, EmailHistoryItem } from "@/types/db"
 import { WithBodyProps } from "@/types/receipt"
+import {
+  accounts,
+  donations as donationsSchema,
+  doneeInfos,
+  emailHistories,
+  userDatas,
+  users,
+} from "db/schema"
 
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
@@ -130,20 +133,19 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistoryItem[
               className="group/item flex w-full items-center justify-between p-5 text-left font-medium text-gray-500"
             >
               <summary className="flex items-center justify-between gap-2">
-                {formatDateHtml(entry.timeStamp)}
+                {formatDateHtml(entry.createdAt)}
                 <UpArrow className="h-3 w-3 shrink-0 group-open/item:rotate-180" />
               </summary>
               <div className="mt-2 font-light">
                 <p className="mb-2">
-                  This campaign spanned donations from{" "}
-                  <i>{formatDateHtml(entry.dateRange.startDate)}</i> to{" "}
-                  <i>{formatDateHtml(entry.dateRange.endDate)}</i>
+                  This campaign spanned donations from <i>{formatDateHtml(entry.startDate)}</i> to{" "}
+                  <i>{formatDateHtml(entry.endDate)}</i>
                 </p>
                 Donors:
                 <br />
                 <ul className="list-inside list-disc">
                   {entry.donations.map(donation => (
-                    <li key={donation.id}>{donation.name}</li>
+                    <li key={donation.name}>{donation.name}</li>
                   ))}
                 </ul>
               </div>
@@ -158,9 +160,11 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistoryItem[
 function SendEmails({
   recipients,
   emailHistory,
+  realmId,
 }: {
-  recipients: Set<number>
+  recipients: Set<string>
   emailHistory: EmailHistoryItem[] | null
+  realmId: string
 }) {
   const [showModal, setShowModal] = useState(false)
   const [showEmailSentToast, setShowEmailSentToast] = useState(false)
@@ -171,6 +175,7 @@ function SendEmails({
     const data: EmailDataType = {
       emailBody: emailBody,
       recipientIds: Array.from(recipients),
+      realmId,
     }
     try {
       await postJsonData("/api/email", data)
@@ -240,21 +245,22 @@ enum RecipientStatus {
   Valid = 0,
   NoEmail,
 }
-type Recipient = { name: string; id: number; status: RecipientStatus }
+type Recipient = { name: string; donorId: string; status: RecipientStatus }
 type CompleteAccountProps = {
   accountStatus: AccountStatus.Complete
   donee: DoneeInfo
   recipients: Recipient[]
   emailHistory: EmailHistoryItem[] | null
+  realmId: string
 }
-function CompleteAccountEmail({ donee, recipients, emailHistory }: CompleteAccountProps) {
+function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: CompleteAccountProps) {
   const defaultRecipients = useMemo(
     () => recipients.filter(recipient => recipient.status === RecipientStatus.Valid),
     [recipients],
   )
   const [customRecipients, setCustomRecipients] = useState(defaultCustomRecipientsState)
   const [recipientIds, setRecipientIds] = useState(
-    new Set<number>(defaultRecipients.map(({ id }) => id)),
+    new Set<string>(defaultRecipients.map(({ donorId }) => donorId)),
   )
 
   const trimmedHistory =
@@ -276,16 +282,16 @@ function CompleteAccountEmail({ donee, recipients, emailHistory }: CompleteAccou
           <hr className="my-6 h-px border-0 bg-gray-200 dark:bg-gray-700" />
           {customRecipients && (
             <div className="mt-4 sm:grid sm:grid-cols-2">
-              {recipients.map(({ id, name, status }) => (
+              {recipients.map(({ donorId, name, status }) => (
                 <Toggle
-                  key={id}
-                  id={id}
+                  key={donorId}
+                  id={donorId}
                   label={name}
                   defaultChecked={status === RecipientStatus.Valid}
                   disabled={status === RecipientStatus.NoEmail}
                   onChange={e =>
                     setRecipientIds(set =>
-                      e.currentTarget.checked ? set.add(id) : (set.delete(id), set),
+                      e.currentTarget.checked ? set.add(donorId) : (set.delete(donorId), set),
                     )
                   }
                   size="sm"
@@ -305,7 +311,7 @@ function CompleteAccountEmail({ donee, recipients, emailHistory }: CompleteAccou
                 {recipients
                   .filter(recipient => recipient.status === RecipientStatus.NoEmail)
                   .map(recipient => (
-                    <li className="truncate" key={recipient.id}>
+                    <li className="truncate" key={recipient.donorId}>
                       {recipient.name}
                     </li>
                   ))}
@@ -317,7 +323,7 @@ function CompleteAccountEmail({ donee, recipients, emailHistory }: CompleteAccou
       <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
         <div className="mb-4 flex justify-center gap-4">
           <EmailPreview donee={donee} />
-          <SendEmails recipients={recipientIds} emailHistory={trimmedHistory} />
+          <SendEmails recipients={recipientIds} emailHistory={trimmedHistory} realmId={realmId} />
         </div>
         <Show when={recipientIds.size === 0}>
           <Alert color="warning" className="mb-4" icon={() => <Info className="mr-2 h-6 w-6" />}>
@@ -332,13 +338,17 @@ function CompleteAccountEmail({ donee, recipients, emailHistory }: CompleteAccou
 type IncompleteAccountProps = {
   accountStatus: AccountStatus.IncompleteData
   filledIn: { items: boolean; doneeDetails: boolean }
-  donee: DoneeInfo
+  companyName?: string
 }
 type Props = IncompleteAccountProps | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
 export default function Email(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
-  const defaultEmailBody = makeDefaultEmailBody(props.donee.companyName)
+  const companyName =
+    props.accountStatus === AccountStatus.IncompleteData
+      ? props.companyName ?? "Test Company"
+      : props.donee.companyName
+  const defaultEmailBody = makeDefaultEmailBody(companyName)
   const [emailBody, setEmailBody] = useState(defaultEmailBody)
   return (
     <EmailContext.Provider value={{ emailBody, setEmailBody }}>
@@ -358,50 +368,132 @@ export default function Email(serialisedProps: SerialisedProps) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
+  req,
+  res,
+  query,
+}) => {
   const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
 
-  const user = await getUserData(session.user.id)
-  if (!user.donee) throw new ApiError(500, "User is connected but is missing donee info in db")
+  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }
-  if (!isUserDataComplete(user)) {
-    const { donee } = user
-    for (const key in donee) {
-      if (donee[key as keyof DoneeInfo] === undefined) delete donee[key as keyof DoneeInfo]
-    }
-    return {
-      props: {
-        accountStatus: AccountStatus.IncompleteData,
-        filledIn: checkUserDataCompletion(user),
-        donee,
+  const rows = await db
+    .select({
+      userData: {
+        items: userDatas.items,
+        startDate: userDatas.startDate,
+        endDate: userDatas.endDate,
       },
+      doneeInfo: doneeInfos,
+      account: {
+        id: accounts.id,
+        accessToken: accounts.accessToken,
+        realmId: accounts.realmId,
+        createdAt: accounts.createdAt,
+        expiresAt: accounts.expiresAt,
+        refreshToken: accounts.refreshToken,
+        refreshTokenExpiresAt: accounts.refreshTokenExpiresAt,
+        scope: accounts.scope,
+      },
+    })
+    .from(doneeInfos)
+    .fullJoin(
+      userDatas,
+      and(eq(doneeInfos.realmId, userDatas.realmId), eq(doneeInfos.userId, userDatas.userId)),
+    )
+    .fullJoin(
+      accounts,
+      or(
+        and(eq(accounts.realmId, doneeInfos.realmId), eq(accounts.userId, doneeInfos.userId)),
+        and(eq(accounts.realmId, userDatas.realmId), eq(accounts.userId, userDatas.userId)),
+      ),
+    )
+    .rightJoin(
+      users,
+      or(eq(users.id, doneeInfos.id), eq(users.id, userDatas.id), eq(users.id, accounts.userId)),
+    )
+    .where(
+      and(
+        eq(users.id, session.user.id),
+        queryRealmId ? eq(accounts.realmId, queryRealmId) : isNotNull(accounts.realmId),
+      ),
+    )
+    .limit(1)
+
+  const row = rows.at(0)
+  if (!row) throw new ApiError(500, "user not found in db")
+  const { account, doneeInfo, userData } = row
+  if (!account || account.scope !== "accounting" || !account.accessToken)
+    return disconnectedRedirect
+  const realmId = queryRealmId ?? account.realmId
+  if (!realmId) return disconnectedRedirect
+  account.realmId = realmId
+
+  if (!doneeInfo || !userData) {
+    const props: Props = {
+      accountStatus: AccountStatus.IncompleteData,
+      filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
     }
+    doneeInfo && (props.companyName = doneeInfo.companyName)
+    return { props: serialiseDates(props) }
   }
 
+  // @ts-ignore
+  refreshTokenIfNeeded(account)
+
+  // sub
+  // if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }
+
   const donations = await getDonations(
-    session.accessToken,
-    session.realmId,
-    user.dateRange,
-    user.items,
+    account.accessToken,
+    realmId,
+    { startDate: userData.startDate, endDate: userData.endDate },
+    userData.items ? userData.items.split(",") : [],
   )
-  const recipients = donations.map(({ id, name, email }) => ({
-    id,
+  const recipients = donations.map(({ donorId, name, email }) => ({
+    donorId,
     name,
     status: email ? RecipientStatus.Valid : RecipientStatus.NoEmail,
   }))
+  const recipientIds = recipients.map(({ donorId }) => donorId)
+
+  const dateOverlap = and(
+    lt(emailHistories.startDate, userData.endDate),
+    gt(emailHistories.endDate, userData.startDate),
+  )
+  const emailHistory = (
+    await db.query.emailHistories.findMany({
+      columns: {
+        createdAt: true,
+        startDate: true,
+        endDate: true,
+      },
+      where: dateOverlap,
+      with: {
+        donations: {
+          columns: { name: true, donorId: true },
+          where: inArray(donationsSchema.donorId, recipientIds),
+        },
+      },
+    })
+  ).filter(item => item.donations.length > 0)
+  // const row = await db
+  //   .select({
+  //     createdAt: emailHistories.createdAt,
+  //     startDate: emailHistories.startDate,
+  //     endDate: emailHistories.endDate,
+  //     name: donationsSchema.name,
+  //   })
+  //   .from(emailHistories)
+  //   .innerJoin(donationsSchema, eq(emailHistories.id, donationsSchema.emailHistoryId))
+  //   .where(and(dateOverlap, inArray(donationsSchema.donorId, recipientIds)))
+  //   .orderBy(emailHistories.startDate, emailHistories.endDate)
   const props: Props = {
     accountStatus: AccountStatus.Complete,
-    donee: await downloadImagesForDonee(user.donee, storageBucket),
+    donee: await downloadImagesForDonee(doneeInfo, storageBucket),
     recipients,
-    emailHistory: user.emailHistory
-      ? trimHistoryByIdAndDateRange(
-          new Set(recipients.map(({ id }) => id)),
-          user.dateRange,
-          user.emailHistory,
-        )
-      : null,
+    emailHistory: emailHistory.length > 0 ? emailHistory : null,
+    realmId,
   }
   return {
     props: serialiseDates(props),
