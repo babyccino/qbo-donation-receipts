@@ -1,8 +1,10 @@
 import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
+import { and, eq } from "drizzle-orm"
 import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
@@ -20,6 +22,7 @@ import { downloadImageAndConvertToPng } from "@/lib/db-helper"
 import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
 import { getDonations } from "@/lib/qbo-api"
+import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
 import { dynamic } from "@/lib/util/nextjs-helper"
@@ -28,9 +31,7 @@ import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
-import { DoneeInfo, accounts, users } from "db/schema"
-import { and, eq } from "drizzle-orm"
-import { ApiError } from "next/dist/server/api-utils"
+import { DoneeInfo, accounts } from "db/schema"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -76,23 +77,39 @@ const ReceiptLimitCard = () => (
       To save and send all of your organisation{"'"}s receipts click the link below to go pro
     </p>
     <div className="">
-      <Button onClick={() => subscribe("/generate-receipts")}>Click here to go pro!</Button>
+      <Button color="blue" onClick={() => subscribe("/generate-receipts")}>
+        Click here to go pro!
+      </Button>
     </div>
   </Card>
 )
 
 const names = [
-  "Gus",
-  "Stephanie",
-  "Matthew",
-  "Ryan",
-  "Nicholas",
-  "Spencer",
-  "Papadopoulos",
-  "Macdonald",
+  "Jeff",
+  "Jeffina",
+  "Jefferly",
+  "Jefferson",
+  "Formerly",
+  "Jefferton",
+  "McJeff",
+  "Geoff",
+  "Breff",
+  "Jeffany",
+  "Jeffry",
+  "Jeffy",
+  "Jeffery",
+  "Jefferey",
+  "Jeffory",
+  "Geoffrey",
+  "Jeffeory",
+  "Geffrey",
+  "Chef",
 ]
 const getRandomName = () => `${names[randInt(0, names.length)]} ${names[randInt(0, names.length)]}`
-const getRandomBalance = () => `$${randInt(100, 100000)}.00`
+const getRandomBalance = () => {
+  const mag = randInt(2, 5)
+  return `$${Math.floor(Math.random() * Math.pow(10, mag))}.00`
+}
 
 const Tr = ({ children, className }: { children?: ReactNode; className?: string }) => (
   <tr
@@ -306,8 +323,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       refreshTokenExpiresAt: true,
     },
     with: {
-      doneeInfo: true,
+      doneeInfo: { columns: { createdAt: false, updatedAt: false, id: false, accountId: false } },
       userData: { columns: { items: true, startDate: true, endDate: true } },
+      user: {
+        columns: {},
+        with: { subscription: { columns: { status: true, currentPeriodEnd: true } } },
+      },
     },
   })
   if (queryRealmId && !account)
@@ -344,8 +365,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   ])
   doneeInfo.signature = pngSignature
   doneeInfo.smallLogo = pngLogo
-  // const subscribed = isUserSubscribed(user)
-  const subscribed = true
+  const subscription = account.user.subscription
+  const subscribed = subscription ? isUserSubscribed(subscription) : false
 
   return {
     props: {

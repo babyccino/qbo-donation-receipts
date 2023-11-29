@@ -3,6 +3,7 @@ import Stripe from "stripe"
 import { config } from "@/lib/util/config"
 import { Subscription, subscriptions } from "db/schema"
 import { db } from "@/lib/db/test"
+import { and, eq, gt } from "drizzle-orm"
 
 export const stripe = new Stripe(config.stripePrivateKey, { apiVersion: "2023-08-16" })
 
@@ -54,3 +55,8 @@ export function isUserSubscribed(subscription: Pick<Subscription, "status" | "cu
   if (subscription.status) return subscription.status === "active"
   return subscription.currentPeriodEnd.getTime() >= new Date().getTime()
 }
+
+export const isUserSubscribedSql = and(
+  eq(subscriptions.status, "active"),
+  gt(subscriptions.currentPeriodEnd, new Date()),
+)
