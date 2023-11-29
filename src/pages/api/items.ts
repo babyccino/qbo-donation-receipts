@@ -49,14 +49,9 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       items,
     })
     .onConflictDoUpdate({
-      target: [userDatas.id],
+      target: [userDatas.accountId],
       set: { startDate, endDate, items, updatedAt: new Date() },
     })
-  // const set = await db
-  //   .select()
-  //   .from(userDatas)
-  //   .where(and(eq(userDatas.userId, id), eq(userDatas.realmId, realmId)))
-  // console.log(set)
 
   res.status(200).json({ ok: true })
 }
