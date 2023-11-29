@@ -126,7 +126,9 @@ export default function IndexPage(props: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
 
-  if (session === null) {
+  console.log(session)
+
+  if (!session) {
     return {
       props: {
         session: null,
@@ -137,10 +139,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  const eqUserId = eq(users.id, session.user.id)
   const account = await db.query.accounts.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
-    where: queryRealmId ? and(eq(accounts.realmId, queryRealmId), eqUserId) : eqUserId,
+    where: and(
+      eq(accounts.userId, session.user.id),
+      queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
+    ),
     columns: { scope: true },
     with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
   })

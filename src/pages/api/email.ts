@@ -47,7 +47,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     db.query.accounts
       .findFirst({
         // if the realmId is specified get that account otherwise just get the first account for the user
-        where: and(eq(accounts.realmId, realmId), eq(users.id, session.user.id)),
+        where: and(eq(accounts.realmId, realmId), eq(accounts.userId, session.user.id)),
         columns: {
           id: true,
           accessToken: true,

@@ -191,7 +191,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  const eqUserId = eq(users.id, session.user.id)
   const user = await db.query.users.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
     where: eq(users.id, session.user.id),

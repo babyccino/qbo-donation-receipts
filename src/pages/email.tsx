@@ -385,10 +385,12 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
-  const eqUserId = eq(users.id, session.user.id)
   const account = await db.query.accounts.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
-    where: queryRealmId ? and(eq(accounts.realmId, queryRealmId), eqUserId) : eqUserId,
+    where: and(
+      eq(accounts.userId, session.user.id),
+      queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
+    ),
     columns: {
       id: true,
       accessToken: true,
