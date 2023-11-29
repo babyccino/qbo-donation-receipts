@@ -66,11 +66,10 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
     const formData = await getFormData()
     await postJsonData("/api/details", { ...formData, realmId } satisfies DetailsApiDataType)
 
-    const destination = itemsFilledIn ? "/generate-receipts" : "/items"
-    // router.push({
-    //   pathname: destination,
-    // })
-    router.reload()
+    const destination = `${itemsFilledIn ? "/generate-receipts" : "/items"}?realmId=${realmId}`
+    await router.push({
+      pathname: destination,
+    })
   }
 
   return (
@@ -184,7 +183,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     // if the realmId is specified get that account otherwise just get the first account for the user
     where: and(
       eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
+      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
     ),
     columns: {
       id: true,
@@ -210,14 +209,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       userData: { columns: { id: true } },
     },
   })
-
-  if (!account) throw new ApiError(500, "user not found in db")
+  if (queryRealmId && !account)
+    throw new ApiError(500, "account for given user and company realmId not found in db")
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
 
-  refreshTokenIfNeeded(account)
+  await refreshTokenIfNeeded(account)
 
   const doneeInfo = account.doneeInfo
     ? account.doneeInfo

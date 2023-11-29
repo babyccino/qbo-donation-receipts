@@ -49,8 +49,6 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   billingAddress: one(billingAddresses),
 }))
 
-type hi = Stripe.Subscription.Status
-
 export const subscriptions = sqliteTable(
   "subscriptions",
   {
@@ -258,7 +256,6 @@ export const donationsRelations = relations(donations, ({ one }) => ({
   }),
 }))
 
-export type Session = typeof sessions.$inferSelect
 export const sessions = sqliteTable(
   "sessions",
   {
@@ -274,6 +271,14 @@ export const sessions = sqliteTable(
     userIdIndex: index("sessions__userId__idx").on(session.userId),
   }),
 )
+export type Session = typeof sessions.$inferSelect
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+}))
 
 export const verificationTokens = sqliteTable(
   "verification_tokens",

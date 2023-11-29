@@ -292,7 +292,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     // if the realmId is specified get that account otherwise just get the first account for the user
     where: and(
       eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
+      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
     ),
     columns: {
       id: true,
@@ -309,11 +309,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       userData: { columns: { items: true, startDate: true, endDate: true } },
     },
   })
-
-  if (!account) throw new ApiError(500, "user not found in db")
-  const { doneeInfo, userData } = account
+  if (queryRealmId && !account)
+    throw new ApiError(500, "account for given user and company realmId not found in db")
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
+  const { doneeInfo, userData } = account
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
   account.realmId = realmId
@@ -326,7 +326,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       },
     }
 
-  refreshTokenIfNeeded(account)
+  await refreshTokenIfNeeded(account)
 
   const [donations, pngSignature, pngLogo] = await Promise.all([
     getDonations(

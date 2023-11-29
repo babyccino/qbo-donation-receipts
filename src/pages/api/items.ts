@@ -34,6 +34,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     where: and(eq(accounts.userId, id), eq(accounts.realmId, realmId)),
     columns: {
       id: true,
+      scope: true,
     },
   })
   if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
@@ -48,7 +49,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       items,
     })
     .onConflictDoUpdate({
-      target: [accounts.id],
+      target: [userDatas.id],
       set: { startDate, endDate, items, updatedAt: new Date() },
     })
   // const set = await db

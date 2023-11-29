@@ -389,7 +389,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     // if the realmId is specified get that account otherwise just get the first account for the user
     where: and(
       eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
+      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
     ),
     columns: {
       id: true,

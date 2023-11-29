@@ -152,8 +152,8 @@ export default function Items(serialisedProps: SerialisedProps) {
     const postData: ItemsApiDataType = { items, dateRange: customDateState, realmId }
     await postJsonData("/api/items", postData)
 
-    const destination = detailsFilledIn ? "/generate-receipts" : "/details"
-    router.push({
+    const destination = `${detailsFilledIn ? "/generate-receipts" : "/details"}?realmId=${realmId}`
+    await router.push({
       pathname: destination,
     })
   }
@@ -247,7 +247,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     // if the realmId is specified get that account otherwise just get the first account for the user
     where: and(
       eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
+      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
     ),
     columns: {
       id: true,
@@ -264,14 +264,21 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
       doneeInfo: { columns: { id: true } },
     },
   })
-  if (!account)
+  if (queryRealmId && !account)
     throw new ApiError(500, "account for given user and company realmId not found in db")
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
 
+  console.log("account: ", {
+    expiresAt: account.expiresAt,
+    createdAt: account.createdAt,
+    realmId: account.realmId,
+  })
+
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
 
+  await refreshTokenIfNeeded(account)
   const items = await getItems(account.accessToken, realmId)
   const detailsFilledIn = Boolean(account.doneeInfo)
 
@@ -287,8 +294,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
       props: serialiseDates(props),
     }
   }
-
-  refreshTokenIfNeeded(account)
 
   const { userData } = account
   const selectedItems = userData.items ? userData.items.split(",") : []

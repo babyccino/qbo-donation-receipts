@@ -1,5 +1,5 @@
 import { BriefcaseIcon, MapPinIcon } from "@heroicons/react/24/solid"
-import { eq } from "drizzle-orm"
+import { asc, eq } from "drizzle-orm"
 import { Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
@@ -201,6 +201,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
           scope: true,
           realmId: true,
         },
+        // get the first account with "accounting" scope if there is one
+        orderBy: [asc(accounts.scope)],
         with: {
           doneeInfo: { columns: { companyName: true, smallLogo: true } },
         },

@@ -1,5 +1,5 @@
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
-import { and, eq, or } from "drizzle-orm"
+import { and, asc, eq, or } from "drizzle-orm"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
@@ -147,6 +147,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     ),
     columns: { scope: true },
     with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
+    // get the first account with "accounting" scope if there is one
+    orderBy: [asc(accounts.scope)],
   })
   if (!account)
     throw new ApiError(500, "account for given user and company realmId not found in db")
