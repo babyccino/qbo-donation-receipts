@@ -152,9 +152,10 @@ export default function Items(serialisedProps: SerialisedProps) {
     const postData: ItemsApiDataType = { items, dateRange: customDateState, realmId }
     await postJsonData("/api/items", postData)
 
-    const destination = `${detailsFilledIn ? "/generate-receipts" : "/details"}?realmId=${realmId}`
+    const destination = detailsFilledIn ? "/generate-receipts" : "/details"
     await router.push({
       pathname: destination,
+      query: `realmId=${realmId}`,
     })
   }
 
