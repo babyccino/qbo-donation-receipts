@@ -121,3 +121,7 @@ export async function getServerSessionOrThrow(req: Request, res: ServerResponse)
 export const disconnectedRedirect: { redirect: Redirect } = {
   redirect: { permanent: false, destination: "/auth/disconnected" },
 }
+
+export const signInRedirect: { redirect: Redirect } = {
+  redirect: { permanent: false, destination: "/auth/signin" },
+}

@@ -125,7 +125,6 @@ export default function IndexPage(props: Props) {
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
-  console.log(session)
 
   if (session === null) {
     return {

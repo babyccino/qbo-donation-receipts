@@ -2,7 +2,7 @@ import { InformationCircleIcon } from "@heroicons/react/24/solid"
 import { and, eq } from "drizzle-orm"
 import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/router"
@@ -10,7 +10,7 @@ import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from 
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
 import { getItems } from "@/lib/qbo-api"
@@ -26,6 +26,7 @@ import {
 } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
 import { accounts, users } from "db/schema"
@@ -237,7 +238,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
   res,
   query,
 }) => {
-  const session = await getServerSessionOrThrow(req, res)
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 

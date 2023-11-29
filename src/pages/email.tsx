@@ -3,18 +3,20 @@ import {
   InformationCircleIcon as Info,
   ChevronUpIcon as UpArrow,
 } from "@heroicons/react/24/solid"
-import { and, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm"
+import { and, eq, gt, inArray, lt } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { GetServerSideProps } from "next"
+import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { EmailSentToast, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
-import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { storageBucket } from "@/lib/db"
 import { downloadImagesForDonee } from "@/lib/db-helper"
+import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
 import {
   formatEmailBody,
@@ -27,17 +29,17 @@ import { formatDateHtml } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { EmailDataType } from "@/pages/api/email"
 import { EmailProps, WithBodyProps } from "@/types/receipt"
 import {
-  EmailHistory as DbEmailHistory,
   Donation as DbDonation,
+  EmailHistory as DbEmailHistory,
   accounts,
   donations as donationsSchema,
   emailHistories,
   users,
 } from "db/schema"
-import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 
 type DoneeInfo = EmailProps["donee"]
 type EmailHistory = (Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
@@ -378,7 +380,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
   res,
   query,
 }) => {
-  const session = await getServerSessionOrThrow(req, res)
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 

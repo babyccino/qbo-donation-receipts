@@ -1,14 +1,16 @@
 import { and, eq } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { useRouter } from "next/router"
 import { FormEventHandler, useRef } from "react"
 
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { Session, getServerSession } from "next-auth"
+
 import { Fieldset, ImageInput, Legend } from "@/components/form"
 import { buttonStyling } from "@/components/link"
-import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { RemoveTimestamps, refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
 import { getCompanyInfo } from "@/lib/qbo-api"
@@ -173,7 +175,8 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
 // --- server-side props --- //
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
-  const session = await getServerSessionOrThrow(req, res)
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 

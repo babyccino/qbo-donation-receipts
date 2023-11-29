@@ -2,7 +2,7 @@ import { BriefcaseIcon, MapPinIcon } from "@heroicons/react/24/solid"
 import { eq } from "drizzle-orm"
 import { Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 import { signIn, useSession } from "next-auth/react"
 import { ApiError } from "next/dist/server/api-utils"
 import Image from "next/image"
@@ -10,13 +10,14 @@ import { useRouter } from "next/router"
 
 import { Connect } from "@/components/qbo"
 import { PricingCard } from "@/components/ui"
-import { getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { getImageUrl } from "@/lib/db-helper"
 import { db } from "@/lib/db/test"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
 import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DisconnectBody } from "@/pages/api/auth/disconnect"
 import { DataType } from "@/pages/api/stripe/update-subscription"
 import { Subscription as DbSubscription, accounts, users } from "db/schema"
@@ -185,7 +186,8 @@ export default function AccountPage(props: Props) {
 // --- server-side props ---
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
-  const session = await getServerSessionOrThrow(req, res)
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 

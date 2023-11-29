@@ -2,13 +2,11 @@ import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
 import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
+import { Session, getServerSession } from "next-auth"
 import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { Link } from "@/components/link"
-import { and, eq } from "drizzle-orm"
-import { ApiError } from "next/dist/server/api-utils"
 import {
   DownloadReceiptLoading,
   DummyDownloadReceipt,
@@ -16,7 +14,7 @@ import {
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
-import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/auth/next-auth-helper-server"
+import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { storageBucket } from "@/lib/db"
 import { downloadImageAndConvertToPng } from "@/lib/db-helper"
 import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
@@ -27,9 +25,12 @@ import { randInt } from "@/lib/util/etc"
 import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { fetchJsonData, subscribe } from "@/lib/util/request"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
 import { DoneeInfo, accounts, users } from "db/schema"
+import { and, eq } from "drizzle-orm"
+import { ApiError } from "next/dist/server/api-utils"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -282,7 +283,8 @@ export default function IndexPage(props: Props) {
 // --- server-side props ---
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
-  const session = await getServerSessionOrThrow(req, res)
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect
 
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
 
