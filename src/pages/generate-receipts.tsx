@@ -144,6 +144,7 @@ type Props =
   | {
       receiptsReady: false
       filledIn: { items: boolean; doneeDetails: boolean }
+      realmId: string
     }
 
 enum Sort {
@@ -195,7 +196,7 @@ const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: 
 export default function IndexPage(props: Props) {
   const [sort, setSort] = useState<Sort>(Sort.Default)
 
-  if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
+  if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} realmId={props.realmId} />
 
   const { doneeInfo, subscribed, realmId } = props
   const donations = getSortedDonations(props.donations, sort)
@@ -305,7 +306,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       refreshTokenExpiresAt: true,
     },
     with: {
-      doneeInfo: { columns: { accountId: false, createdAt: false, id: false, updatedAt: false } },
+      doneeInfo: true,
       userData: { columns: { items: true, startDate: true, endDate: true } },
     },
   })
@@ -318,11 +319,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   if (!realmId) return disconnectedRedirect
   account.realmId = realmId
 
+  console.log({ id: account.id, doneeInfo, userData })
+
   if (!doneeInfo || !userData)
     return {
       props: {
         receiptsReady: false,
         filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
+        realmId,
       },
     }
 

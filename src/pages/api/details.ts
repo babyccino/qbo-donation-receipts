@@ -77,12 +77,16 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     columns: {
       id: true,
     },
-    with: { userData: { columns: { id: true } } },
+    with: { doneeInfo: { columns: { id: true } } },
   })
 
   if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
 
-  if (!account.userData) {
+  // await refreshTokenIfNeeded(account)
+
+  console.log({ account })
+
+  if (!account.doneeInfo) {
     if (!data.signature || !data.smallLogo)
       throw new ApiError(
         400,
@@ -106,7 +110,8 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       .select()
       .from(doneeInfos)
       .where(and(eq(doneeInfos.accountId, account.id)))
-    res.status(200).json(set)
+    console.log({ set })
+    return res.status(200).json(set)
   }
 
   const [signatureUrl, smallLogoUrl] = await Promise.all([
@@ -131,6 +136,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     .select()
     .from(doneeInfos)
     .where(and(eq(doneeInfos.accountId, account.id)))
+  console.log({ set })
   res.status(200).json(set)
 }
 

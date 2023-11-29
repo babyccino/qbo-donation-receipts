@@ -10,8 +10,10 @@ import { Link } from "@/components/link"
 
 export const MissingData = ({
   filledIn,
+  realmId,
 }: {
   filledIn: { items: boolean; doneeDetails: boolean }
+  realmId: string
 }) => (
   <div className="mx-auto flex flex-col gap-4 rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md md:mt-8">
     <span className="col-span-full font-medium text-gray-900 dark:text-white">
@@ -19,10 +21,10 @@ export const MissingData = ({
     </span>
     <div className="flex justify-evenly gap-3">
       <Show when={!filledIn.items}>
-        <Link href="/items">Fill in Qualifying Sales Items</Link>
+        <Link href={`/items?realmId=${realmId}`}>Fill in Qualifying Sales Items</Link>
       </Show>
       <Show when={!filledIn.doneeDetails}>
-        <Link href="/details">Fill in Donee Details</Link>
+        <Link href={`/details?realmId=${realmId}`}>Fill in Donee Details</Link>
       </Show>
     </div>
   </div>

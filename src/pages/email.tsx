@@ -38,7 +38,6 @@ import {
   accounts,
   donations as donationsSchema,
   emailHistories,
-  users,
 } from "db/schema"
 
 type DoneeInfo = EmailProps["donee"]
@@ -346,6 +345,7 @@ type IncompleteAccountProps = {
   accountStatus: AccountStatus.IncompleteData
   filledIn: { items: boolean; doneeDetails: boolean }
   companyName?: string
+  realmId: string
 }
 type Props = IncompleteAccountProps | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
@@ -361,7 +361,7 @@ export default function Email(serialisedProps: SerialisedProps) {
     <EmailContext.Provider value={{ emailBody, setEmailBody }}>
       {props.accountStatus === AccountStatus.IncompleteData ? (
         <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
-          <MissingData filledIn={props.filledIn} />
+          <MissingData filledIn={props.filledIn} realmId={props.realmId} />
           <form>
             <EmailInput />
           </form>
@@ -419,6 +419,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     const props: Props = {
       accountStatus: AccountStatus.IncompleteData,
       filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
+      realmId,
     }
     doneeInfo && (props.companyName = doneeInfo.companyName)
     return { props: serialiseDates(props) }
