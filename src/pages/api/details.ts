@@ -106,32 +106,29 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       largeLogo: "",
       ...data,
     })
-    const set = await db
-      .select()
-      .from(doneeInfos)
-      .where(and(eq(doneeInfos.accountId, account.id)))
-    console.log({ set })
-    return res.status(200).json(set)
+  } else {
+    const [signatureUrl, smallLogoUrl] = await Promise.all([
+      data.signature
+        ? resizeAndUploadImage(data.signature, { height: 150 }, `${id}/signature`, false)
+        : undefined,
+      data.smallLogo
+        ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true)
+        : undefined,
+    ])
+    console.log({ signatureUrl, smallLogoUrl })
+
+    await db
+      .update(doneeInfos)
+      .set({
+        ...data,
+        signature: signatureUrl,
+        smallLogo: smallLogoUrl,
+        largeLogo: "",
+        updatedAt: new Date(),
+      })
+      .where(eq(doneeInfos.id, account.doneeInfo.id))
   }
 
-  const [signatureUrl, smallLogoUrl] = await Promise.all([
-    data.signature
-      ? resizeAndUploadImage(data.signature, { height: 150 }, `${id}/signature`, false)
-      : undefined,
-    data.smallLogo
-      ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true)
-      : undefined,
-  ])
-
-  await db.update(doneeInfos).set({
-    id: createId(),
-    accountId: account.id,
-    signature: signatureUrl,
-    smallLogo: smallLogoUrl,
-    largeLogo: "",
-    ...data,
-    updatedAt: new Date(),
-  })
   const set = await db
     .select()
     .from(doneeInfos)
