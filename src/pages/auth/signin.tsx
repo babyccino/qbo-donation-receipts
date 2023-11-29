@@ -7,7 +7,7 @@ import { SignIn } from "@/components/qbo"
 
 const signInHandler: MouseEventHandler<HTMLButtonElement> = e => {
   e.preventDefault()
-  signIn("QBO-disconnected")
+  signIn("QBO-disconnected", { callbackUrl: "/" })
 }
 export default function SignInPage() {
   const [checked, setChecked] = useState(false)
