@@ -1,3 +1,8 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": ["next/core-web-vitals", "plugin:@typescript-eslint/strict-type-checked"],
+  "rules": {
+    // Note: you must disable the base rule as it can report incorrect errors
+    "require-await": "off",
+    "@typescript-eslint/require-await": "error"
+  }
 }
