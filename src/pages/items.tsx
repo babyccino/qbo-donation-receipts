@@ -240,9 +240,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
   query,
 }) => {
   const session = await getServerSession(req, res, authOptions)
-  if (!session) return signInRedirect
-
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
+  if (!session) return signInRedirect("items" + queryRealmId ? `%3FrealmId%3D${queryRealmId}` : "")
 
   const account = await db.query.accounts.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
@@ -269,12 +268,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     throw new ApiError(500, "account for given user and company realmId not found in db")
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
-
-  console.log("account: ", {
-    expiresAt: account.expiresAt,
-    createdAt: account.createdAt,
-    realmId: account.realmId,
-  })
 
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect

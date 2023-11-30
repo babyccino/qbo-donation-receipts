@@ -122,6 +122,9 @@ export const disconnectedRedirect: { redirect: Redirect } = {
   redirect: { permanent: false, destination: "/auth/disconnected" },
 }
 
-export const signInRedirect: { redirect: Redirect } = {
-  redirect: { permanent: false, destination: "/auth/signin" },
-}
+export const signInRedirect = (callback?: string): { redirect: Redirect } => ({
+  redirect: {
+    permanent: false,
+    destination: "/auth/signin" + (callback ? `?callback=${callback}` : ""),
+  },
+})

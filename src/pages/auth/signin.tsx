@@ -1,16 +1,15 @@
-import { MouseEventHandler, useState } from "react"
+import { Checkbox, Label } from "flowbite-react"
 import { signIn } from "next-auth/react"
 import Image from "next/image"
-import { Checkbox, Label } from "flowbite-react"
+import { useState } from "react"
 
 import { SignIn } from "@/components/qbo"
+import { useSearchParams } from "next/navigation"
 
-const signInHandler: MouseEventHandler<HTMLButtonElement> = e => {
-  e.preventDefault()
-  signIn("QBO-disconnected", { callbackUrl: "/" })
-}
 export default function SignInPage() {
   const [checked, setChecked] = useState(false)
+  const searchParams = useSearchParams()
+  const callback = searchParams.get("callback")
 
   return (
     <div className="flex h-full flex-grow flex-col justify-center gap-8 align-middle">
@@ -34,7 +33,13 @@ export default function SignInPage() {
             </a>
           </Label>
         </div>
-        <button className="mx-auto mt-4 inline-block" onClick={signInHandler}>
+        <button
+          className="mx-auto mt-4 inline-block"
+          onClick={e => {
+            e.preventDefault()
+            signIn("QBO-disconnected", { callbackUrl: "/" + callback ?? "" })
+          }}
+        >
           <SignIn disabled={!checked} />
         </button>
       </form>

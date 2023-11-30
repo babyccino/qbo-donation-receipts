@@ -381,9 +381,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
   query,
 }) => {
   const session = await getServerSession(req, res, authOptions)
-  if (!session) return signInRedirect
-
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
+  if (!session) return signInRedirect("email" + queryRealmId ? `%3FrealmId%3D${queryRealmId}` : "")
 
   const account = await db.query.accounts.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
