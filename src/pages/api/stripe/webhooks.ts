@@ -1,12 +1,12 @@
-import { NextApiHandler, NextApiRequest } from "next"
-import Stripe from "stripe"
-import { Readable } from "node:stream"
-
-import { stripe, manageSubscriptionStatusChange } from "@/lib/stripe"
-import { config as envConfig } from "@/lib/util/config"
-import { db } from "@/lib/db/test"
-import { billingAddresses, prices, products } from "db/schema"
 import { eq } from "drizzle-orm"
+import { NextApiHandler, NextApiRequest } from "next"
+import { Readable } from "node:stream"
+import Stripe from "stripe"
+
+import { db } from "@/lib/db/test"
+import { manageSubscriptionStatusChange, stripe } from "@/lib/stripe"
+import { config as envConfig } from "@/lib/util/config"
+import { billingAddresses, prices, products } from "db/schema"
 
 export const config = {
   api: {
@@ -58,6 +58,7 @@ const webhookHandler: NextApiHandler = async (req, res) => {
     res.json({ received: true })
   } catch (error: any) {
     console.error(`❌ Error message: ${error.message}`)
+    console.error(error.stack)
     return res.status(400).json(`Webhook Error: ${error.message}`)
   }
 }
@@ -69,7 +70,6 @@ async function handleEvent(event: Stripe.Event) {
     case "product.updated":
     case "product.deleted":
       await updateProduct(event.data.object as Stripe.Product)
-
       break
     case "price.created":
     case "price.updated":
@@ -192,14 +192,24 @@ async function addBillingAddress(subscription: Stripe.Subscription) {
     .values({
       id: subscription.id,
       userId: clientId,
-      ...address,
+      city: address?.city,
+      country: address?.city,
+      line1: address?.line1,
+      line2: address?.line2,
+      postalCode: address?.postal_code,
+      state: address?.state,
       phone: phone ?? undefined,
       name: name ?? undefined,
     })
     .onConflictDoUpdate({
       target: [billingAddresses.userId],
       set: {
-        ...address,
+        city: address?.city,
+        country: address?.city,
+        line1: address?.line1,
+        line2: address?.line2,
+        postalCode: address?.postal_code,
+        state: address?.state,
         phone: phone ?? undefined,
         name: name ?? undefined,
         updatedAt: new Date(),
