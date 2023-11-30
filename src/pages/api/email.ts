@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { and, eq, gt, sql } from "drizzle-orm"
+import { Awaitable } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
@@ -22,8 +23,7 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { Donation } from "@/types/qbo-api"
-import { accounts, donations as donationsSchema, emailHistories, users } from "db/schema"
-import { Awaitable } from "next-auth"
+import { accounts, donations as donationsSchema, emailHistories } from "db/schema"
 
 const { testEmail } = config
 
@@ -134,10 +134,16 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   ])
   const counter = counterRows[0]?.count || 0
 
-  const doneeWithPngDataUrls = {
+  const doneeWithPngDataUrls: typeof doneeInfo = {
     ...doneeInfo,
-    signatue: signaturePngDataUrl,
+    signature: signaturePngDataUrl,
     smallLogo: logoPngDataUrl,
+  }
+
+  const doneeWithWebpDataUrls: typeof doneeInfo = {
+    ...doneeInfo,
+    signature: signatureWebpDataUrl,
+    smallLogo: logoWebpDataUrl,
   }
 
   const { companyName } = doneeInfo
@@ -156,12 +162,6 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
     const body = formatEmailBody(emailBody, entry.name)
 
-    const doneeWithWebpDataUrlImages = {
-      ...doneeInfo,
-      signature: signatureWebpDataUrl,
-      smallLogo: logoWebpDataUrl,
-    }
-
     await resend.emails.send({
       from: `${companyName} <noreply@${config.domain}>`,
       to: entry.email,
@@ -177,7 +177,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       ],
       react: WithBody({
         ...props,
-        donee: doneeWithWebpDataUrlImages,
+        donee: doneeWithWebpDataUrls,
         body,
       }),
     })
