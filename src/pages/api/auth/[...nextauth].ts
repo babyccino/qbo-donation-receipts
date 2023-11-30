@@ -103,7 +103,7 @@ const session: QboCallbacksOptions["session"] = async ({ session, user }) => {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(db as BetterSQLite3Database<any>),
+  adapter: DrizzleAdapter(db),
   session: {
     strategy: "database",
     maxAge: 60 * 30,

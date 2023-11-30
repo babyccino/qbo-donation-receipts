@@ -318,3 +318,27 @@ export const prices = sqliteTable("verification_tokens", {
   updatedAt: timestamp("updated_at"),
 })
 export type Price = typeof prices.$inferSelect
+
+export type Schema = {
+  users: typeof users
+  usersRelations: typeof usersRelations
+  subscriptions: typeof subscriptions
+  subscriptionsRelations: typeof subscriptionsRelations
+  billingAddresses: typeof billingAddresses
+  billingAddressesRelations: typeof billingAddressesRelations
+  accounts: typeof accounts
+  accountsRelations: typeof accountsRelations
+  userDatas: typeof userDatas
+  userDatasRelations: typeof userDatasRelations
+  doneeInfos: typeof doneeInfos
+  doneeInfosRelations: typeof doneeInfosRelations
+  emailHistories: typeof emailHistories
+  emailHistoriesRelations: typeof emailHistoriesRelations
+  donations: typeof donations
+  donationsRelations: typeof donationsRelations
+  sessions: typeof sessions
+  sessionsRelations: typeof sessionsRelations
+  verificationTokens: typeof verificationTokens
+  products: typeof products
+  prices: typeof prices
+}

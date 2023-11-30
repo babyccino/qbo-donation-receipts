@@ -5,7 +5,7 @@ import { LibSQLDatabase } from "drizzle-orm/libsql"
 import { Adapter, AdapterSession } from "next-auth/adapters"
 import { ApiError } from "next/dist/server/api-utils"
 
-import { accounts, sessions, users, verificationTokens, Account } from "db/schema"
+import { accounts, sessions, users, verificationTokens, Account, Schema } from "db/schema"
 
 const DEFAULT_QBO_REFRESH_PERIOD_DAYS = 101
 const SECONDS_IN_DAY = 60 * 60 * 24
@@ -26,7 +26,7 @@ export function accountStatus({
   return AccountStatus.Active
 }
 
-export const DrizzleAdapter = (db: BetterSQLite3Database | LibSQLDatabase): Adapter => ({
+export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
   async createUser(userData) {
     await db.insert(users).values({
       ...userData,
@@ -141,7 +141,7 @@ export const DrizzleAdapter = (db: BetterSQLite3Database | LibSQLDatabase): Adap
     return { ...session, expires: new Date(session.expires) }
   },
   async getSessionAndUser(sessionToken) {
-    const [row] = await (db as BetterSQLite3Database)
+    const [row] = await db
       .select({
         user: users,
         session: {
