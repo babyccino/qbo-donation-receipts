@@ -46,8 +46,8 @@ const handler: AuthorisedHandler = async ({ body }, res, session) => {
       cancel_url: `${getBaseUrl()}/`,
     }),
   ])
-  if (!subscription) throw new ApiError(500, "user record was not found in db")
-  if (isUserSubscribed(subscription)) throw new ApiError(400, "user already subscribed")
+  if (subscription && isUserSubscribed(subscription))
+    throw new ApiError(400, "user already subscribed")
 
   if (!stripeSession.url) throw new ApiError(502, "stripe did not send a redirect url")
 
