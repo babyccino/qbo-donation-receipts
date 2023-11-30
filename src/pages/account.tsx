@@ -7,6 +7,7 @@ import { signIn, useSession } from "next-auth/react"
 import { ApiError } from "next/dist/server/api-utils"
 import Image from "next/image"
 import { useRouter } from "next/router"
+import { useMemo } from "react"
 
 import { Connect } from "@/components/qbo"
 import { PricingCard } from "@/components/ui"
@@ -15,6 +16,7 @@ import { getImageUrl } from "@/lib/db-helper"
 import { db } from "@/lib/db/test"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
+import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
@@ -40,6 +42,7 @@ type Props = {
       subscription: Subscription
     }
 )
+type SerialisedProps = SerialiseDates<Props>
 
 const formatDate = (date: Date) =>
   date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })
@@ -147,7 +150,10 @@ function ProfileCard({
   )
 }
 
-export default function AccountPage(props: Props) {
+// --- page ---
+
+export default function AccountPage(serialisedProps: SerialisedProps) {
+  const props = useMemo(() => deSerialiseDates(serialisedProps), [serialisedProps])
   const { subscribed, connected, name, companyName, smallLogo, realmId } = props
   return (
     <section className="flex min-h-screen flex-col p-4 sm:flex-row sm:justify-center sm:p-10">
@@ -185,11 +191,15 @@ export default function AccountPage(props: Props) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
+  req,
+  res,
+  query,
+}) => {
   const session = await getServerSession(req, res, authOptions)
-  if (!session) return signInRedirect
-
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
+  if (!session)
+    return signInRedirect("account" + queryRealmId ? `%3FrealmId%3D${queryRealmId}` : "")
 
   const user = await db.query.users.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
@@ -225,7 +235,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   // if (!subscribed)
   if (subscription && isUserSubscribed(subscription)) {
     return {
-      props: {
+      props: serialiseDates({
         session,
         subscribed: true,
         subscription,
@@ -234,7 +244,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         name: billingAddress?.name ?? user.name ?? "",
         connected,
         realmId,
-      } satisfies Props,
+      }) satisfies SerialisedProps,
     }
   }
   return {
@@ -246,6 +256,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       name: billingAddress?.name ?? user.name ?? "",
       connected,
       realmId,
-    } satisfies Props,
+    } satisfies SerialisedProps,
   }
 }
