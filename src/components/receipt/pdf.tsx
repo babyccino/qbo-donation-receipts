@@ -1,4 +1,4 @@
-import { PlusCircleIcon } from "@heroicons/react/24/solid"
+import { XMarkIcon } from "@heroicons/react/24/solid"
 import {
   Document,
   PDFDownloadLink,
@@ -208,25 +208,28 @@ export const DownloadReceipt = ({
 
 export function ShowReceipt({ receiptProps }: { receiptProps: EmailProps }) {
   const [show, setShow] = useState(false)
-  const containerClassName =
-    (show ? "flex" : "hidden") +
-    " fixed inset-0 p-4 pt-24 sm:pt-4 justify-center bg-black bg-opacity-50 z-40"
 
+  const containerClass =
+    (show ? "flex" : "hidden") + " fixed inset-0 p-4 justify-center bg-black bg-opacity-50 z-40"
   return (
     <>
       <Button onClick={() => setShow(true)} color="blue">
         {showReceiptInner}
       </Button>
-      <div className={containerClassName} onClick={() => setShow(false)}>
-        <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
-          <ReceiptPdfDocument {...receiptProps} />
-        </PDFViewer>
-        <button
-          className="fixed right-4 top-4 z-40 h-14 w-14 rounded-lg bg-blue-700 text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-          onClick={() => setShow(false)}
-        >
-          <PlusCircleIcon />
-        </button>
+      <div className={containerClass} onClick={() => setShow(false)}>
+        <div className="relative w-full h-full max-w-[800px] pt-6 bg-[#323639] rounded-md">
+          <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
+            <ReceiptPdfDocument {...receiptProps} />
+          </PDFViewer>
+          <button
+            type="button"
+            className="text-gray-400 absolute bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white top-1 right-1"
+            onClick={() => setShow(false)}
+          >
+            <XMarkIcon className="w-6" />
+            <span className="sr-only">Close modal</span>
+          </button>
+        </div>
       </div>
     </>
   )
