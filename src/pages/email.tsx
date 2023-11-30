@@ -217,7 +217,7 @@ function SendEmails({
               <Button color="failure" onClick={handler}>
                 Yes, I{"'"}m sure
               </Button>
-              <Button color="gray" onClick={() => (console.log("hi"), setShowModal(false))}>
+              <Button color="gray" onClick={() => setShowModal(false)}>
                 No, cancel
               </Button>
             </div>

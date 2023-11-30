@@ -28,7 +28,6 @@ export async function refreshTokenIfNeeded<
   >,
 >(account: T): Promise<{ account: T; currentAccountStatus: AccountStatus }> {
   const currentAccountStatus = accountStatus(account)
-  console.log({ currentAccountStatus })
   if (currentAccountStatus === AccountStatus.RefreshExpired) {
     // implement refresh token expired logic
     throw new ApiError(400, "refresh token expired")

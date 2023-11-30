@@ -20,6 +20,7 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { accounts, doneeInfos } from "db/schema"
+import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 
 // TODO move file storage to another service
 async function resizeAndUploadImage(
@@ -76,15 +77,17 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     where: and(eq(accounts.userId, id), eq(accounts.realmId, realmId)),
     columns: {
       id: true,
+      accessToken: true,
+      expiresAt: true,
+      refreshToken: true,
+      refreshTokenExpiresAt: true,
     },
     with: { doneeInfo: { columns: { id: true } } },
   })
 
   if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
 
-  // await refreshTokenIfNeeded(account)
-
-  console.log({ account })
+  await refreshTokenIfNeeded(account)
 
   if (!account.doneeInfo) {
     if (!data.signature || !data.smallLogo)
@@ -115,7 +118,6 @@ const handler: AuthorisedHandler = async (req, res, session) => {
         ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true)
         : undefined,
     ])
-    console.log({ signatureUrl, smallLogoUrl })
 
     await db
       .update(doneeInfos)
@@ -133,7 +135,6 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     .select()
     .from(doneeInfos)
     .where(and(eq(doneeInfos.accountId, account.id)))
-  console.log({ set })
   res.status(200).json(set)
 }
 
