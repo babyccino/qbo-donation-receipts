@@ -303,7 +303,6 @@ export default function IndexPage(props: Props) {
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
   const queryRealmId = typeof query.realmId === "string" ? query.realmId : undefined
-  console.log({ queryRealmId })
   if (!session)
     return signInRedirect(
       "generate-receipts" + (queryRealmId ? `%3FrealmId%3D${queryRealmId}` : ""),
@@ -342,8 +341,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   const realmId = queryRealmId ?? account.realmId
   if (!realmId) return disconnectedRedirect
   account.realmId = realmId
-
-  console.log({ id: account.id, doneeInfo, userData })
 
   if (!doneeInfo || !userData)
     return {
