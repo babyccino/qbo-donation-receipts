@@ -370,13 +370,13 @@ function CompleteAccountEmail({
         </Fieldset>
       </form>
       <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
-        <div className="mb-4 flex justify-center gap-4">
+        <div className="flex justify-center gap-4">
           <Button color="blue" onClick={() => (showEmailPreview.value = true)}>
             Show Preview Email
           </Button>
           <Button
             color="blue"
-            className={selectedRecipientIds.size > 0 ? "" : "line-through"}
+            className={selectedRecipientIds.size > 0 ? undefined : "line-through"}
             disabled={selectedRecipientIds.size === 0}
             onClick={() => (showSendEmail.value = true)}
           >
