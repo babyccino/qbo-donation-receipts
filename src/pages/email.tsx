@@ -3,13 +3,14 @@ import {
   InformationCircleIcon as Info,
   ChevronUpIcon as UpArrow,
 } from "@heroicons/react/24/solid"
-import { signal } from "@preact/signals-react"
+import { batch, signal } from "@preact/signals-react"
+import makeChecksum from "checksum"
 import { and, eq, gt, inArray, lt } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
-import { useMemo, useState } from "react"
+import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { EmailSentToast, MissingData } from "@/components/ui"
@@ -27,7 +28,7 @@ import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { EmailDataType } from "@/pages/api/email"
-import { EmailProps, WithBodyProps } from "@/types/receipt"
+import { EmailProps } from "@/types/receipt"
 import {
   Donation as DbDonation,
   EmailHistory as DbEmailHistory,
@@ -36,17 +37,18 @@ import {
   emailHistories,
 } from "db/schema"
 
-type DoneeInfo = EmailProps["donee"]
-type EmailHistory = (Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
-  donations: Pick<DbDonation, "name" | "donorId">[]
-})[]
-
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
   ssr: false,
   loadImmediately: true,
 })
 
+type DoneeInfo = EmailProps["donee"]
+type EmailHistory = (Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
+  donations: Pick<DbDonation, "name" | "donorId">[]
+})[]
+
+// global state
 const emailBody = signal(defaultEmailBody)
 const showEmailPreview = signal(false)
 const showSendEmail = signal(false)
@@ -56,16 +58,13 @@ const emailFailureText = signal("error")
 
 function EmailInput() {
   // TODO maybe save email to db with debounce?
-
   return (
     <Fieldset>
       <TextArea
         id="email"
         label="Your Email Template"
         defaultValue={emailBody.value}
-        onChange={e => {
-          emailBody.value = e.target.value
-        }}
+        onChange={e => (emailBody.value = e.target.value)}
         rows={10}
       />
       <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -77,33 +76,24 @@ function EmailInput() {
 
 function EmailPreview({ donee }: { donee: DoneeInfo }) {
   // any donee information which has been entered by the user will overwrite the dummy data
-  const emailProps: WithBodyProps = {
-    ...dummyEmailProps,
-    donee: { ...dummyEmailProps.donee, ...donee },
-    body: formatEmailBody(emailBody.value, dummyEmailProps.donation.name),
-  }
-
   return (
     <Modal
       dismissible
       show={showEmailPreview.value}
-      onClose={() => {
-        showEmailPreview.value = false
-      }}
+      onClose={() => (showEmailPreview.value = false)}
       className="bg-white"
     >
       <Modal.Body className="bg-white">
         <div className="overflow-scroll">
-          <WithBody {...emailProps} body={emailBody.value} />
+          <WithBody
+            {...dummyEmailProps}
+            donee={{ ...dummyEmailProps.donee, ...donee }}
+            body={formatEmailBody(emailBody.value, dummyEmailProps.donation.name)}
+          />
         </div>
       </Modal.Body>
       <Modal.Footer className="bg-white">
-        <Button
-          color="blue"
-          onClick={() => {
-            showEmailPreview.value = false
-          }}
-        >
+        <Button color="blue" onClick={() => (showEmailPreview.value = false)}>
           Close
         </Button>
       </Modal.Footer>
@@ -158,47 +148,77 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory }) =
   </details>
 )
 
+function handleError(error: ApiError) {
+  switch (error.statusCode) {
+    case 400:
+      switch (error.message) {
+        case "checksum mismatch":
+          emailFailureText.value =
+            "There has been a change to your accounting data. Please review your receipts again before sending."
+          break
+        case "data missing":
+          emailFailureText.value =
+            "Data is unexpectedly missing from your account. Please reload the page and try again. \
+                    If this continues please contact an administrator."
+        default:
+          emailFailureText.value =
+            "There was an unexpected client error. If this continues please contact an administrator. \
+                    If this continues please contact an administrator."
+      }
+      showEmailFailureToast.value = true
+      break
+    case 401:
+      switch (error.message) {
+        case "not subscribed":
+          emailFailureText.value =
+            "There was error with your subscription. Please reload the page and try again. \
+                    If this continues please contact an administrator."
+          break
+        default:
+          emailFailureText.value =
+            "There was an unexpected error with your authentication. If this continues please contact an administrator."
+      }
+      showEmailFailureToast.value = true
+      break
+    case 429:
+      showEmailFailureToast.value = true
+      emailFailureText.value =
+        "You are only allowed 5 email campaigns within a 24 hour period on your current plan."
+      break
+    case 500:
+      throw error
+  }
+}
 function SendEmails({
   recipients,
   emailHistory,
   realmId,
+  checksum,
 }: {
   recipients: Set<string>
   emailHistory: EmailHistory | null
   realmId: string
+  checksum: string
 }) {
   const handler = async () => {
     const data: EmailDataType = {
       emailBody: emailBody.value,
       recipientIds: Array.from(recipients),
       realmId,
+      checksum,
     }
     try {
       await postJsonData("/api/email", data)
-    } catch (e) {
-      if (!(e instanceof ApiError)) throw e
-      switch (e.statusCode) {
-        case 429:
-          showEmailFailureToast.value = true
-          emailFailureText.value =
-            "You are only allowed 5 email campaigns within a 24 hour period on your current plan."
-          break
-        case 500:
-          throw e
-      }
+    } catch (error) {
+      console.error(error)
+      if (!(error instanceof ApiError)) throw error
+      batch(() => handleError(error as ApiError))
     }
     showSendEmail.value = false
   }
 
   return (
-    <Modal
-      show={showSendEmail.value}
-      size="lg"
-      popup
-      onClose={() => {
-        showSendEmail.value = false
-      }}
-    >
+    <Modal show={showSendEmail.value} size="lg" popup onClose={() => (showSendEmail.value = false)}>
       <Modal.Header />
       <Modal.Body>
         <div className="space-y-4 text-center">
@@ -213,12 +233,7 @@ function SendEmails({
             <Button color="failure" onClick={handler}>
               Yes, I{"'"}m sure
             </Button>
-            <Button
-              color="gray"
-              onClick={() => {
-                showSendEmail.value = false
-              }}
-            >
+            <Button color="gray" onClick={() => (showSendEmail.value = false)}>
               No, cancel
             </Button>
           </div>
@@ -240,25 +255,91 @@ enum RecipientStatus {
   NoEmail,
 }
 type Recipient = { name: string; donorId: string; status: RecipientStatus }
+
+function SelectRecipients({
+  possibleRecipients,
+  setSelectedRecipientIds,
+}: {
+  possibleRecipients: Recipient[]
+  setSelectedRecipientIds: Dispatch<SetStateAction<Set<string>>>
+}) {
+  return (
+    <div className="mt-4 sm:grid sm:grid-cols-2">
+      {possibleRecipients.map(({ donorId, name, status }) => (
+        <Toggle
+          key={donorId}
+          id={donorId}
+          label={name}
+          defaultChecked={status === RecipientStatus.Valid}
+          disabled={status === RecipientStatus.NoEmail}
+          onChange={e =>
+            setSelectedRecipientIds(set =>
+              e.currentTarget.checked ? set.add(donorId) : (set.delete(donorId), set),
+            )
+          }
+          size="sm"
+        />
+      ))}
+    </div>
+  )
+}
+
+function RecipientsMissingEmails({
+  selectedRecipientIds,
+  possibleRecipients,
+}: {
+  selectedRecipientIds: Set<string>
+  possibleRecipients: Recipient[]
+}) {
+  return (
+    <div className="flex flex-col justify-center gap-6">
+      <p className="text-gray-500 dark:text-gray-400">
+        {selectedRecipientIds.size > 0 ? "Some" : "All"} of your users are missing emails. Please
+        add emails to these users on QuickBooks if you wish to send receipts to all your donor.
+      </p>
+      <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
+      <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
+        {possibleRecipients
+          .filter(recipient => recipient.status === RecipientStatus.NoEmail)
+          .map(recipient => (
+            <li className="truncate" key={recipient.donorId}>
+              {recipient.name}
+            </li>
+          ))}
+      </ul>
+    </div>
+  )
+}
+
 type CompleteAccountProps = {
   accountStatus: AccountStatus.Complete
   donee: DoneeInfo
-  recipients: Recipient[]
+  possibleRecipients: Recipient[]
   emailHistory: EmailHistory | null
   realmId: string
+  checksum: string
 }
-function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: CompleteAccountProps) {
+
+function CompleteAccountEmail({
+  donee,
+  possibleRecipients,
+  emailHistory,
+  realmId,
+  checksum,
+}: CompleteAccountProps) {
   const defaultRecipients = useMemo(
-    () => recipients.filter(recipient => recipient.status === RecipientStatus.Valid),
-    [recipients],
+    () => possibleRecipients.filter(recipient => recipient.status === RecipientStatus.Valid),
+    [possibleRecipients],
   )
   const [customRecipients, setCustomRecipients] = useState(defaultCustomRecipientsState)
-  const [recipientIds, setRecipientIds] = useState(
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState(
     new Set<string>(defaultRecipients.map(({ donorId }) => donorId)),
   )
 
   const trimmedHistory =
-    customRecipients && emailHistory ? trimHistoryById(recipientIds, emailHistory) : emailHistory
+    customRecipients && emailHistory
+      ? trimHistoryById(selectedRecipientIds, emailHistory)
+      : emailHistory
 
   return (
     <section className="flex h-full w-full max-w-2xl flex-col justify-center gap-4 p-8 align-middle">
@@ -275,80 +356,48 @@ function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: Comp
           </div>
           <hr className="my-6 h-px border-0 bg-gray-200 dark:bg-gray-700" />
           {customRecipients && (
-            <div className="mt-4 sm:grid sm:grid-cols-2">
-              {recipients.map(({ donorId, name, status }) => (
-                <Toggle
-                  key={donorId}
-                  id={donorId}
-                  label={name}
-                  defaultChecked={status === RecipientStatus.Valid}
-                  disabled={status === RecipientStatus.NoEmail}
-                  onChange={e =>
-                    setRecipientIds(set =>
-                      e.currentTarget.checked ? set.add(donorId) : (set.delete(donorId), set),
-                    )
-                  }
-                  size="sm"
-                />
-              ))}
-            </div>
+            <SelectRecipients
+              possibleRecipients={possibleRecipients}
+              setSelectedRecipientIds={setSelectedRecipientIds}
+            />
           )}
-          {!customRecipients && defaultRecipients.length < recipients.length && (
-            <div className="flex flex-col justify-center gap-6">
-              <p className="text-gray-500 dark:text-gray-400">
-                {recipientIds.size > 0 ? "Some" : "All"} of your users are missing emails. Please
-                add emails to these users on QuickBooks if you wish to send receipts to all your
-                donor.
-              </p>
-              <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
-              <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
-                {recipients
-                  .filter(recipient => recipient.status === RecipientStatus.NoEmail)
-                  .map(recipient => (
-                    <li className="truncate" key={recipient.donorId}>
-                      {recipient.name}
-                    </li>
-                  ))}
-              </ul>
-            </div>
+          {!customRecipients && defaultRecipients.length < possibleRecipients.length && (
+            <RecipientsMissingEmails
+              selectedRecipientIds={selectedRecipientIds}
+              possibleRecipients={possibleRecipients}
+            />
           )}
         </Fieldset>
       </form>
       <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
         <div className="mb-4 flex justify-center gap-4">
-          <Button
-            color="blue"
-            onClick={() => {
-              showEmailPreview.value = true
-            }}
-          >
+          <Button color="blue" onClick={() => (showEmailPreview.value = true)}>
             Show Preview Email
           </Button>
-
           <Button
             color="blue"
-            className={recipientIds.size > 0 ? "" : "line-through"}
-            onClick={() => {
-              showSendEmail.value = true
-            }}
+            className={selectedRecipientIds.size > 0 ? "" : "line-through"}
+            disabled={selectedRecipientIds.size === 0}
+            onClick={() => (showSendEmail.value = true)}
           >
             Send Emails
           </Button>
         </div>
-        <Show when={recipientIds.size === 0}>
+        <Show when={selectedRecipientIds.size === 0}>
           <Alert color="warning" className="mb-4" icon={() => <Info className="mr-2 h-6 w-6" />}>
             You have currently have no valid recipients
           </Alert>
         </Show>
       </div>
       <EmailPreview donee={donee} />
-      <SendEmails recipients={recipientIds} emailHistory={trimmedHistory} realmId={realmId} />
+      <SendEmails
+        recipients={selectedRecipientIds}
+        emailHistory={trimmedHistory}
+        realmId={realmId}
+        checksum={checksum}
+      />
       {showEmailSentToast.value && (
-        <EmailSentToast
-          onDismiss={() => {
-            showEmailSentToast.value = false
-          }}
-        />
+        <EmailSentToast onDismiss={() => (showEmailSentToast.value = false)} />
       )}
       {showEmailFailureToast.value && (
         <Toast className="fixed bottom-5 right-5">
@@ -356,11 +405,7 @@ function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: Comp
             <EnvelopeIcon className="h-5 w-5" />
           </div>
           <div className="ml-3 text-sm font-normal">{emailFailureText.value}</div>
-          <Toast.Toggle
-            onDismiss={() => {
-              showEmailFailureToast.value = false
-            }}
-          />
+          <Toast.Toggle onDismiss={() => (showEmailFailureToast.value = false)} />
         </Toast>
       )}
     </section>
@@ -375,6 +420,9 @@ type IncompleteAccountProps = {
 }
 type Props = IncompleteAccountProps | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
+
+// --- page ---
+
 export default function Email(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   if (props.accountStatus === AccountStatus.IncompleteData)
@@ -452,12 +500,12 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
     { startDate: userData.startDate, endDate: userData.endDate },
     userData.items ? userData.items.split(",") : [],
   )
-  const recipients = donations.map(({ donorId, name, email }) => ({
+  const possibleRecipients = donations.map(({ donorId, name, email }) => ({
     donorId,
     name,
     status: email ? RecipientStatus.Valid : RecipientStatus.NoEmail,
   }))
-  const recipientIds = recipients.map(({ donorId }) => donorId)
+  const recipientIds = possibleRecipients.map(({ donorId }) => donorId)
 
   const dateOverlap = and(
     lt(emailHistories.startDate, userData.endDate),
@@ -493,9 +541,10 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
   const props: Props = {
     accountStatus: AccountStatus.Complete,
     donee: await downloadImagesForDonee(doneeInfo, storageBucket),
-    recipients,
+    possibleRecipients,
     emailHistory: emailHistory.length > 0 ? emailHistory : null,
     realmId,
+    checksum: makeChecksum(JSON.stringify(donations)),
   }
   return {
     props: serialiseDates(props),

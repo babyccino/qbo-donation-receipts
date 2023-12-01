@@ -51,9 +51,8 @@ export function createAuthorisedHandler<T>(
       await handler(req, res, session)
     } catch (error) {
       console.error(error)
-      if (!(error instanceof ApiError)) return res.status(404).json({ message: "server error" })
-
-      res.status(error.statusCode).json({ ...error })
+      if (!(error instanceof ApiError)) return res.status(404).send("unknown server error" as any)
+      res.status(error.statusCode).send(error.message as any)
     }
   }
 }

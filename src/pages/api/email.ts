@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2"
 import { renderToBuffer } from "@react-pdf/renderer"
+import makeChecksum from "checksum"
 import { and, eq, gt, inArray, sql } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
@@ -13,6 +14,7 @@ import { db } from "@/lib/db/test"
 import { formatEmailBody } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
 import resend from "@/lib/resend"
+import { isUserSubscribed } from "@/lib/stripe"
 import { config } from "@/lib/util/config"
 import { formatDateHtmlReverse, getThisYear } from "@/lib/util/date"
 import { dataUrlToBase64 } from "@/lib/util/image-helper"
@@ -30,6 +32,7 @@ export const parser = z.object({
   emailBody: z.string(),
   recipientIds: z.array(z.string()).refine(arr => arr.length > 0),
   realmId: z.string(),
+  checksum: z.string(),
 })
 export type EmailDataType = z.input<typeof parser>
 
@@ -38,7 +41,7 @@ const hasEmail = (donation: Donation): donation is DonationWithEmail => Boolean(
 
 const handler: AuthorisedHandler = async (req, res, session) => {
   const userId = session.user.id
-  const { emailBody, recipientIds, realmId } = parseRequestBody(parser, req.body)
+  const { emailBody, recipientIds, realmId, checksum } = parseRequestBody(parser, req.body)
 
   const [row] = await Promise.all([
     db.query.accounts
@@ -60,7 +63,10 @@ const handler: AuthorisedHandler = async (req, res, session) => {
             columns: { accountId: false, createdAt: false, id: false, updatedAt: false },
           },
           userData: { columns: { items: true, startDate: true, endDate: true } },
-          user: { columns: { email: true } },
+          user: {
+            columns: { email: true },
+            with: { subscription: { columns: { status: true, currentPeriodEnd: true } } },
+          },
         },
       })
       .then(row => {
@@ -69,9 +75,11 @@ const handler: AuthorisedHandler = async (req, res, session) => {
         if (!account || account.scope !== "accounting" || !account.accessToken)
           throw new ApiError(401, "client not qbo-connected")
 
-        if (!doneeInfo || !userData) throw new ApiError(400, "Data missing from user")
+        if (!doneeInfo || !userData) throw new ApiError(400, "data missing")
 
-        // if (!isUserSubscribed(userData)) throw new ApiError(401, "User not subscribed")
+        const { subscription } = user
+        if (!subscription || !isUserSubscribed(subscription))
+          throw new ApiError(401, "not subscribed")
         if (userData.items === null) throw new ApiError(400, "no items selected")
         return {
           account,
@@ -103,11 +111,14 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       account.accessToken as string,
       realmId,
       { startDate: userData.startDate, endDate: userData.endDate },
-      userData.items.split(","),
+      userData.items ? userData.items.split(",") : [],
     ),
     downloadImageAsDataUrl(storageBucket, doneeInfo.signature),
     downloadImageAsDataUrl(storageBucket, doneeInfo.smallLogo),
   ])
+
+  if (makeChecksum(JSON.stringify(donations)) !== checksum)
+    throw new ApiError(400, "checksum mismatch")
 
   // throw if req.body.to is not a subset of the calculated donations
   {
@@ -115,7 +126,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     const ids = recipientIds.filter(id => !set.has(id))
     if (ids.length > 0)
       throw new ApiError(
-        400,
+        500,
         `${ids.length} IDs were found in the request body which were not present in the calculated donations for this date range` +
           ids,
       )
@@ -158,7 +169,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   // it's very important that only donations which have been successfully recorded are sent
   // if there is any error recording the donations we will not send out any receipts
-  const insertResult = await db.transaction(async tx => {
+  const insertSuccess = await db.transaction(async tx => {
     const inserts = await Promise.all(
       receiptsToSend.map(donation =>
         tx.insert(donationsSchema).values({
@@ -177,7 +188,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     } else return true
   })
 
-  if (!insertResult)
+  if (!insertSuccess)
     throw new ApiError(500, "there was an error recording donations in the database")
 
   const sendReceipt = async (entry: DonationWithEmail) => {

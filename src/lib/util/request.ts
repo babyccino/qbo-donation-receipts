@@ -58,10 +58,8 @@ export async function postJsonData<T = any>(url: string, json?: any): Promise<T>
 
   const responseContent = await getResponseContent(response)
   if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      `POST request to url: ${url} failed, error: ${responseContent}}`,
-    )
+    console.error(`POST request to url: ${url} failed, error: ${responseContent}}`)
+    throw new ApiError(response.status, responseContent)
   }
 
   return responseContent as T
