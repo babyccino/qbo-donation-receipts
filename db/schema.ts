@@ -237,21 +237,21 @@ export const donations = sqliteTable(
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
     emailHistoryId: text("email_history_id", { length: 191 }).notNull(),
-    donorId: text("id", { length: 191 }).notNull(),
+    donorId: text("donor_id", { length: 191 }).notNull(),
     total: integer("total", { mode: "number" }).notNull(),
     name: text("name").notNull(),
     email: text("email").notNull(),
     createdAt: timestamp("created_at"),
   },
   donation => ({
-    emailHistoryIndex: uniqueIndex("donations__email_history_id__idx").on(donation.emailHistoryId),
+    emailHistoryIndex: index("donations__email_history_id__idx").on(donation.emailHistoryId),
   }),
 )
 export type Donation = typeof donations.$inferSelect
 
 export const donationsRelations = relations(donations, ({ one }) => ({
   emailHistory: one(emailHistories, {
-    fields: [donations.donorId],
+    fields: [donations.emailHistoryId],
     references: [emailHistories.id],
   }),
 }))
