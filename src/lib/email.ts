@@ -5,9 +5,9 @@ export const templateDonorName = "FULL_NAME"
 export const formatEmailBody = (str: string, donorName: string) =>
   str.replaceAll(templateDonorName, donorName)
 
-export const makeDefaultEmailBody = (orgName: string) => `Dear ${templateDonorName},
+export const defaultEmailBody = `Dear ${templateDonorName},
 
-We hope this message finds you in good health and high spirits. On behalf of ${orgName}, we would like to extend our heartfelt gratitude for your recent contribution. Your generosity and support play a vital role in our mission to [state the mission or purpose of the organization].
+We hope this message finds you in good health and high spirits. On behalf of our organisation, we would like to extend our heartfelt gratitude for your recent contribution. Your generosity and support play a vital role in our mission to [state the mission or purpose of the organization].
 
 With your continued support, we will be able to [describe how the funds will be utilized or the impact they will make]. Your contribution makes a significant difference in the lives of those we serve, and we are deeply grateful for your commitment to our cause.
 

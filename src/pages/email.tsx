@@ -3,12 +3,13 @@ import {
   InformationCircleIcon as Info,
   ChevronUpIcon as UpArrow,
 } from "@heroicons/react/24/solid"
+import { signal } from "@preact/signals-react"
 import { and, eq, gt, inArray, lt } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
-import { Dispatch, SetStateAction, createContext, useContext, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { EmailSentToast, MissingData } from "@/components/ui"
@@ -18,12 +19,7 @@ import { storageBucket } from "@/lib/db"
 import { downloadImagesForDonee } from "@/lib/db-helper"
 import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
-import {
-  formatEmailBody,
-  makeDefaultEmailBody,
-  templateDonorName,
-  trimHistoryById,
-} from "@/lib/email"
+import { defaultEmailBody, formatEmailBody, templateDonorName, trimHistoryById } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
 import { formatDateHtml } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
@@ -51,18 +47,13 @@ const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => 
   loadImmediately: true,
 })
 
-type EmailContext = {
-  emailBody: string
-  setEmailBody: Dispatch<SetStateAction<string>>
-}
-const EmailContext = createContext<EmailContext>({
-  emailBody: "",
-  setEmailBody: () => {},
-})
+const emailBody = signal(defaultEmailBody)
+const showEmailPreview = signal(false)
+const showSendEmail = signal(false)
+const showEmailSentToast = signal(false)
+const showEmailFailureToast = signal(false)
 
 function EmailInput() {
-  const { emailBody, setEmailBody } = useContext(EmailContext)
-
   // TODO maybe save email to db with debounce?
 
   return (
@@ -70,9 +61,9 @@ function EmailInput() {
       <TextArea
         id="email"
         label="Your Email Template"
-        defaultValue={emailBody}
+        defaultValue={emailBody.value}
         onChange={e => {
-          setEmailBody(e.currentTarget.value)
+          emailBody.value = e.target.value
         }}
         rows={10}
       />
@@ -84,35 +75,38 @@ function EmailInput() {
 }
 
 function EmailPreview({ donee }: { donee: DoneeInfo }) {
-  const [showModal, setShowModal] = useState(false)
-  const { emailBody } = useContext(EmailContext)
-
   // any donee information which has been entered by the user will overwrite the dummy data
   const emailProps: WithBodyProps = {
     ...dummyEmailProps,
     donee: { ...dummyEmailProps.donee, ...donee },
-    body: formatEmailBody(emailBody, dummyEmailProps.donation.name),
+    body: formatEmailBody(emailBody.value, dummyEmailProps.donation.name),
   }
 
   return (
-    <>
-      <Button color="blue" onClick={() => setShowModal(true)}>
-        Show Preview Email
-      </Button>
-      <Modal dismissible show={showModal} onClose={() => setShowModal(false)} className="bg-white">
-        <Modal.Body className="bg-white">
-          <div className="overflow-scroll">
-            <WithBody {...emailProps} body={emailBody} />
-          </div>
-        </Modal.Body>
-        <Modal.Footer className="bg-white">
-          <Button color="blue" onClick={() => setShowModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
-      <button onClick={e => e.currentTarget.value}></button>
-    </>
+    <Modal
+      dismissible
+      show={showEmailPreview.value}
+      onClose={() => {
+        showEmailPreview.value = false
+      }}
+      className="bg-white"
+    >
+      <Modal.Body className="bg-white">
+        <div className="overflow-scroll">
+          <WithBody {...emailProps} body={emailBody.value} />
+        </div>
+      </Modal.Body>
+      <Modal.Footer className="bg-white">
+        <Button
+          color="blue"
+          onClick={() => {
+            showEmailPreview.value = false
+          }}
+        >
+          Close
+        </Button>
+      </Modal.Footer>
+    </Modal>
   )
 }
 
@@ -147,9 +141,9 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory }) =
                   This campaign spanned donations from <i>{formatDateHtml(entry.startDate)}</i> to{" "}
                   <i>{formatDateHtml(entry.endDate)}</i>
                 </p>
-                Donors:
+                These donors will be sent receipts which overlap with the current campaign:
                 <br />
-                <ul className="list-inside list-disc">
+                <ul className="list-inside list-disc mt-1">
                   {entry.donations.map(donation => (
                     <li key={donation.name}>{donation.name}</li>
                   ))}
@@ -172,14 +166,9 @@ function SendEmails({
   emailHistory: EmailHistory | null
   realmId: string
 }) {
-  const [showModal, setShowModal] = useState(false)
-  const [showEmailSentToast, setShowEmailSentToast] = useState(false)
-  const [showEmailFailureToast, setShowEmailFailureToast] = useState(false)
-  const { emailBody } = useContext(EmailContext)
-
   const handler = async () => {
     const data: EmailDataType = {
-      emailBody: emailBody,
+      emailBody: emailBody.value,
       recipientIds: Array.from(recipients),
       realmId,
     }
@@ -187,56 +176,47 @@ function SendEmails({
       await postJsonData("/api/email", data)
     } catch (e) {
       if (e && typeof e === "object" && (e as any).statusCode === 429) {
-        setShowEmailFailureToast(true)
+        showEmailFailureToast.value = true
       }
     }
-    setShowModal(false)
+    showSendEmail.value = false
   }
 
   return (
-    <>
-      <Button
-        color="blue"
-        className={recipients.size > 0 ? "" : "line-through"}
-        onClick={() => setShowModal(true)}
-      >
-        Send Emails
-      </Button>
-      <Modal show={showModal} size="lg" popup onClose={() => setShowModal(false)}>
-        <Modal.Header />
-        <Modal.Body>
-          <div className="space-y-4 text-center">
-            {emailHistory && <EmailHistoryOverlap emailHistory={emailHistory} />}
-            <p className="font-normal text-gray-500 dark:text-gray-400">
-              Please ensure that you confirm the accuracy of your receipts on the {'"'}Receipts{'"'}{" "}
-              page prior to sending. <br />
-              <br />
-              Are you certain you wish to email all of your donors?
-            </p>
-            <div className="flex justify-center gap-4">
-              <Button color="failure" onClick={handler}>
-                Yes, I{"'"}m sure
-              </Button>
-              <Button color="gray" onClick={() => setShowModal(false)}>
-                No, cancel
-              </Button>
-            </div>
+    <Modal
+      show={showSendEmail.value}
+      size="lg"
+      popup
+      onClose={() => {
+        showSendEmail.value = false
+      }}
+    >
+      <Modal.Header />
+      <Modal.Body>
+        <div className="space-y-4 text-center">
+          {emailHistory && <EmailHistoryOverlap emailHistory={emailHistory} />}
+          <p className="font-normal text-gray-500 dark:text-gray-400">
+            Please ensure that you confirm the accuracy of your receipts on the {'"'}Receipts{'"'}{" "}
+            page prior to sending. <br />
+            <br />
+            Are you certain you wish to email all of your donors?
+          </p>
+          <div className="flex justify-center gap-4">
+            <Button color="failure" onClick={handler}>
+              Yes, I{"'"}m sure
+            </Button>
+            <Button
+              color="gray"
+              onClick={() => {
+                showSendEmail.value = false
+              }}
+            >
+              No, cancel
+            </Button>
           </div>
-        </Modal.Body>
-      </Modal>
-      {showEmailSentToast && <EmailSentToast onDismiss={() => setShowEmailSentToast(false)} />}
-      {showEmailFailureToast && (
-        <Toast className="fixed bottom-5 right-5">
-          <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200">
-            <EnvelopeIcon className="h-5 w-5" />
-          </div>
-          <div className="ml-3 text-sm font-normal">
-            You are only allowed 5 email campaigns within a 24 hour period on your current plan.
-          </div>
-          <Toast.Toggle onDismiss={() => setShowEmailFailureToast(false)} />
-        </Toast>
-      )}
-    </>
+        </div>
+      </Modal.Body>
+    </Modal>
   )
 }
 
@@ -328,8 +308,24 @@ function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: Comp
       </form>
       <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
         <div className="mb-4 flex justify-center gap-4">
-          <EmailPreview donee={donee} />
-          <SendEmails recipients={recipientIds} emailHistory={trimmedHistory} realmId={realmId} />
+          <Button
+            color="blue"
+            onClick={() => {
+              showEmailPreview.value = true
+            }}
+          >
+            Show Preview Email
+          </Button>
+
+          <Button
+            color="blue"
+            className={recipientIds.size > 0 ? "" : "line-through"}
+            onClick={() => {
+              showSendEmail.value = true
+            }}
+          >
+            Send Emails
+          </Button>
         </div>
         <Show when={recipientIds.size === 0}>
           <Alert color="warning" className="mb-4" icon={() => <Info className="mr-2 h-6 w-6" />}>
@@ -337,6 +333,30 @@ function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: Comp
           </Alert>
         </Show>
       </div>
+      <EmailPreview donee={donee} />
+      <SendEmails recipients={recipientIds} emailHistory={trimmedHistory} realmId={realmId} />
+      {showEmailSentToast.value && (
+        <EmailSentToast
+          onDismiss={() => {
+            showEmailSentToast.value = false
+          }}
+        />
+      )}
+      {showEmailFailureToast.value && (
+        <Toast className="fixed bottom-5 right-5">
+          <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200">
+            <EnvelopeIcon className="h-5 w-5" />
+          </div>
+          <div className="ml-3 text-sm font-normal">
+            You are only allowed 5 email campaigns within a 24 hour period on your current plan.
+          </div>
+          <Toast.Toggle
+            onDismiss={() => {
+              showEmailFailureToast.value = false
+            }}
+          />
+        </Toast>
+      )}
     </section>
   )
 }
@@ -351,26 +371,16 @@ type Props = IncompleteAccountProps | CompleteAccountProps
 type SerialisedProps = SerialiseDates<Props>
 export default function Email(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
-  const companyName =
-    props.accountStatus === AccountStatus.IncompleteData
-      ? props.companyName ?? "Test Company"
-      : props.donee.companyName
-  const defaultEmailBody = makeDefaultEmailBody(companyName)
-  const [emailBody, setEmailBody] = useState(defaultEmailBody)
-  return (
-    <EmailContext.Provider value={{ emailBody, setEmailBody }}>
-      {props.accountStatus === AccountStatus.IncompleteData ? (
-        <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
-          <MissingData filledIn={props.filledIn} realmId={props.realmId} />
-          <form>
-            <EmailInput />
-          </form>
-        </section>
-      ) : (
-        <CompleteAccountEmail {...props} />
-      )}
-    </EmailContext.Provider>
-  )
+  if (props.accountStatus === AccountStatus.IncompleteData)
+    return (
+      <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
+        <MissingData filledIn={props.filledIn} realmId={props.realmId} />
+        <form>
+          <EmailInput />
+        </form>
+      </section>
+    )
+  else return <CompleteAccountEmail {...props} />
 }
 
 // --- server-side props ---
@@ -382,7 +392,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
 }) => {
   const session = await getServerSession(req, res, authOptions)
   const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
-  if (!session) return signInRedirect("email" + queryRealmId ? `%3FrealmId%3D${queryRealmId}` : "")
+  if (!session)
+    return signInRedirect("email" + (queryRealmId ? `%3FrealmId%3D${queryRealmId}` : ""))
 
   const account = await db.query.accounts.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
