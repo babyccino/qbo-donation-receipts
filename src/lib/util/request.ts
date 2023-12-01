@@ -1,5 +1,6 @@
 import { DataType as CheckoutSessionDataType } from "@/pages/api/stripe/create-checkout-session"
 import { config } from "@/lib/util/config"
+import { ApiError } from "next/dist/server/api-utils"
 
 const { vercelEnv, vercelBranchUrl, vercelUrl, productionUrl } = config
 
@@ -57,7 +58,10 @@ export async function postJsonData<T = any>(url: string, json?: any): Promise<T>
 
   const responseContent = await getResponseContent(response)
   if (!response.ok) {
-    throw new Error(`POST request to url: ${url} failed, error: ${responseContent}}`)
+    throw new ApiError(
+      response.status,
+      `POST request to url: ${url} failed, error: ${responseContent}}`,
+    )
   }
 
   return responseContent as T

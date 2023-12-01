@@ -52,6 +52,7 @@ const showEmailPreview = signal(false)
 const showSendEmail = signal(false)
 const showEmailSentToast = signal(false)
 const showEmailFailureToast = signal(false)
+const emailFailureText = signal("error")
 
 function EmailInput() {
   // TODO maybe save email to db with debounce?
@@ -175,8 +176,15 @@ function SendEmails({
     try {
       await postJsonData("/api/email", data)
     } catch (e) {
-      if (e && typeof e === "object" && (e as any).statusCode === 429) {
-        showEmailFailureToast.value = true
+      if (!(e instanceof ApiError)) throw e
+      switch (e.statusCode) {
+        case 429:
+          showEmailFailureToast.value = true
+          emailFailureText.value =
+            "You are only allowed 5 email campaigns within a 24 hour period on your current plan."
+          break
+        case 500:
+          throw e
       }
     }
     showSendEmail.value = false
@@ -347,9 +355,7 @@ function CompleteAccountEmail({ donee, recipients, emailHistory, realmId }: Comp
           <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200">
             <EnvelopeIcon className="h-5 w-5" />
           </div>
-          <div className="ml-3 text-sm font-normal">
-            You are only allowed 5 email campaigns within a 24 hour period on your current plan.
-          </div>
+          <div className="ml-3 text-sm font-normal">{emailFailureText.value}</div>
           <Toast.Toggle
             onDismiss={() => {
               showEmailFailureToast.value = false
