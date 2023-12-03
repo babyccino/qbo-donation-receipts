@@ -3,20 +3,16 @@
 
 import "./globals.scss"
 
-import { SessionProvider } from "next-auth/react"
-import { AppProps } from "next/app"
-import Head from "next/head"
 import { Session } from "next-auth"
 import { NextSeo } from "next-seo"
+import { AppProps } from "next/app"
+import Head from "next/head"
 
-import Layout from "@/components/layout"
 import ErrorBoundary from "@/components/error"
+import Layout, { LayoutProps } from "@/components/layout"
 import { config } from "@/lib/util/config"
 
-export default function App({
-  Component,
-  pageProps: { session, ...pageProps },
-}: AppProps<{ session: Session }>) {
+export default function App({ Component, pageProps }: AppProps<LayoutProps & Record<string, any>>) {
   const pageTitle =
     config.nodeEnv === "development" || config.nodeEnv === "test"
       ? "[dev] DonationReceipt.Online"
@@ -46,13 +42,21 @@ export default function App({
         <title>DonationReceipt.Online</title>
         <meta name="description" content="Expedite your organisation's year-end!" />
       </Head>
-      <SessionProvider session={session}>
-        <ErrorBoundary>
-          <Layout>
+      <ErrorBoundary>
+        {pageProps.companies ? (
+          <Layout
+            session={pageProps.session}
+            companies={pageProps.companies}
+            selectedAccountId={pageProps.selectedAccountId}
+          >
             <Component {...pageProps} />
           </Layout>
-        </ErrorBoundary>
-      </SessionProvider>
+        ) : (
+          <Layout session={pageProps.session}>
+            <Component {...pageProps} />
+          </Layout>
+        )}
+      </ErrorBoundary>
     </>
   )
 }

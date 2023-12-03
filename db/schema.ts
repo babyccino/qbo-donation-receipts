@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm"
 import { customType, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core"
+import { ProviderType } from "next-auth/providers"
 import type { Stripe } from "stripe"
 
 const timestamp = (name: string) =>
@@ -118,7 +119,7 @@ export const accounts = sqliteTable(
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
     userId: text("user_id", { length: 191 }).notNull(),
-    type: text("type", { length: 191 }).notNull(),
+    type: stringEnum<ProviderType>("type").notNull(),
     provider: text("provider", { length: 191 }).notNull(),
     providerAccountId: text("provider_account_id", { length: 191 }).notNull(),
     accessToken: text("access_token"),
@@ -131,6 +132,7 @@ export const accounts = sqliteTable(
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
     realmId: text("realmid"),
+    companyName: text("company_name"),
   },
   account => ({
     providerProviderAccountIdIndex: uniqueIndex("accounts__provider__providerAccountId__idx").on(
@@ -260,9 +262,10 @@ export const sessions = sqliteTable(
   "sessions",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
-    sessionToken: text("sessionToken", { length: 191 }).notNull(),
-    userId: text("userId", { length: 191 }).notNull(),
-    expires: integer("expires").notNull(),
+    sessionToken: text("session_token", { length: 191 }).notNull(),
+    userId: text("user_id", { length: 191 }).notNull(),
+    accountId: text("account_id", { length: 191 }),
+    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
     createdAt: timestamp("created_at"),
     updatedAt: timestamp("updated_at"),
   },
@@ -277,6 +280,10 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, {
     fields: [sessions.userId],
     references: [users.id],
+  }),
+  account: one(accounts, {
+    fields: [sessions.accountId],
+    references: [accounts.id],
   }),
 }))
 

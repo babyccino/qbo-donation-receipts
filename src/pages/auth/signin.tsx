@@ -37,7 +37,7 @@ export default function SignInPage() {
           className="mx-auto mt-4 inline-block"
           onClick={e => {
             e.preventDefault()
-            signIn("QBO-disconnected", { callbackUrl: "/" + callback ?? "" })
+            signIn("QBO-disconnected", { callbackUrl: "/" + (callback ?? "") })
           }}
         >
           <SignIn disabled={!checked} />

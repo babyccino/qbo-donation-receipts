@@ -1,7 +1,16 @@
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Button } from "flowbite-react"
+import { GetServerSideProps } from "next"
+import { getServerSession } from "next-auth"
 
+import { LayoutProps } from "@/components/layout"
 import { PricingCard } from "@/components/ui"
+import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db/test"
+import { isUserSubscribedSql } from "@/lib/stripe"
 import { subscribe } from "@/lib/util/request"
+import { accounts, sessions, subscriptions } from "db/schema"
+import { authOptions } from "./api/auth/[...nextauth]"
 
 export default function Subscribe() {
   return (
@@ -17,7 +26,7 @@ export default function Subscribe() {
             <Button
               onClick={e => {
                 e.preventDefault()
-                subscribe("/email")
+                subscribe("/subscribe")
               }}
             >
               Go pro
@@ -27,4 +36,34 @@ export default function Subscribe() {
       </div>
     </section>
   )
+}
+
+export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
+  const session = await getServerSession(req, res, authOptions)
+  console.log("getServerSideProps: ", { session })
+  if (!session) return signInRedirect("subscribe")
+
+  const subscription = await db.query.subscriptions.findFirst({
+    where: and(eq(subscriptions.userId, session.user.id), isUserSubscribedSql),
+    orderBy: desc(accounts.updatedAt),
+  })
+  if (subscription) return { redirect: { permanent: false, destination: "/" } }
+
+  const accountList = (await db.query.accounts.findMany({
+    columns: { companyName: true, id: true },
+    where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+  })) as { companyName: string; id: string }[]
+
+  if (session.accountId === null && accountList.length > 0) {
+    await db.update(sessions).set({ accountId: accountList[0].id })
+    session.accountId = accountList[0].id
+  }
+
+  return {
+    props: {
+      session,
+      companies: accountList,
+      selectedAccountId: session.accountId as string,
+    } satisfies LayoutProps,
+  }
 }

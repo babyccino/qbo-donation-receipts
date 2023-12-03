@@ -1,4 +1,3 @@
-import { MouseEventHandler, ReactNode, useEffect, useState } from "react"
 import {
   ArrowLeftOnRectangleIcon,
   ArrowRightOnRectangleIcon,
@@ -14,18 +13,34 @@ import {
   UserCircleIcon,
   UserPlusIcon,
 } from "@heroicons/react/24/solid"
-import { signOut, useSession } from "next-auth/react"
+import { Dropdown } from "flowbite-react"
+import { Session } from "next-auth"
+import { signOut } from "next-auth/react"
 import Link from "next/link"
 import { useRouter } from "next/router"
+import { MouseEventHandler, ReactNode, useEffect, useState } from "react"
 
 import { Show } from "@/lib/util/react"
 import { subscribe } from "@/lib/util/request"
 
-export default function Layout({ children }: { children: ReactNode }) {
+export type LayoutProps = {
+  session?: Session
+} & (
+  | { companies: { companyName: string; id: string }[]; selectedAccountId: string }
+  | { companies?: undefined | null; selectedAccountId?: undefined | null }
+)
+
+export default function Layout(
+  props: {
+    children: ReactNode
+  } & LayoutProps,
+) {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { children, session } = props
   const user = session?.user
   const [showSidebar, setShowSidebar] = useState(false)
+
+  const companies = props.companies?.length ? props.companies : undefined
 
   useEffect(() => {
     const cb = () => setShowSidebar(false)
@@ -54,12 +69,12 @@ export default function Layout({ children }: { children: ReactNode }) {
         <nav
           id="separator-sidebar"
           className={
-            "fixed left-0 top-0 z-40 h-screen w-64 transition-transform sm:translate-x-0" +
+            "fixed left-0 top-0 z-40 h-screen w-64 transition-transform sm:translate-x-0 flex flex-col justify-between bg-gray-50 dark:bg-gray-800" +
             (showSidebar ? "" : " -translate-x-full")
           }
           aria-label="Sidebar"
         >
-          <ul className="h-full space-y-2 overflow-y-auto bg-gray-50 px-3 py-4 font-medium dark:bg-gray-800">
+          <ul className="h-full space-y-2 overflow-y-auto px-3 py-4 font-medium">
             <NavLink link="/" logo={<RectangleGroupIcon />} label="Dashboard" />
             <NavLink link="/items" logo={<ShoppingBagIcon />} label="Items" />
             <NavLink link="/details" logo={<RectangleStackIcon />} label="Details" />
@@ -98,6 +113,13 @@ export default function Layout({ children }: { children: ReactNode }) {
             <NavLink link="/terms/privacy" logo={<DocumentTextIcon />} label="Privacy Policy" />
             <NavLink link="/support" logo={<ChatBubbleLeftEllipsisIcon />} label="Support" />
           </ul>
+          {companies && (
+            <Dropdown label="Company">
+              {companies.map(({ companyName, id: accountId }) => (
+                <Dropdown.Item key={accountId}>{companyName}</Dropdown.Item>
+              ))}
+            </Dropdown>
+          )}
         </nav>
       </header>
       <div className="hidden w-64 sm:block" />

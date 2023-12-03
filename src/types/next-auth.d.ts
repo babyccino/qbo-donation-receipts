@@ -1,7 +1,7 @@
-import NextAuth from "next-auth"
+import NextAuth, { Session, Profile } from "next-auth"
+import { AdapterUser, AdapterSession, AdapterAccount } from "next-auth/adapters"
 
 import { QboPermission } from "./next-auth-helper"
-import { AdapterUser, AdapterSession } from "next-auth/adapters"
 
 declare module "next-auth" {
   /**
@@ -11,9 +11,9 @@ declare module "next-auth" {
     user: {
       id: string
       name: string
-      image: string
       email: string
     }
+    accountId: string | null
   }
 
   interface Profile {
@@ -25,5 +25,10 @@ declare module "next-auth/adapters" {
   /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
   interface AdapterSession {
     id: string
+    accountId: string | null
+  }
+
+  interface AdapterAccount {
+    id?: string | null
   }
 }

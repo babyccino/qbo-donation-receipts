@@ -1,15 +1,17 @@
 import { createId } from "@paralleldrive/cuid2"
-import { and, eq } from "drizzle-orm"
-import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { LibSQLDatabase } from "drizzle-orm/libsql"
-import { Adapter, AdapterSession } from "next-auth/adapters"
+import { Adapter, AdapterAccount, AdapterSession } from "next-auth/adapters"
 import { ApiError } from "next/dist/server/api-utils"
 
-import { accounts, sessions, users, verificationTokens, Account, Schema } from "db/schema"
+import { Account, Schema, accounts, sessions, users, verificationTokens } from "db/schema"
+import { getCompanyInfo } from "../qbo-api"
 
 const DEFAULT_QBO_REFRESH_PERIOD_DAYS = 101
 const SECONDS_IN_DAY = 60 * 60 * 24
 const DEFAULT_QBO_REFRESH_PERIOD_MS = DEFAULT_QBO_REFRESH_PERIOD_DAYS * SECONDS_IN_DAY * 1000
+
+const oneHrFromNow = () => new Date(Date.now() + 1000 * 60 * 60)
 
 export enum AccountStatus {
   Active = 0,
@@ -28,12 +30,14 @@ export function accountStatus({
 
 export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
   async createUser(userData) {
-    await db.insert(users).values({
-      ...userData,
-      emailVerified: new Date(),
-      id: createId(),
-    })
-    const [newUser] = await db.select().from(users).where(eq(users.email, userData.email)).limit(1)
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        emailVerified: new Date(),
+        id: createId(),
+      })
+      .returning()
     if (!newUser) throw new Error("User not found")
     return newUser
   },
@@ -47,15 +51,19 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
   },
   async getUserByAccount({ providerAccountId, provider }) {
     const [row] = await db
-      .select()
+      .select({ user: users, account: accounts })
       .from(users)
       .innerJoin(accounts, eq(users.id, accounts.userId))
       .where(
         and(eq(accounts.providerAccountId, providerAccountId), eq(accounts.provider, provider)),
       )
       .limit(1)
-    const user = row?.users
-    return user ?? null
+    if (!row) return null
+    const { user, account } = row
+    return {
+      user,
+      account: { ...account, scope: account.scope ?? undefined } satisfies AdapterAccount,
+    }
   },
   async updateUser({ id, emailVerified, ...userData }) {
     if (!id) throw new Error("User not found")
@@ -67,13 +75,9 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
   async deleteUser(userId) {
     await db.delete(users).where(eq(users.id, userId))
   },
-  async linkAccount(account) {
-    const realmId = typeof account.realmId === "string" ? account.realmId : undefined
-    const expiresAt = new Date(
-      account.expires_at !== undefined
-        ? (account.expires_at as number) * 1000
-        : Date.now() + 1000 * 60 * 60,
-    )
+  async linkAccount(account, profile) {
+    const expiresAt =
+      account.expires_at !== undefined ? new Date(account.expires_at * 1000) : oneHrFromNow()
     const refreshTokenExpiresInSeconds = (account.x_refresh_token_expires_in ??
       account.refresh_token_expires_in) as number | undefined
     const refreshTokenExpiresAt = new Date(
@@ -85,12 +89,14 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
     if (!account.access_token) throw new ApiError(500, "qbo did not return access code")
     if (account.scope !== "profile" && account.scope !== "accounting")
       throw new ApiError(500, "invalid account scope")
-    await db
+    const realmId = (account as any).realmId as string | null | undefined
+    const companyInfo = realmId ? await getCompanyInfo(account.access_token, realmId) : undefined
+    const [row] = await db
       .insert(accounts)
       .values({
         id: createId(),
         userId: account.userId,
-        realmId,
+        realmId: realmId ?? null,
         type: account.type,
         provider: account.provider,
         providerAccountId: account.providerAccountId,
@@ -101,6 +107,7 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
         refreshTokenExpiresAt,
         scope: account.scope,
         tokenType: account.token_type,
+        companyName: companyInfo?.companyName,
       })
       .onConflictDoUpdate({
         target: [accounts.userId, accounts.realmId],
@@ -115,8 +122,13 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
           refreshTokenExpiresAt,
           scope: account.scope,
           tokenType: account.token_type,
+          companyName: companyInfo?.companyName,
+          updatedAt: new Date(),
         },
       })
+      .returning()
+    if (!row) throw new Error("User not found")
+    return row as AdapterAccount
   },
   async unlinkAccount({ providerAccountId, provider }) {
     await db
@@ -125,20 +137,36 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
         and(eq(accounts.providerAccountId, providerAccountId), eq(accounts.provider, provider)),
       )
   },
-  async createSession(data) {
-    await db.insert(sessions).values({
-      id: createId(),
-      expires: data.expires?.getTime(),
-      sessionToken: data.sessionToken,
-      userId: data.userId,
-    })
+  async createSession(data, account, profile) {
+    // find the most recently updated account's realmid and set the
+    // if the account used to sign in is not qbo-connected but the user has a qbo-connected account
+    // find the most recent one of these accounts and use it
+    if (!account.realmId) {
+      // TODO only find accounts which have valid refresh tokens
+      // TODO then refresh the token
+      const dbAccount = await db.query.accounts.findFirst({
+        where: isNotNull(accounts.realmId),
+        columns: {
+          id: true,
+        },
+        orderBy: desc(accounts.updatedAt),
+      })
+      if (dbAccount) {
+        account.id = dbAccount.id
+      }
+    }
     const [session] = await db
-      .select()
-      .from(sessions)
-      .where(eq(sessions.sessionToken, data.sessionToken))
-      .limit(1)
+      .insert(sessions)
+      .values({
+        id: createId(),
+        expires: data.expires ?? oneHrFromNow(),
+        sessionToken: data.sessionToken,
+        userId: data.userId,
+        accountId: account.id ?? null,
+      })
+      .returning()
     if (!session) throw new Error("User not found")
-    return { ...session, expires: new Date(session.expires) }
+    return session
   },
   async getSessionAndUser(sessionToken) {
     const [row] = await db
@@ -149,6 +177,7 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
           userId: sessions.userId,
           sessionToken: sessions.sessionToken,
           expires: sessions.expires,
+          accountId: sessions.accountId,
         },
       })
       .from(sessions)
@@ -159,24 +188,15 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
     const { user, session } = row
     return {
       user,
-      session: {
-        id: session.id,
-        userId: session.userId,
-        sessionToken: session.sessionToken,
-        expires: new Date(session.expires),
-      } satisfies AdapterSession,
+      session: session satisfies AdapterSession,
     }
   },
   async updateSession(session) {
-    await db
-      .update(sessions)
-      .set({ ...session, expires: session.expires?.getTime() })
-      .where(eq(sessions.sessionToken, session.sessionToken))
     const [dbSession] = await db
-      .select()
-      .from(sessions)
+      .update(sessions)
+      .set({ ...session, expires: session.expires ?? oneHrFromNow() })
       .where(eq(sessions.sessionToken, session.sessionToken))
-      .limit(1)
+      .returning()
     if (!dbSession) throw new Error("Coding bug: updated session not found")
     return { ...dbSession, expires: new Date(dbSession.expires) }
   },
@@ -184,16 +204,14 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
     await db.delete(sessions).where(eq(sessions.sessionToken, sessionToken))
   },
   async createVerificationToken(verificationToken) {
-    await db.insert(verificationTokens).values({
-      expires: verificationToken.expires.getTime(),
-      identifier: verificationToken.identifier,
-      token: verificationToken.token,
-    })
     const [dbToken] = await db
-      .select()
-      .from(verificationTokens)
-      .where(eq(verificationTokens.token, verificationToken.token))
-      .limit(1)
+      .insert(verificationTokens)
+      .values({
+        expires: verificationToken.expires.getTime(),
+        identifier: verificationToken.identifier,
+        token: verificationToken.token,
+      })
+      .returning()
     if (!dbToken) throw new Error("Coding bug: inserted verification token not found")
     return { ...dbToken, expires: new Date(dbToken.expires) }
   },

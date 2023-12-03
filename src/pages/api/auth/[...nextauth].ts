@@ -1,17 +1,14 @@
 import { eq } from "drizzle-orm"
-import NextAuth, { CallbacksOptions, NextAuthOptions } from "next-auth"
-import { JWT } from "next-auth/jwt"
+import NextAuth, { CallbacksOptions, NextAuthOptions, Session } from "next-auth"
 import { OAuthConfig } from "next-auth/providers"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { DrizzleAdapter } from "@/lib/auth/drizzle-adapter"
 import { db } from "@/lib/db/test"
 import { config } from "@/lib/util/config"
-import { base64EncodeString } from "@/lib/util/image-helper"
 import { fetchJsonData } from "@/lib/util/request"
 import { OpenIdUserInfo, QBOProfile, QboAccount } from "@/types/qbo-api"
 import { accounts, users } from "db/schema"
-import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 
 const {
   qboClientId,
@@ -93,13 +90,14 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
 
 const session: QboCallbacksOptions["session"] = async ({ session, user }) => {
   return {
-    ...session,
     user: {
       id: user.id ?? session.user.id,
       name: user.name ?? session.user.name,
       email: user.email ?? session.user.email,
     },
-  }
+    accountId: session.accountId,
+    expires: (session.expires as unknown as Date).toISOString(),
+  } satisfies Session
 }
 
 export const authOptions: NextAuthOptions = {
