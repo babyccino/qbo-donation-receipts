@@ -122,7 +122,11 @@ export default function Layout(
                 label="Sign Out"
               />
             ) : (
-              <NavLink link="/auth/signin" logo={<ArrowRightOnRectangleIcon />} label="Sign In" />
+              <NavLink
+                link={`/auth/signin?callback=${router.asPath}`}
+                logo={<ArrowRightOnRectangleIcon />}
+                label="Sign In"
+              />
             )}
             {user && (
               <NavAnchor
