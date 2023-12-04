@@ -2,6 +2,7 @@ import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Button } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 
 import { LayoutProps } from "@/components/layout"
 import { PricingCard } from "@/components/ui"
@@ -40,7 +41,6 @@ export default function Subscribe() {
 
 export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
-  console.log("getServerSideProps: ", { session })
   if (!session) return signInRedirect("subscribe")
 
   const subscription = await db.query.subscriptions.findFirst({
@@ -54,16 +54,28 @@ export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req,
     where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
   })) as { companyName: string; id: string }[]
 
+  if (session.accountId !== null && accountList.length === 0)
+    throw new ApiError(500, "session has account id but this was not found in the database")
   if (session.accountId === null && accountList.length > 0) {
-    await db.update(sessions).set({ accountId: accountList[0].id })
+    await db
+      .update(sessions)
+      .set({ accountId: accountList[0].id })
+      .where(eq(sessions.userId, session.user.id))
     session.accountId = accountList[0].id
   }
 
-  return {
-    props: {
-      session,
-      companies: accountList,
-      selectedAccountId: session.accountId as string,
-    } satisfies LayoutProps,
-  }
+  if (accountList.length > 0)
+    return {
+      props: {
+        session,
+        companies: accountList,
+        selectedAccountId: session.accountId as string,
+      } satisfies LayoutProps,
+    }
+  else
+    return {
+      props: {
+        session,
+      } satisfies LayoutProps,
+    }
 }
