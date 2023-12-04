@@ -126,7 +126,7 @@ export default function IndexPage(props: Props) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
 
   if (!session) {
@@ -149,11 +149,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
           orderBy: [asc(accounts.scope)],
         })
       : null,
-    (await db.query.accounts.findMany({
+    db.query.accounts.findMany({
       columns: { companyName: true, id: true },
       where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
       orderBy: desc(accounts.updatedAt),
-    })) as { companyName: string; id: string }[],
+    }) as Promise<{ companyName: string; id: string }[]>,
   ])
   if (session.accountId && !account)
     throw new ApiError(500, "account for given user and session not found in db")
