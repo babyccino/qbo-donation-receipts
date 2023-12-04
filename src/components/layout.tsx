@@ -2,10 +2,14 @@ import {
   ArrowLeftOnRectangleIcon,
   ArrowRightOnRectangleIcon,
   Bars3BottomLeftIcon,
+  BuildingOfficeIcon,
   ChatBubbleLeftEllipsisIcon,
+  ChevronDownIcon,
   DocumentTextIcon,
   EnvelopeIcon,
   GlobeAltIcon,
+  InformationCircleIcon,
+  PlusSmallIcon,
   RectangleGroupIcon,
   RectangleStackIcon,
   ShoppingBagIcon,
@@ -13,21 +17,21 @@ import {
   UserCircleIcon,
   UserPlusIcon,
 } from "@heroicons/react/24/solid"
-import { Dropdown } from "flowbite-react"
 import { Session } from "next-auth"
 import { signOut } from "next-auth/react"
 import Link from "next/link"
-import { useRouter } from "next/router"
+import { NextRouter, useRouter } from "next/router"
 import { MouseEventHandler, ReactNode, useEffect, useState } from "react"
 
 import { Show } from "@/lib/util/react"
-import { subscribe } from "@/lib/util/request"
+import { postJsonData, subscribe } from "@/lib/util/request"
+import { DataType } from "@/pages/api/switch-company"
 
 export type LayoutProps = {
-  session?: Session
+  session: Session | null
 } & (
   | { companies: { companyName: string; id: string }[]; selectedAccountId: string }
-  | { companies?: undefined | null; selectedAccountId?: undefined | null }
+  | { companies?: null; selectedAccountId?: null }
 )
 
 export default function Layout(
@@ -41,6 +45,7 @@ export default function Layout(
   const [showSidebar, setShowSidebar] = useState(false)
 
   const companies = props.companies?.length ? props.companies : undefined
+  const otherCompanies = companies?.filter(company => company.id !== props.selectedAccountId)
 
   useEffect(() => {
     const cb = () => setShowSidebar(false)
@@ -69,18 +74,43 @@ export default function Layout(
         <nav
           id="separator-sidebar"
           className={
-            "fixed left-0 top-0 z-40 h-screen w-64 transition-transform sm:translate-x-0 flex flex-col justify-between bg-gray-50 dark:bg-gray-800" +
+            "fixed left-0 top-0 z-40 overflow-y-auto h-screen w-64 transition-transform sm:translate-x-0 flex flex-col justify-between bg-gray-50 dark:bg-gray-800 px-3 py-4 " +
             (showSidebar ? "" : " -translate-x-full")
           }
           aria-label="Sidebar"
         >
-          <ul className="h-full space-y-2 overflow-y-auto px-3 py-4 font-medium">
-            <NavLink link="/" logo={<RectangleGroupIcon />} label="Dashboard" />
-            <NavLink link="/items" logo={<ShoppingBagIcon />} label="Items" />
-            <NavLink link="/details" logo={<RectangleStackIcon />} label="Details" />
-            <NavLink link="/generate-receipts" logo={<TableCellsIcon />} label="Receipts" />
-            <NavLink link="/email" logo={<EnvelopeIcon />} label="Email" />
-            {user && <NavLink link="/account" logo={<UserCircleIcon />} label="Account" />}
+          {companies && (
+            <>
+              <Companies
+                companyName={
+                  companies.find(company => company.id === props.selectedAccountId)?.companyName ??
+                  ""
+                }
+                otherCompanies={otherCompanies}
+                router={router}
+              />
+              <hr
+                style={{ margin: "1rem 0" }}
+                className="border-t border-gray-200 dark:border-gray-700"
+              />
+            </>
+          )}
+          <ul className="h-full space-y-2 font-medium">
+            {user && (
+              <>
+                <NavLink link="/" logo={<RectangleGroupIcon />} label="Dashboard" />
+                <NavLink link="/items" logo={<ShoppingBagIcon />} label="Items" />
+                <NavLink link="/details" logo={<RectangleStackIcon />} label="Details" />
+                <NavLink link="/generate-receipts" logo={<TableCellsIcon />} label="Receipts" />
+                <NavLink link="/email" logo={<EnvelopeIcon />} label="Email" />
+                <NavLink link="/account" logo={<UserCircleIcon />} label="Account" />
+                <hr
+                  style={{ margin: "1rem 0" }}
+                  className="border-t border-gray-200 dark:border-gray-700"
+                />
+              </>
+            )}
+
             {user ? (
               <NavAnchor
                 href="/api/auth/signout"
@@ -94,32 +124,30 @@ export default function Layout(
             ) : (
               <NavLink link="/auth/signin" logo={<ArrowRightOnRectangleIcon />} label="Sign In" />
             )}
+            {user && (
+              <NavAnchor
+                href="#"
+                onClick={e => {
+                  e.preventDefault()
+                  subscribe(router.pathname)
+                }}
+                logo={<UserPlusIcon />}
+                label="Upgrade To Pro"
+              />
+            )}
 
             <hr
               style={{ margin: "1rem 0" }}
               className="border-t border-gray-200 dark:border-gray-700"
             />
 
-            <NavAnchor
-              href="#"
-              onClick={e => {
-                e.preventDefault()
-                subscribe(router.pathname)
-              }}
-              logo={<UserPlusIcon />}
-              label="Upgrade To Pro"
-            />
+            <NavLink link="/info" logo={<InformationCircleIcon />} label="Info" />
             <NavLink link="/terms/terms" logo={<GlobeAltIcon />} label="Terms and Conditions" />
             <NavLink link="/terms/privacy" logo={<DocumentTextIcon />} label="Privacy Policy" />
-            <NavLink link="/support" logo={<ChatBubbleLeftEllipsisIcon />} label="Support" />
+            {user && (
+              <NavLink link="/support" logo={<ChatBubbleLeftEllipsisIcon />} label="Support" />
+            )}
           </ul>
-          {companies && (
-            <Dropdown label="Company">
-              {companies.map(({ companyName, id: accountId }) => (
-                <Dropdown.Item key={accountId}>{companyName}</Dropdown.Item>
-              ))}
-            </Dropdown>
-          )}
         </nav>
       </header>
       <div className="hidden w-64 sm:block" />
@@ -128,6 +156,63 @@ export default function Layout(
     </div>
   )
 }
+
+const Companies = ({
+  companyName,
+  otherCompanies,
+  router,
+}: {
+  companyName: string
+  otherCompanies?: { companyName: string; id: string }[]
+  router: NextRouter
+}) => (
+  <button
+    type="button"
+    className="flex flex-col items-center w-full text-base text-gray-900 group/companies"
+    aria-controls="dropdown-example"
+  >
+    <div className="flex flex-nowrap relative overflow-hidden items-center justify-between w-full flex-1 text-left rtl:text-right hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 p-2 transition duration-75 rounded-lg group/activecompany">
+      <div className="flex flex-row items-center whitespace-nowrap flex-shrink">
+        <div className="h-6 w-6 text-gray-500 transition duration-75 group-hover/activecompany:text-gray-900 dark:text-gray-400 dark:group-hover/activecompany:text-white">
+          <BuildingOfficeIcon />
+        </div>
+        <span className="ml-3 flex-1 whitespace-nowrap">{companyName}</span>
+      </div>
+      <div className="absolute right-0 inline-block pl-1 text-gray-500 transition duration-75 dark:text-white bg-gray-50 dark:bg-gray-800 group-hover/activecompany:bg-gray-100 dark:group-hover/activecompany:bg-gray-700">
+        <ChevronDownIcon className=" w-5 h-5" stroke="currentColor" strokeWidth={2} />
+      </div>
+    </div>
+    <ul
+      id="dropdown-example"
+      className="hidden group-focus-within/companies:block py-2 space-y-2 w-full"
+    >
+      {otherCompanies?.map(({ companyName, id: accountId }) => (
+        <li key={accountId}>
+          <button
+            onClick={async () => {
+              await postJsonData("/api/switch-company", { accountId } satisfies DataType)
+              router.reload()
+            }}
+            className="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+          >
+            {companyName}
+          </button>
+        </li>
+      ))}
+      <li>
+        <Link
+          href="/api/auth/sso"
+          className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
+        >
+          <div className="h-6 w-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white">
+            <PlusSmallIcon />
+          </div>
+          <span className="ml-3 flex-1 whitespace-nowrap text-left">Add Account</span>
+        </Link>
+      </li>
+    </ul>
+  </button>
+)
 
 type NavInnerProps = {
   logo: JSX.Element
@@ -145,7 +230,7 @@ const NavLink = ({
   <li>
     <Link
       href={link}
-      className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+      className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
     >
       <NavItemInner {...props} />
     </Link>
@@ -163,7 +248,7 @@ const NavAnchor = ({
     <a
       href={href}
       onClick={onClick}
-      className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+      className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
     >
       <NavItemInner {...props} />
     </a>
