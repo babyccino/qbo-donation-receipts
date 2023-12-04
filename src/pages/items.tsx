@@ -1,14 +1,15 @@
 import { InformationCircleIcon } from "@heroicons/react/24/solid"
-import { and, eq } from "drizzle-orm"
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
 import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { Session, getServerSession } from "next-auth"
+import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/router"
 import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
+import { LayoutProps } from "@/components/layout"
 import { buttonStyling } from "@/components/link"
 import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
@@ -29,7 +30,7 @@ import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
-import { accounts, users } from "db/schema"
+import { accounts, sessions } from "db/schema"
 
 const DumbDatePicker = () => (
   <div className="relative w-full text-gray-700">
@@ -62,9 +63,8 @@ const DatePicker = dynamic(import("react-tailwindcss-datepicker"), {
   loading: props => <DumbDatePicker />,
 })
 
-type Props = {
+type Props = ({
   items: Item[]
-  session: Session
   detailsFilledIn: boolean
   realmId: string
 } & (
@@ -74,7 +74,8 @@ type Props = {
       selectedItems: string[]
       dateRange: DateRange
     }
-)
+)) &
+  LayoutProps
 type SerialisedProps = SerialiseDates<Props>
 
 type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
@@ -234,73 +235,115 @@ export default function Items(serialisedProps: SerialisedProps) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
-  req,
-  res,
-  query,
-}) => {
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
-  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
-  if (!session) return signInRedirect("items" + queryRealmId ? `%3FrealmId%3D${queryRealmId}` : "")
+  if (!session) return signInRedirect("items")
 
-  const account = await db.query.accounts.findFirst({
-    // if the realmId is specified get that account otherwise just get the first account for the user
-    where: and(
-      eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
-    ),
-    columns: {
-      id: true,
-      accessToken: true,
-      scope: true,
-      realmId: true,
-      createdAt: true,
-      expiresAt: true,
-      refreshToken: true,
-      refreshTokenExpiresAt: true,
-    },
-    with: {
-      userData: { columns: { items: true, startDate: true, endDate: true } },
-      doneeInfo: { columns: { id: true } },
-    },
-  })
-  if (queryRealmId && !account)
-    throw new ApiError(500, "account for given user and company realmId not found in db")
-  if (!account || account.scope !== "accounting" || !account.accessToken)
+  let [account, accountList] = await Promise.all([
+    session.accountId
+      ? db.query.accounts.findFirst({
+          // if the realmId is specified get that account otherwise just get the first account for the user
+          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+          columns: {
+            id: true,
+            accessToken: true,
+            scope: true,
+            realmId: true,
+            createdAt: true,
+            expiresAt: true,
+            refreshToken: true,
+            refreshTokenExpiresAt: true,
+          },
+          with: {
+            userData: { columns: { items: true, startDate: true, endDate: true } },
+            doneeInfo: { columns: { id: true } },
+          },
+          // get the first account with "accounting" scope if there is one
+          orderBy: [asc(accounts.scope)],
+        })
+      : null,
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
+  ])
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
+
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (session.accountId === null && accountList.length > 0) {
+    session.accountId = accountList[0].id
+    const [_, newAccount] = await Promise.all([
+      db
+        .update(sessions)
+        .set({ accountId: accountList[0].id })
+        .where(eq(sessions.userId, session.user.id)),
+      db.query.accounts.findFirst({
+        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+        columns: {
+          id: true,
+          accessToken: true,
+          scope: true,
+          realmId: true,
+          createdAt: true,
+          expiresAt: true,
+          refreshToken: true,
+          refreshTokenExpiresAt: true,
+        },
+        with: {
+          userData: { columns: { items: true, startDate: true, endDate: true } },
+          doneeInfo: { columns: { id: true } },
+        },
+        // get the first account with "accounting" scope if there is one
+        orderBy: [asc(accounts.scope)],
+      }),
+    ])
+    account = newAccount
+  }
+
+  if (
+    !account ||
+    account.scope !== "accounting" ||
+    !account.accessToken ||
+    !account.realmId ||
+    !session.accountId
+  )
     return disconnectedRedirect
 
-  const realmId = queryRealmId ?? account.realmId
-  if (!realmId) return disconnectedRedirect
-
   await refreshTokenIfNeeded(account)
+  const realmId = account.realmId
   const items = await getItems(account.accessToken, realmId)
   const detailsFilledIn = Boolean(account.doneeInfo)
 
   if (!account.userData) {
-    const props = {
-      itemsFilledIn: false,
-      session,
-      items,
-      detailsFilledIn,
-      realmId,
-    } satisfies Props
     return {
-      props: serialiseDates(props),
+      props: serialiseDates({
+        itemsFilledIn: false,
+        session,
+        items,
+        detailsFilledIn,
+        realmId,
+        companies: accountList,
+        selectedAccountId: session.accountId,
+      } satisfies Props),
     }
   }
 
   const { userData } = account
   const selectedItems = userData.items ? userData.items.split(",") : []
-  const props = {
-    itemsFilledIn: true,
-    session,
-    items,
-    detailsFilledIn,
-    selectedItems,
-    realmId,
-    dateRange: { startDate: userData.startDate, endDate: userData.endDate },
-  } satisfies Props
   return {
-    props: serialiseDates(props),
+    props: serialiseDates({
+      itemsFilledIn: true,
+      session,
+      items,
+      detailsFilledIn,
+      selectedItems,
+      realmId,
+      dateRange: { startDate: userData.startDate, endDate: userData.endDate },
+      companies: accountList,
+      selectedAccountId: session.accountId,
+    } satisfies Props),
   }
 }

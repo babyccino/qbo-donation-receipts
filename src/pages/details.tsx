@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { ApiError } from "next/dist/server/api-utils"
@@ -18,7 +18,8 @@ import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/li
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
-import { DoneeInfo, accounts, users } from "db/schema"
+import { DoneeInfo, accounts, sessions, users } from "db/schema"
+import { LayoutProps } from "@/components/layout"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -35,7 +36,7 @@ type Props = {
   session: Session
   itemsFilledIn: boolean
   realmId: string
-}
+} & LayoutProps
 
 export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
   const router = useRouter()
@@ -176,54 +177,106 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
-  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
-  if (!session)
-    return signInRedirect("details" + queryRealmId ? `%3FrealmId%3D${queryRealmId}` : "")
+  if (!session) return signInRedirect("items")
 
-  const account = await db.query.accounts.findFirst({
-    // if the realmId is specified get that account otherwise just get the first account for the user
-    where: and(
-      eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
-    ),
-    columns: {
-      id: true,
-      accessToken: true,
-      scope: true,
-      realmId: true,
-      createdAt: true,
-      expiresAt: true,
-      refreshToken: true,
-      refreshTokenExpiresAt: true,
-    },
-    with: {
-      doneeInfo: {
+  let [account, accountList] = await Promise.all([
+    session.accountId
+      ? db.query.accounts.findFirst({
+          // if the realmId is specified get that account otherwise just get the first account for the user
+          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+          columns: {
+            id: true,
+            accessToken: true,
+            scope: true,
+            realmId: true,
+            createdAt: true,
+            expiresAt: true,
+            refreshToken: true,
+            refreshTokenExpiresAt: true,
+          },
+          with: {
+            userData: { columns: { id: true } },
+            doneeInfo: {
+              columns: {
+                companyAddress: true,
+                companyName: true,
+                country: true,
+                registrationNumber: true,
+                signatoryName: true,
+                smallLogo: true,
+              },
+            },
+          },
+          // get the first account with "accounting" scope if there is one
+          orderBy: [asc(accounts.scope)],
+        })
+      : null,
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
+  ])
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
+
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (session.accountId === null && accountList.length > 0) {
+    session.accountId = accountList[0].id
+    const [_, newAccount] = await Promise.all([
+      db
+        .update(sessions)
+        .set({ accountId: accountList[0].id })
+        .where(eq(sessions.userId, session.user.id)),
+      db.query.accounts.findFirst({
+        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
         columns: {
-          companyAddress: true,
-          companyName: true,
-          country: true,
-          registrationNumber: true,
-          signatoryName: true,
-          smallLogo: true,
+          id: true,
+          accessToken: true,
+          scope: true,
+          realmId: true,
+          createdAt: true,
+          expiresAt: true,
+          refreshToken: true,
+          refreshTokenExpiresAt: true,
         },
-      },
-      userData: { columns: { id: true } },
-    },
-  })
-  if (queryRealmId && !account)
-    throw new ApiError(500, "account for given user and company realmId not found in db")
-  if (!account || account.scope !== "accounting" || !account.accessToken)
+        with: {
+          userData: { columns: { id: true } },
+          doneeInfo: {
+            columns: {
+              companyAddress: true,
+              companyName: true,
+              country: true,
+              registrationNumber: true,
+              signatoryName: true,
+              smallLogo: true,
+            },
+          },
+        },
+        // get the first account with "accounting" scope if there is one
+        orderBy: [asc(accounts.scope)],
+      }),
+    ])
+    account = newAccount
+  }
+
+  if (
+    !account ||
+    account.scope !== "accounting" ||
+    !account.accessToken ||
+    !account.realmId ||
+    !session.accountId
+  )
     return disconnectedRedirect
-  const realmId = queryRealmId ?? account.realmId
-  if (!realmId) return disconnectedRedirect
 
   await refreshTokenIfNeeded(account)
+  const realmId = account.realmId
+  const itemsFilledIn = Boolean(account.userData)
 
   const doneeInfo = account.doneeInfo
     ? account.doneeInfo
     : await getCompanyInfo(account.accessToken, realmId)
-
-  const itemsFilledIn = Boolean(account.userData)
 
   return {
     props: {
@@ -231,6 +284,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       doneeInfo,
       itemsFilledIn,
       realmId,
+      companies: accountList,
+      selectedAccountId: session.accountId,
     } satisfies Props,
   }
 }
