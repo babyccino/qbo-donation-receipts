@@ -1,5 +1,5 @@
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
-import { and, asc, eq, or } from "drizzle-orm"
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
@@ -7,12 +7,13 @@ import Link from "next/link"
 import { ReactNode } from "react"
 import { twMerge } from "tailwind-merge"
 
+import { LayoutProps } from "@/components/layout"
 import { Link as StyledLink } from "@/components/link"
 import { db } from "@/lib/db/test"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"
-import { accounts, doneeInfos, userDatas, users } from "db/schema"
+import { accounts, sessions } from "db/schema"
 
 import HandDrawnUpArrow from "@/public/svg/hand-drawn-up-arrow.svg"
 
@@ -50,13 +51,15 @@ const Note = ({ children }: { children?: ReactNode }) => (
 const Card = Object.assign(_Card, { Body, Title, Tick, Note })
 const Arrow = () => <HandDrawnUpArrow className="mt-3 h-10 w-10 rotate-180 text-slate-400" />
 
-type Props =
-  | { session: null; filledIn: false }
+type Props = (
+  | { session: Session | null; filledIn: false }
   | {
       session: Session
       filledIn: { items: boolean; doneeDetails: boolean }
       qboPermission: QboPermission
     }
+) &
+  LayoutProps
 
 export default function IndexPage(props: Props) {
   const { filledIn } = props
@@ -131,25 +134,51 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       props: {
         session: null,
         filledIn: false,
-      },
+      } satisfies Props,
     }
   }
 
-  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
+  let [account, accountList] = await Promise.all([
+    session.accountId
+      ? db.query.accounts.findFirst({
+          // if the realmId is specified get that account otherwise just get the first account for the user
+          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+          columns: { scope: true },
+          with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
+          // get the first account with "accounting" scope if there is one
+          orderBy: [asc(accounts.scope)],
+        })
+      : null,
+    (await db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    })) as { companyName: string; id: string }[],
+  ])
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
 
-  const account = await db.query.accounts.findFirst({
-    // if the realmId is specified get that account otherwise just get the first account for the user
-    where: and(
-      eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
-    ),
-    columns: { scope: true },
-    with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
-    // get the first account with "accounting" scope if there is one
-    orderBy: [asc(accounts.scope)],
-  })
-  if (!account)
-    throw new ApiError(500, "account for given user and company realmId not found in db")
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (session.accountId === null && accountList.length > 0) {
+    session.accountId = accountList[0].id
+    const [_, newAccount] = await Promise.all([
+      db
+        .update(sessions)
+        .set({ accountId: accountList[0].id })
+        .where(eq(sessions.userId, session.user.id)),
+      db.query.accounts.findFirst({
+        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+        columns: { scope: true },
+        with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
+        // get the first account with "accounting" scope if there is one
+        orderBy: [asc(accounts.scope)],
+      }),
+    ])
+    account = newAccount
+  }
+
+  if (!session.accountId || !account) return { props: { session, filledIn: false } satisfies Props }
 
   // const user = await getUserDataOrThrow(session.user.id)
   const filledIn = { items: Boolean(account.userData), doneeDetails: Boolean(account.doneeInfo) }
@@ -161,6 +190,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       session,
       filledIn,
       qboPermission,
-    },
+      companies: accountList,
+      selectedAccountId: session.accountId,
+    } satisfies Props,
   }
 }
