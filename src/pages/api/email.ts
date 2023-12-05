@@ -31,7 +31,6 @@ const DAY_LENGTH_MS = 1000 * 60 * 60 * 24
 export const parser = z.object({
   emailBody: z.string(),
   recipientIds: z.array(z.string()).refine(arr => arr.length > 0),
-  realmId: z.string(),
   checksum: z.string(),
 })
 export type EmailDataType = z.input<typeof parser>
@@ -40,14 +39,15 @@ type DonationWithEmail = Donation & { email: string }
 const hasEmail = (donation: Donation): donation is DonationWithEmail => Boolean(donation.email)
 
 const handler: AuthorisedHandler = async (req, res, session) => {
+  if (!session.accountId) throw new ApiError(401, "user not connected")
   const userId = session.user.id
-  const { emailBody, recipientIds, realmId, checksum } = parseRequestBody(parser, req.body)
+  const { emailBody, recipientIds, checksum } = parseRequestBody(parser, req.body)
 
   const [row] = await Promise.all([
     db.query.accounts
       .findFirst({
         // if the realmId is specified get that account otherwise just get the first account for the user
-        where: and(eq(accounts.realmId, realmId), eq(accounts.userId, session.user.id)),
+        where: eq(accounts.id, session.accountId),
         columns: {
           id: true,
           accessToken: true,
@@ -72,7 +72,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       .then(row => {
         if (!row) throw new ApiError(500, "user not found in db")
         const { doneeInfo, userData, user, ...account } = row
-        if (!account || account.scope !== "accounting" || !account.accessToken)
+        if (!account || account.scope !== "accounting" || !account.accessToken || !account.realmId)
           throw new ApiError(401, "client not qbo-connected")
 
         if (!doneeInfo || !userData) throw new ApiError(400, "data missing")
@@ -103,6 +103,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   ])
 
   const { account, doneeInfo, userData, email } = row
+  const realmId = account.realmId as string
 
   await refreshTokenIfNeeded(account)
 

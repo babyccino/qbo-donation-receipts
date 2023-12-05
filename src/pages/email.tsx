@@ -5,7 +5,7 @@ import {
 } from "@heroicons/react/24/solid"
 import { batch, signal } from "@preact/signals-react"
 import makeChecksum from "checksum"
-import { and, eq, gt, inArray, lt } from "drizzle-orm"
+import { and, desc, eq, gt, inArray, isNotNull, lt } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
@@ -13,6 +13,7 @@ import { ApiError } from "next/dist/server/api-utils"
 import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
+import { LayoutProps } from "@/components/layout"
 import { EmailSentToast, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
 import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
@@ -22,6 +23,7 @@ import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 import { db } from "@/lib/db/test"
 import { defaultEmailBody, formatEmailBody, templateDonorName, trimHistoryById } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
+import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
@@ -35,6 +37,8 @@ import {
   accounts,
   donations as donationsSchema,
   emailHistories,
+  sessions,
+  users,
 } from "db/schema"
 
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
@@ -192,19 +196,16 @@ function handleError(error: ApiError) {
 function SendEmails({
   recipients,
   emailHistory,
-  realmId,
   checksum,
 }: {
   recipients: Set<string>
   emailHistory: EmailHistory | null
-  realmId: string
   checksum: string
 }) {
   const handler = async () => {
     const data: EmailDataType = {
       emailBody: emailBody.value,
       recipientIds: Array.from(recipients),
-      realmId,
       checksum,
     }
     try {
@@ -316,7 +317,6 @@ type CompleteAccountProps = {
   donee: DoneeInfo
   possibleRecipients: Recipient[]
   emailHistory: EmailHistory | null
-  realmId: string
   checksum: string
 }
 
@@ -324,16 +324,18 @@ function CompleteAccountEmail({
   donee,
   possibleRecipients,
   emailHistory,
-  realmId,
   checksum,
 }: CompleteAccountProps) {
-  const defaultRecipients = useMemo(
-    () => possibleRecipients.filter(recipient => recipient.status === RecipientStatus.Valid),
+  const defaultRecipientIds = useMemo(
+    () =>
+      possibleRecipients
+        .filter(recipient => recipient.status === RecipientStatus.Valid)
+        .map(({ donorId }) => donorId),
     [possibleRecipients],
   )
   const [customRecipients, setCustomRecipients] = useState(defaultCustomRecipientsState)
   const [selectedRecipientIds, setSelectedRecipientIds] = useState(
-    new Set<string>(defaultRecipients.map(({ donorId }) => donorId)),
+    new Set<string>(defaultRecipientIds),
   )
 
   const trimmedHistory =
@@ -361,7 +363,7 @@ function CompleteAccountEmail({
               setSelectedRecipientIds={setSelectedRecipientIds}
             />
           )}
-          {!customRecipients && defaultRecipients.length < possibleRecipients.length && (
+          {!customRecipients && defaultRecipientIds.length < possibleRecipients.length && (
             <RecipientsMissingEmails
               selectedRecipientIds={selectedRecipientIds}
               possibleRecipients={possibleRecipients}
@@ -393,7 +395,6 @@ function CompleteAccountEmail({
       <SendEmails
         recipients={selectedRecipientIds}
         emailHistory={trimmedHistory}
-        realmId={realmId}
         checksum={checksum}
       />
       {showEmailSentToast.value && (
@@ -412,23 +413,21 @@ function CompleteAccountEmail({
   )
 }
 
+// --- page ---
+
 type IncompleteAccountProps = {
   accountStatus: AccountStatus.IncompleteData
   filledIn: { items: boolean; doneeDetails: boolean }
   companyName?: string
-  realmId: string
 }
-type Props = IncompleteAccountProps | CompleteAccountProps
+type Props = (IncompleteAccountProps | CompleteAccountProps) & LayoutProps
 type SerialisedProps = SerialiseDates<Props>
-
-// --- page ---
-
 export default function Email(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   if (props.accountStatus === AccountStatus.IncompleteData)
     return (
       <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
-        <MissingData filledIn={props.filledIn} realmId={props.realmId} />
+        <MissingData filledIn={props.filledIn} />
         <form>
           <EmailInput />
         </form>
@@ -439,61 +438,102 @@ export default function Email(serialisedProps: SerialisedProps) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
-  req,
-  res,
-  query,
-}) => {
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
-  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
-  if (!session)
-    return signInRedirect("email" + (queryRealmId ? `%3FrealmId%3D${queryRealmId}` : ""))
+  if (!session) return signInRedirect("email")
 
-  const account = await db.query.accounts.findFirst({
-    // if the realmId is specified get that account otherwise just get the first account for the user
-    where: and(
-      eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
-    ),
-    columns: {
-      id: true,
-      accessToken: true,
-      scope: true,
-      realmId: true,
-      createdAt: true,
-      expiresAt: true,
-      refreshToken: true,
-      refreshTokenExpiresAt: true,
-    },
-    with: {
-      doneeInfo: { columns: { accountId: false, createdAt: false, id: false, updatedAt: false } },
-      userData: { columns: { items: true, startDate: true, endDate: true } },
-    },
-  })
+  const [user, accountList] = await Promise.all([
+    db.query.users.findFirst({
+      // if the realmId is specified get that account otherwise just get the first account for the user
+      where: eq(users, session.user.id),
+      columns: { name: true },
+      with: {
+        accounts: {
+          where: session.accountId
+            ? eq(accounts.id, session.accountId)
+            : eq(accounts.scope, "accounting"),
+          orderBy: desc(accounts.updatedAt),
+          columns: {
+            id: true,
+            accessToken: true,
+            scope: true,
+            realmId: true,
+            createdAt: true,
+            expiresAt: true,
+            refreshToken: true,
+            refreshTokenExpiresAt: true,
+          },
+          with: {
+            doneeInfo: {
+              columns: { accountId: false, createdAt: false, id: false, updatedAt: false },
+            },
+            userData: { columns: { items: true, startDate: true, endDate: true } },
+          },
+        },
+        billingAddress: { columns: { name: true } },
+        subscription: {
+          columns: {
+            cancelAtPeriodEnd: true,
+            status: true,
+            createdAt: true,
+            currentPeriodEnd: true,
+          },
+        },
+      },
+    }),
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
+  ])
+  if (!user) throw new ApiError(500, "user not found in db")
+  let account = user.accounts?.[0] as (typeof user.accounts)[number] | undefined
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
 
-  if (!account) throw new ApiError(500, "user not found in db")
-  const { doneeInfo, userData } = account
   if (!account || account.scope !== "accounting" || !account.accessToken)
     return disconnectedRedirect
-  const realmId = queryRealmId ?? account.realmId
-  if (!realmId) return disconnectedRedirect
-  account.realmId = realmId
 
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (!session.accountId && account) {
+    session.accountId = account.id
+    await db
+      .update(sessions)
+      .set({ accountId: account.id })
+      .where(eq(sessions.userId, session.user.id))
+  }
+
+  if (
+    !account ||
+    account.scope !== "accounting" ||
+    !account.accessToken ||
+    !account.realmId ||
+    !session.accountId
+  )
+    return disconnectedRedirect
+
+  if (!user.subscription || !isUserSubscribed(user.subscription))
+    return { redirect: { permanent: false, destination: "subscribe" } }
+
+  // at least one of these must be set otherwise we would have returned already
+  const realmId = session.accountId as string
+
+  const { doneeInfo, userData } = account
   if (!doneeInfo || !userData) {
     const props: Props = {
       accountStatus: AccountStatus.IncompleteData,
       filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
-      realmId,
+      session,
+      companies: accountList,
+      selectedAccountId: account.id,
     }
-    doneeInfo && (props.companyName = doneeInfo.companyName)
+    if (doneeInfo) props.companyName = doneeInfo.companyName
     return { props: serialiseDates(props) }
   }
 
   await refreshTokenIfNeeded(account)
-
-  // sub
-  // if (!isUserSubscribed(user)) return { redirect: { permanent: false, destination: "subscribe" } }
-
   const donations = await getDonations(
     account.accessToken,
     realmId,
@@ -527,26 +567,17 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
       },
     })
   ).filter(item => item.donations.length > 0)
-  // const row = await db
-  //   .select({
-  //     createdAt: emailHistories.createdAt,
-  //     startDate: emailHistories.startDate,
-  //     endDate: emailHistories.endDate,
-  //     name: donationsSchema.name,
-  //   })
-  //   .from(emailHistories)
-  //   .innerJoin(donationsSchema, eq(emailHistories.id, donationsSchema.emailHistoryId))
-  //   .where(and(dateOverlap, inArray(donationsSchema.donorId, recipientIds)))
-  //   .orderBy(emailHistories.startDate, emailHistories.endDate)
-  const props: Props = {
-    accountStatus: AccountStatus.Complete,
-    donee: await downloadImagesForDonee(doneeInfo, storageBucket),
-    possibleRecipients,
-    emailHistory: emailHistory.length > 0 ? emailHistory : null,
-    realmId,
-    checksum: makeChecksum(JSON.stringify(donations)),
-  }
+
   return {
-    props: serialiseDates(props),
+    props: serialiseDates({
+      accountStatus: AccountStatus.Complete,
+      donee: await downloadImagesForDonee(doneeInfo, storageBucket),
+      possibleRecipients,
+      emailHistory: emailHistory.length > 0 ? emailHistory : null,
+      checksum: makeChecksum(JSON.stringify(donations)),
+      session,
+      companies: accountList,
+      selectedAccountId: account.id,
+    } satisfies Props),
   }
 }
