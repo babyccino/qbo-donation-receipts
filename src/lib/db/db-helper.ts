@@ -3,7 +3,7 @@ import sharp from "sharp"
 import { Bucket } from "@/lib/db/firebase"
 import { config } from "@/lib/util/config"
 import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
-import { DoneeInfo } from "db/schema"
+import type { DoneeInfo } from "db/schema"
 
 const { firebaseProjectId, firebaseStorageEmulatorHost } = config
 
