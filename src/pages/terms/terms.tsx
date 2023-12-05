@@ -1,7 +1,23 @@
+import { and, eq, isNotNull } from "drizzle-orm"
 import { Accordion } from "flowbite-react"
+import { GetServerSideProps } from "next"
+import { getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 
-import { H1, H3, Q, Ol, P, InterpretationDefinitions } from "@/components/agreements"
-import { companyName, url } from "@/components/agreements"
+import {
+  H1,
+  H3,
+  InterpretationDefinitions,
+  Ol,
+  P,
+  Q,
+  companyName,
+  url,
+} from "@/components/agreements"
+import { LayoutProps } from "@/components/layout"
+import { db } from "@/lib/db"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { accounts, sessions } from "db/schema"
 
 const { Panel, Title, Content } = Accordion
 
@@ -566,16 +582,6 @@ const Terms = () => (
 export default Terms
 
 // --- server-side props ---
-
-import { and, eq, isNotNull } from "drizzle-orm"
-import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
-import { ApiError } from "next/dist/server/api-utils"
-
-import { LayoutProps } from "@/components/layout"
-import { db } from "@/lib/db"
-import { accounts, sessions } from "db/schema"
-import { authOptions } from "../api/auth/[...nextauth]"
 
 export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
