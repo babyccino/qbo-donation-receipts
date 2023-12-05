@@ -1,10 +1,11 @@
 import { createId } from "@paralleldrive/cuid2"
-import { and, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
 import sharp from "sharp"
 import { z } from "zod"
 
-import { storageBucket } from "@/lib/db"
+import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { storageBucket } from "@/lib/db/firebase"
 import { db } from "@/lib/db/test"
 import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import {
@@ -20,7 +21,6 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { accounts, doneeInfos } from "db/schema"
-import { refreshTokenIfNeeded } from "@/lib/db/db-helper"
 
 // TODO move file storage to another service
 async function resizeAndUploadImage(

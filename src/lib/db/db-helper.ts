@@ -1,10 +1,11 @@
-import { eq } from "drizzle-orm"
-import { ApiError } from "next/dist/server/api-utils"
+import sharp from "sharp"
 
-import { Account, accounts } from "db/schema"
-import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
-import { refreshAccessToken } from "@/lib/qbo-api"
-import { db } from "@/lib/db/test"
+import { Bucket } from "@/lib/db/firebase"
+import { config } from "@/lib/util/config"
+import { bufferToDataUrl, dataUrlToBase64 } from "@/lib/util/image-helper"
+import { DoneeInfo } from "db/schema"
+
+const { firebaseProjectId, firebaseStorageEmulatorHost } = config
 
 export type RemoveTimestamps<T extends { createdAt: Date; updatedAt: Date }> = Omit<
   T,
@@ -21,38 +22,49 @@ export function removeTimestamps<T extends { createdAt: Date; updatedAt: Date }>
   return obj
 }
 
-export async function refreshTokenIfNeeded<
-  T extends Pick<
-    Account,
-    "id" | "accessToken" | "expiresAt" | "refreshToken" | "refreshTokenExpiresAt"
-  >,
->(account: T): Promise<{ account: T; currentAccountStatus: AccountStatus }> {
-  const currentAccountStatus = accountStatus(account)
-  if (currentAccountStatus === AccountStatus.RefreshExpired) {
-    // implement refresh token expired logic
-    throw new ApiError(400, "refresh token expired")
-  } else if (currentAccountStatus === AccountStatus.Active) {
-    return { account, currentAccountStatus }
+export async function downloadImageAsDataUrl(storageBucket: Bucket, firestorePath: string) {
+  const file = await storageBucket.file(firestorePath).download()
+  const fileString = file[0].toString("base64")
+  const match = firestorePath.match(/[^.]+$/)
+  if (!match) throw new Error("")
+  const extension = match[0]
+  return `data:image/${extension};base64,${fileString}`
+}
+
+export function getImageUrl(path: string) {
+  if (firebaseStorageEmulatorHost)
+    return `http://${firebaseStorageEmulatorHost}/${firebaseProjectId}.appspot.com/${path}`
+  return `https://storage.googleapis.com/${firebaseProjectId}.appspot.com/${path}`
+}
+
+export async function downloadImagesForDonee<T extends Pick<DoneeInfo, "signature" | "smallLogo">>(
+  donee: T,
+  storageBucket: Bucket,
+): Promise<T> {
+  const [signatureDataUrl, smallLogoDataUrl] = await Promise.all([
+    downloadImageAsDataUrl(storageBucket, donee.signature),
+    downloadImageAsDataUrl(storageBucket, donee.smallLogo),
+  ])
+
+  return {
+    ...donee,
+    signature: signatureDataUrl,
+    smallLogo: smallLogoDataUrl,
   }
-  const token = await refreshAccessToken(account.refreshToken as string)
-  const expiresAt = new Date(Date.now() + 1000 * (token.expires_in ?? 60 * 60))
-  const refreshTokenExpiresAt = new Date(
-    Date.now() + 1000 * (token.x_refresh_token_expires_in ?? 60 * 60 * 24 * 101),
-  )
-  const updatedAt = new Date()
-  await db
-    .update(accounts)
-    .set({
-      accessToken: token.access_token,
-      expiresAt,
-      refreshToken: token.refresh_token,
-      refreshTokenExpiresAt,
-      updatedAt,
-    })
-    .where(eq(accounts.id, account.id))
-  account.accessToken = token.access_token
-  account.expiresAt = expiresAt
-  account.refreshToken = token.refresh_token
-  account.refreshTokenExpiresAt = refreshTokenExpiresAt
-  return { account, currentAccountStatus }
+}
+
+export async function downloadImageAsBuffer(storageBucket: Bucket, firestorePath: string) {
+  const dataUrl = await downloadImageAsDataUrl(storageBucket, firestorePath)
+  const b64 = dataUrlToBase64(dataUrl)
+  return Buffer.from(b64, "base64")
+}
+
+export async function bufferToPngDataUrl(buffer: Buffer) {
+  const outputBuf = await sharp(buffer).toFormat("png").toBuffer()
+  return bufferToDataUrl("iamge/png", outputBuf)
+}
+
+export async function downloadImageAndConvertToPng(storageBucket: Bucket, firestorePath: string) {
+  const inputBuf = await downloadImageAsBuffer(storageBucket, firestorePath)
+  return bufferToPngDataUrl(inputBuf)
 }
