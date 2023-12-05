@@ -14,12 +14,10 @@ import { renderToBuffer } from "@react-pdf/renderer"
 import { accounts } from "db/schema"
 
 const handler: AuthorisedHandler = async (req, res, session) => {
-  const { realmid: realmId } = req.query
-
-  if (typeof realmId !== "string") throw new ApiError(500, "realmid not provided")
+  if (!session.accountId) throw new ApiError(401, "user not connected")
 
   const account = await db.query.accounts.findFirst({
-    where: and(eq(accounts.userId, session.user.id), eq(accounts.realmId, realmId)),
+    where: eq(accounts.id, session.accountId),
     columns: {
       id: true,
       accessToken: true,
@@ -50,6 +48,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   })
 
   if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
+  if (!account.realmId) throw new ApiError(401, "user not connected")
 
   const { doneeInfo, userData } = account
   if (!account || account.scope !== "accounting" || !account.accessToken)
@@ -62,7 +61,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const [donations, donee] = await Promise.all([
     getDonations(
       account.accessToken,
-      realmId,
+      account.realmId,
       { startDate: userData.startDate, endDate: userData.endDate },
       userData.items ? userData.items.split(",") : [],
     ),

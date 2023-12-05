@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
-import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
@@ -8,6 +8,7 @@ import { ApiError } from "next/dist/server/api-utils"
 import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
+import { LayoutProps } from "@/components/layout"
 import { Link } from "@/components/link"
 import {
   DownloadReceiptLoading,
@@ -16,10 +17,13 @@ import {
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
-import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
-import { storageBucket } from "@/lib/db/firebase"
+import {
+  disconnectedRedirect,
+  refreshTokenIfNeeded,
+  signInRedirect,
+} from "@/lib/auth/next-auth-helper-server"
 import { downloadImageAndConvertToPng } from "@/lib/db/db-helper"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { storageBucket } from "@/lib/db/firebase"
 import { db } from "@/lib/db/test"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -32,7 +36,6 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
 import { DoneeInfo, accounts, sessions } from "db/schema"
-import { LayoutProps } from "@/components/layout"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -53,7 +56,7 @@ function DownloadAllFiles({ accountId }: { accountId: string }) {
 
   const onClick = async () => {
     setLoading(true)
-    const response = await fetchJsonData(`/api/receipts/${accountId}`)
+    const response = await fetchJsonData("/api/receipts")
     if (!response.ok) throw new Error("There was an issue downloading the ZIP file")
     setLoading(false)
     download(await response.blob())
