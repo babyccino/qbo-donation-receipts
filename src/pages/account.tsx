@@ -1,14 +1,15 @@
 import { BriefcaseIcon, MapPinIcon } from "@heroicons/react/24/solid"
-import { asc, eq } from "drizzle-orm"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
-import { signIn, useSession } from "next-auth/react"
+import { signIn } from "next-auth/react"
 import { ApiError } from "next/dist/server/api-utils"
 import Image from "next/image"
 import { useRouter } from "next/router"
 import { useMemo } from "react"
 
+import { LayoutProps } from "@/components/layout"
 import { Connect } from "@/components/qbo"
 import { PricingCard } from "@/components/ui"
 import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
@@ -22,26 +23,27 @@ import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DisconnectBody } from "@/pages/api/auth/disconnect"
 import { DataType } from "@/pages/api/stripe/update-subscription"
-import { Subscription as DbSubscription, accounts, users } from "db/schema"
+import { Subscription as DbSubscription, accounts, sessions, users } from "db/schema"
 
 type Subscription = Pick<
   DbSubscription,
   "status" | "cancelAtPeriodEnd" | "currentPeriodEnd" | "createdAt"
 >
-type Props = {
+type Props = ({
   session: Session
   name: string
   smallLogo: string | null
   companyName: string | null
   connected: boolean
-  realmId: string
+  realmId: string | null
 } & (
   | { subscribed: false }
   | {
       subscribed: true
       subscription: Subscription
     }
-)
+)) &
+  LayoutProps
 type SerialisedProps = SerialiseDates<Props>
 
 const formatDate = (date: Date) =>
@@ -54,16 +56,17 @@ function ProfileCard({
   subscription,
   connected,
   realmId,
+  session,
 }: {
   name: string
   smallLogo: string | null
   companyName: string | null
   subscription?: Subscription
   connected: boolean
-  realmId: string
+  realmId: string | null
+  session: Session
 }) {
   const router = useRouter()
-  const { data: session } = useSession()
 
   if (!session) throw new Error("User accessed account page while not signed in")
 
@@ -132,7 +135,7 @@ function ProfileCard({
           onClick={async () => {
             const body: DisconnectBody = { redirect: false }
             const res = await postJsonData(
-              `/api/auth/disconnect?revoke=true&realmId=${realmId}`,
+              `/api/auth/disconnect?revoke=true${realmId ? `&realmId=${realmId}` : ""}`,
               body,
             )
             router.push("/auth/disconnected")
@@ -154,7 +157,7 @@ function ProfileCard({
 
 export default function AccountPage(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates(serialisedProps), [serialisedProps])
-  const { subscribed, connected, name, companyName, smallLogo, realmId } = props
+  const { subscribed, connected, name, companyName, smallLogo, realmId, session } = props
   return (
     <section className="flex min-h-screen flex-col p-4 sm:flex-row sm:justify-center sm:p-10">
       <div className="border-b border-solid border-slate-700 pb-8 text-white sm:border-b-0 sm:border-r sm:p-14">
@@ -183,6 +186,7 @@ export default function AccountPage(serialisedProps: SerialisedProps) {
           subscription={subscribed ? props.subscription : undefined}
           connected={connected}
           realmId={realmId}
+          session={session}
         />
       </div>
     </section>
@@ -191,46 +195,66 @@ export default function AccountPage(serialisedProps: SerialisedProps) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
-  req,
-  res,
-  query,
-}) => {
+export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
-  const queryRealmId = typeof query.realmid === "string" ? query.realmid : undefined
-  if (!session)
-    return signInRedirect("account" + queryRealmId ? `%3FrealmId%3D${queryRealmId}` : "")
+  if (!session) return signInRedirect("account")
 
-  const user = await db.query.users.findFirst({
-    // if the realmId is specified get that account otherwise just get the first account for the user
-    where: eq(users.id, session.user.id),
-    with: {
-      accounts: {
-        where: queryRealmId ? eq(accounts.realmId, queryRealmId) : undefined,
-        columns: {
-          scope: true,
-          realmId: true,
+  const [user, accountList] = await Promise.all([
+    db.query.users.findFirst({
+      // if the realmId is specified get that account otherwise just get the first account for the user
+      where: eq(users, session.user.id),
+      columns: { name: true },
+      with: {
+        accounts: {
+          where: session.accountId
+            ? eq(accounts.id, session.accountId)
+            : eq(accounts.scope, "accounting"),
+          columns: {
+            id: true,
+            scope: true,
+            realmId: true,
+          },
+          with: {
+            doneeInfo: { columns: { companyName: true, smallLogo: true } },
+          },
+          orderBy: desc(accounts.updatedAt),
         },
-        // get the first account with "accounting" scope if there is one
-        orderBy: [asc(accounts.scope)],
-        with: {
-          doneeInfo: { columns: { companyName: true, smallLogo: true } },
+        billingAddress: { columns: { name: true } },
+        subscription: {
+          columns: {
+            cancelAtPeriodEnd: true,
+            status: true,
+            createdAt: true,
+            currentPeriodEnd: true,
+          },
         },
       },
-      billingAddress: { columns: { name: true } },
-      subscription: {
-        columns: { cancelAtPeriodEnd: true, status: true, createdAt: true, currentPeriodEnd: true },
-      },
-    },
-  })
-  const account = user?.accounts.at(0)
-  if (!user || !account)
-    throw new ApiError(500, "account for given user and company realmId not found in db")
+    }),
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
+  ])
+  if (!user) throw new ApiError(500, "user not found in db")
+  let account = user.accounts?.[0] as (typeof user.accounts)[number] | undefined
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
+
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (!session.accountId && account) {
+    session.accountId = account.id
+    await db
+      .update(sessions)
+      .set({ accountId: account.id })
+      .where(eq(sessions.userId, session.user.id))
+  }
+
   const { billingAddress, subscription } = user
-  const { doneeInfo } = account
-  const connected = account.scope === "accounting"
-  const realmId = account.realmId ?? queryRealmId
-  if (!realmId) throw new ApiError(500, "realmId not provided by either client or db")
+  const doneeInfo = account?.doneeInfo
+  const connected = account?.scope === "accounting"
+  const realmId = account?.realmId ?? null
 
   // if (!subscribed)
   if (subscription && isUserSubscribed(subscription)) {
@@ -243,8 +267,10 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
         smallLogo: doneeInfo?.smallLogo ? getImageUrl(doneeInfo.smallLogo) : null,
         name: billingAddress?.name ?? user.name ?? "",
         connected,
-        realmId,
-      }) satisfies SerialisedProps,
+        realmId: realmId,
+        companies: accountList,
+        selectedAccountId: account?.id ?? null,
+      } satisfies Props),
     }
   }
   return {
@@ -256,6 +282,8 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({
       name: billingAddress?.name ?? user.name ?? "",
       connected,
       realmId,
+      companies: accountList,
+      selectedAccountId: account?.id ?? null,
     } satisfies SerialisedProps,
   }
 }
