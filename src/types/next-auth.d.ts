@@ -17,7 +17,7 @@ declare module "next-auth" {
   }
 
   interface Profile {
-    realmid: string
+    realmid?: string
   }
 }
 
