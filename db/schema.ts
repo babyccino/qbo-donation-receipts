@@ -135,10 +135,6 @@ export const accounts = sqliteTable(
     companyName: text("company_name"),
   },
   account => ({
-    providerProviderAccountIdIndex: uniqueIndex("accounts__provider__providerAccountId__idx").on(
-      account.provider,
-      account.providerAccountId,
-    ),
     userIdRealmIdIndex: uniqueIndex("accounts__user_id__realmid__idx").on(
       account.userId,
       account.realmId,

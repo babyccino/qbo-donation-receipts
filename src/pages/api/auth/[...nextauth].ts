@@ -36,6 +36,7 @@ export const qboProvider: OAuthConfig<QBOProfile> = {
   profile: profile => ({
     id: profile.sub,
   }),
+  allowDangerousEmailAccountLinking: true,
 }
 
 export const qboProviderDisconnected: OAuthConfig<QBOProfile> = {
@@ -45,6 +46,7 @@ export const qboProviderDisconnected: OAuthConfig<QBOProfile> = {
   authorization: {
     params: { scope: "openid profile address email phone" },
   },
+  allowDangerousEmailAccountLinking: true,
 }
 
 type QboCallbacksOptions = CallbacksOptions<QBOProfile, QboAccount>
@@ -67,23 +69,12 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   const { email, givenName: name } = userInfo
   if (typeof email !== "string") throw new ApiError(500, "email not returned by openid request")
   if (typeof name !== "string") throw new ApiError(500, "name not returned by openid request")
-  const rows = await db
-    .select({ provider: accounts.provider })
-    .from(users)
-    .innerJoin(accounts, eq(accounts.userId, users.id))
-    .where(eq(users.email, email))
-    .limit(1)
 
   // if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
   if (!userInfo.emailVerified) return "/terms/email-verified"
 
   user.email = email
   user.name = name
-
-  const connected = rows.map(row => row.provider).includes("QBO")
-  // if user has previously been connected but has signed in without accounting permission
-  // then sign them in with accounting permissions
-  if (connected && !connectUser) return "/api/auth/sso"
 
   return true
 }

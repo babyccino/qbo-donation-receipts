@@ -49,21 +49,27 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
     return user ?? null
   },
-  async getUserByAccount({ providerAccountId, provider }) {
-    const [row] = await db
-      .select({ user: users, account: accounts })
-      .from(users)
-      .innerJoin(accounts, eq(users.id, accounts.userId))
-      .where(
-        and(eq(accounts.providerAccountId, providerAccountId), eq(accounts.provider, provider)),
-      )
-      .limit(1)
-    if (!row) return null
-    const { user, account } = row
-    return {
-      user,
-      account: { ...account, scope: account.scope ?? undefined } satisfies AdapterAccount,
-    }
+  getUserByAccount(provider, account, profile) {
+    return null
+    // const realmId = (account.realmId ?? profile.realmid) as string | undefined
+    // const [row] = await db
+    //   .select({ user: users, account: accounts })
+    //   .from(users)
+    //   .innerJoin(accounts, eq(users.id, accounts.userId))
+    //   .where(
+    //     and(
+    //       eq(accounts.providerAccountId, account.providerAccountId),
+    //       eq(accounts.provider, provider),
+    //       realmId ? eq(accounts.realmId, realmId) : undefined,
+    //     ),
+    //   )
+    //   .limit(1)
+    // if (!row) return null
+    // const { user, account: dbAccount } = row
+    // return {
+    //   user,
+    //   account: { ...dbAccount, scope: dbAccount.scope ?? undefined } satisfies AdapterAccount,
+    // }
   },
   async updateUser({ id, emailVerified, ...userData }) {
     if (!id) throw new Error("User not found")
@@ -91,43 +97,33 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
       throw new ApiError(500, "invalid account scope")
     const realmId = (account as any).realmId as string | null | undefined
     const companyInfo = realmId ? await getCompanyInfo(account.access_token, realmId) : undefined
+    const insert: typeof accounts.$inferInsert = {
+      id: createId(),
+      userId: account.userId,
+      realmId: realmId ?? null,
+      type: account.type,
+      provider: account.provider,
+      providerAccountId: account.providerAccountId,
+      accessToken: account.access_token,
+      expiresAt,
+      idToken: account.id_token as string,
+      refreshToken: account.refresh_token as string,
+      refreshTokenExpiresAt,
+      scope: account.scope,
+      tokenType: account.token_type,
+      companyName: companyInfo?.companyName,
+      updatedAt: new Date(),
+    }
     const [row] = await db
       .insert(accounts)
-      .values({
-        id: createId(),
-        userId: account.userId,
-        realmId: realmId ?? null,
-        type: account.type,
-        provider: account.provider,
-        providerAccountId: account.providerAccountId,
-        accessToken: account.access_token,
-        expiresAt,
-        idToken: account.id_token as string,
-        refreshToken: account.refresh_token as string,
-        refreshTokenExpiresAt,
-        scope: account.scope,
-        tokenType: account.token_type,
-        companyName: companyInfo?.companyName,
-      })
+      .values(insert)
       .onConflictDoUpdate({
         target: [accounts.userId, accounts.realmId],
-        set: {
-          type: account.type,
-          provider: account.provider,
-          providerAccountId: account.providerAccountId,
-          accessToken: account.access_token,
-          expiresAt,
-          idToken: account.id_token as string,
-          refreshToken: account.refresh_token as string,
-          refreshTokenExpiresAt,
-          scope: account.scope,
-          tokenType: account.token_type,
-          companyName: companyInfo?.companyName,
-          updatedAt: new Date(),
-        },
+        set: ((insert.id = undefined as any), insert),
       })
       .returning()
     if (!row) throw new Error("User not found")
+    await db.update(sessions).set({ accountId: row.id }).where(eq(sessions.userId, account.userId))
     return row as AdapterAccount
   },
   async unlinkAccount({ providerAccountId, provider }) {
