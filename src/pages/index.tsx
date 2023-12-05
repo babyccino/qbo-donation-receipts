@@ -1,5 +1,5 @@
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
-import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
@@ -145,8 +145,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
           where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
           columns: { scope: true },
           with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
-          // get the first account with "accounting" scope if there is one
-          orderBy: [asc(accounts.scope)],
         })
       : null,
     db.query.accounts.findMany({
@@ -171,8 +169,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
         where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
         columns: { scope: true },
         with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
-        // get the first account with "accounting" scope if there is one
-        orderBy: [asc(accounts.scope)],
       }),
     ])
     account = newAccount
