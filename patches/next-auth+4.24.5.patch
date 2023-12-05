@@ -1,14 +1,19 @@
 diff --git a/node_modules/next-auth/adapters.d.ts b/node_modules/next-auth/adapters.d.ts
-index df10b71..cdece27 100644
+index df10b71..c569649 100644
 --- a/node_modules/next-auth/adapters.d.ts
 +++ b/node_modules/next-auth/adapters.d.ts
-@@ -1,4 +1,4 @@
+@@ -1,7 +1,7 @@
 -import { Account, User, Awaitable } from ".";
 +import { Account, User, Awaitable, Profile } from ".";
  export interface AdapterUser extends User {
-     id: string;
-     email: string;
-@@ -55,42 +55,57 @@ export interface VerificationToken {
+-    id: string;
+-    email: string;
++  id: string;
++  email: string;
+     emailVerified: Date | null;
+ }
+ export interface AdapterAccount extends Account {
+@@ -55,42 +55,55 @@ export interface VerificationToken {
   * [Create a custom adapter](https://next-auth.js.org/tutorials/creating-a-database-adapter)
   */
  export interface Adapter {
@@ -21,9 +26,7 @@ index df10b71..cdece27 100644
      /** Using the provider id and the id of the user for a specific account, get the user. */
 -    getUserByAccount?: (providerAccountId: Pick<AdapterAccount, "provider" | "providerAccountId">) => Awaitable<AdapterUser | null>;
 -    updateUser?: (user: Partial<AdapterUser> & Pick<AdapterUser, "id">) => Awaitable<AdapterUser>;
-+    getUserByAccount?: (
-+      providerAccountId: Pick<AdapterAccount, "provider" | "providerAccountId">
-+      ) => Awaitable<{user: AdapterUser; account: AdapterAccount} | null>
++    getUserByAccount?: (providerId: string, account: Account, profile: Profile) => Awaitable<{user: AdapterUser; account: AdapterAccount} | null>
 +    updateUser?: (
 +      user: Partial<AdapterUser> & Pick<AdapterUser, "id">
 +    ) => Awaitable<AdapterUser>
@@ -91,10 +94,10 @@ index df10b71..cdece27 100644
  //# sourceMappingURL=adapters.d.ts.map
 \ No newline at end of file
 diff --git a/node_modules/next-auth/core/lib/callback-handler.js b/node_modules/next-auth/core/lib/callback-handler.js
-index 9316bd0..19c70f9 100644
+index 9316bd0..3697ff3 100644
 --- a/node_modules/next-auth/core/lib/callback-handler.js
 +++ b/node_modules/next-auth/core/lib/callback-handler.js
-@@ -110,19 +110,20 @@ async function callbackHandler(params) {
+@@ -110,19 +110,17 @@ async function callbackHandler(params) {
        sessionToken: await generateSessionToken(),
        userId: user.id,
        expires: (0, _utils.fromDate)(options.session.maxAge)
@@ -107,10 +110,10 @@ index 9316bd0..19c70f9 100644
      };
    } else if (account.type === "oauth") {
 -    const userByAccount = await getUserByAccount({
-+    const row = await getUserByAccount({
-       providerAccountId: account.providerAccountId,
-       provider: account.provider
-     });
+-      providerAccountId: account.providerAccountId,
+-      provider: account.provider
+-    });
++    const row = await getUserByAccount(account.provider, account, profile)
  
 -    if (userByAccount) {
 +    if (row) {
@@ -118,7 +121,7 @@ index 9316bd0..19c70f9 100644
        if (user) {
          if (userByAccount.id === user.id) {
            return {
-@@ -139,7 +140,7 @@ async function callbackHandler(params) {
+@@ -139,7 +137,7 @@ async function callbackHandler(params) {
          sessionToken: await generateSessionToken(),
          userId: userByAccount.id,
          expires: (0, _utils.fromDate)(options.session.maxAge)
@@ -127,7 +130,7 @@ index 9316bd0..19c70f9 100644
        return {
          session,
          user: userByAccount,
-@@ -153,7 +154,7 @@ async function callbackHandler(params) {
+@@ -153,7 +151,7 @@ async function callbackHandler(params) {
  
          await linkAccount({ ...account,
            userId: user.id
@@ -136,7 +139,7 @@ index 9316bd0..19c70f9 100644
          await ((_events$linkAccount = events.linkAccount) === null || _events$linkAccount === void 0 ? void 0 : _events$linkAccount.call(events, {
            user,
            account,
-@@ -189,9 +190,9 @@ async function callbackHandler(params) {
+@@ -189,9 +187,9 @@ async function callbackHandler(params) {
        await ((_events$createUser2 = events.createUser) === null || _events$createUser2 === void 0 ? void 0 : _events$createUser2.call(events, {
          user
        }));
@@ -148,7 +151,7 @@ index 9316bd0..19c70f9 100644
        await ((_events$linkAccount2 = events.linkAccount) === null || _events$linkAccount2 === void 0 ? void 0 : _events$linkAccount2.call(events, {
          user,
          account,
-@@ -201,7 +202,7 @@ async function callbackHandler(params) {
+@@ -201,7 +199,7 @@ async function callbackHandler(params) {
          sessionToken: await generateSessionToken(),
          userId: user.id,
          expires: (0, _utils.fromDate)(options.session.maxAge)
@@ -158,19 +161,19 @@ index 9316bd0..19c70f9 100644
          session,
          user,
 diff --git a/node_modules/next-auth/core/routes/callback.js b/node_modules/next-auth/core/routes/callback.js
-index d30a999..1e28b2a 100644
+index d30a999..03ce626 100644
 --- a/node_modules/next-auth/core/routes/callback.js
 +++ b/node_modules/next-auth/core/routes/callback.js
-@@ -80,11 +80,11 @@ async function callback(params) {
+@@ -80,11 +80,8 @@ async function callback(params) {
            const {
              getUserByAccount
            } = adapter;
 -          const userByAccount = await getUserByAccount({
-+          const row = await getUserByAccount({
-             providerAccountId: account.providerAccountId,
-             provider: provider.id
-           });
+-            providerAccountId: account.providerAccountId,
+-            provider: provider.id
+-          });
 -          if (userByAccount) userOrProfile = userByAccount;
++          const row = await getUserByAccount(provider.id, account, profile);
 +          if (row) userOrProfile = row.user;
          }
  
@@ -196,7 +199,7 @@ index 430f538..029f407 100644
            newSession,
            ...(isUpdate ? {
 diff --git a/node_modules/next-auth/src/adapters.ts b/node_modules/next-auth/src/adapters.ts
-index a19fc78..02b642e 100644
+index a19fc78..666151b 100644
 --- a/node_modules/next-auth/src/adapters.ts
 +++ b/node_modules/next-auth/src/adapters.ts
 @@ -1,4 +1,4 @@
@@ -205,7 +208,18 @@ index a19fc78..02b642e 100644
  
  export interface AdapterUser extends User {
    id: string
-@@ -75,7 +75,7 @@ export interface Adapter {
+@@ -64,9 +64,7 @@ export interface Adapter {
+   getUser?: (id: string) => Awaitable<AdapterUser | null>
+   getUserByEmail?: (email: string) => Awaitable<AdapterUser | null>
+   /** Using the provider id and the id of the user for a specific account, get the user. */
+-  getUserByAccount?: (
+-    providerAccountId: Pick<AdapterAccount, "provider" | "providerAccountId">
+-  ) => Awaitable<AdapterUser | null>
++  getUserByAccount?: (providerId: string, account: Account, profile: Profile) => Awaitable<AdapterUser | null>
+   updateUser?: (
+     user: Partial<AdapterUser> & Pick<AdapterUser, "id">
+   ) => Awaitable<AdapterUser>
+@@ -75,7 +73,7 @@ export interface Adapter {
      userId: string
    ) => Promise<void> | Awaitable<AdapterUser | null | undefined>
    linkAccount?: (
@@ -214,7 +228,7 @@ index a19fc78..02b642e 100644
    ) => Promise<void> | Awaitable<AdapterAccount | null | undefined>
    /** @todo Implement */
    unlinkAccount?: (
-@@ -86,7 +86,7 @@ export interface Adapter {
+@@ -86,7 +84,7 @@ export interface Adapter {
      sessionToken: string
      userId: string
      expires: Date
