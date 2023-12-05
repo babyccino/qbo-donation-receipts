@@ -18,7 +18,7 @@ import {
   UserPlusIcon,
 } from "@heroicons/react/24/solid"
 import { Session } from "next-auth"
-import { signOut } from "next-auth/react"
+import { signIn, signOut } from "next-auth/react"
 import Link from "next/link"
 import { NextRouter, useRouter } from "next/router"
 import { MouseEventHandler, ReactNode, useEffect, useState } from "react"
@@ -195,7 +195,7 @@ const Companies = ({
           <button
             onClick={async () => {
               await postJsonData("/api/switch-company", { accountId } satisfies DataType)
-              router.reload()
+              router.replace(router.asPath)
             }}
             className="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
           >
@@ -204,15 +204,15 @@ const Companies = ({
         </li>
       ))}
       <li>
-        <Link
-          href="/api/auth/sso"
-          className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
+        <button
+          className="flex items-center w-full rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
+          onClick={() => signIn("QBO")}
         >
           <div className="h-6 w-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white">
             <PlusSmallIcon />
           </div>
           <span className="ml-3 flex-1 whitespace-nowrap text-left">Add Account</span>
-        </Link>
+        </button>
       </li>
     </ul>
   </button>
