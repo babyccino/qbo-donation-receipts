@@ -22,7 +22,7 @@ import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo, accounts, sessions } from "db/schema"
 
-const imageHelper = "PNG, JPG or GIF (max 100kb)."
+const imageHelper = "PNG, JPG, WebP or GIF (max 100kb)."
 const imageNotRequiredHelper = (
   <>
     <p className="mb-2">{imageHelper}</p>
