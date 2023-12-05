@@ -48,9 +48,20 @@ const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => 
 })
 
 type DoneeInfo = EmailProps["donee"]
-type EmailHistory = (Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
+type EmailHistory = Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
   donations: Pick<DbDonation, "name" | "donorId">[]
-})[]
+}
+enum AccountStatus {
+  NotSubscribed = 0,
+  IncompleteData,
+  Complete,
+}
+const defaultCustomRecipientsState = false
+enum RecipientStatus {
+  Valid = 0,
+  NoEmail,
+}
+type Recipient = { name: string; donorId: string; status: RecipientStatus }
 
 // global state
 const emailBody = signal(defaultEmailBody)
@@ -78,34 +89,31 @@ function EmailInput() {
   )
 }
 
-function EmailPreview({ donee }: { donee: DoneeInfo }) {
-  // any donee information which has been entered by the user will overwrite the dummy data
-  return (
-    <Modal
-      dismissible
-      show={showEmailPreview.value}
-      onClose={() => (showEmailPreview.value = false)}
-      className="bg-white"
-    >
-      <Modal.Body className="bg-white">
-        <div className="overflow-scroll">
-          <WithBody
-            {...dummyEmailProps}
-            donee={{ ...dummyEmailProps.donee, ...donee }}
-            body={formatEmailBody(emailBody.value, dummyEmailProps.donation.name)}
-          />
-        </div>
-      </Modal.Body>
-      <Modal.Footer className="bg-white">
-        <Button color="blue" onClick={() => (showEmailPreview.value = false)}>
-          Close
-        </Button>
-      </Modal.Footer>
-    </Modal>
-  )
-}
+const EmailPreview = ({ donee }: { donee: DoneeInfo }) => (
+  <Modal
+    dismissible
+    show={showEmailPreview.value}
+    onClose={() => (showEmailPreview.value = false)}
+    className="bg-white"
+  >
+    <Modal.Body className="bg-white">
+      <div className="overflow-scroll">
+        <WithBody
+          {...dummyEmailProps}
+          donee={{ ...dummyEmailProps.donee, ...donee }}
+          body={formatEmailBody(emailBody.value, dummyEmailProps.donation.name)}
+        />
+      </div>
+    </Modal.Body>
+    <Modal.Footer className="bg-white">
+      <Button color="blue" onClick={() => (showEmailPreview.value = false)}>
+        Close
+      </Button>
+    </Modal.Footer>
+  </Modal>
+)
 
-const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory }) => (
+const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory[] }) => (
   <details className="group flex w-full items-center justify-between rounded-xl border border-gray-200 p-3 text-left font-medium   text-gray-500 open:bg-gray-100 open:p-5 hover:bg-gray-100 dark:border-gray-500 dark:text-gray-400 dark:open:bg-gray-800 dark:hover:bg-gray-800">
     <summary className="mb-2 flex items-center justify-between gap-2">
       <Info className="mr-2 h-8 w-8" />
@@ -193,13 +201,14 @@ function handleError(error: ApiError) {
       throw error
   }
 }
+
 function SendEmails({
   recipients,
   emailHistory,
   checksum,
 }: {
   recipients: Set<string>
-  emailHistory: EmailHistory | null
+  emailHistory: EmailHistory[] | null
   checksum: string
 }) {
   const handler = async () => {
@@ -210,12 +219,15 @@ function SendEmails({
     }
     try {
       await postJsonData("/api/email", data)
+      showSendEmail.value = false
     } catch (error) {
       console.error(error)
       if (!(error instanceof ApiError)) throw error
-      batch(() => handleError(error as ApiError))
+      batch(() => {
+        handleError(error as ApiError)
+        showSendEmail.value = false
+      })
     }
-    showSendEmail.value = false
   }
 
   return (
@@ -244,79 +256,66 @@ function SendEmails({
   )
 }
 
-enum AccountStatus {
-  NotSubscribed = 0,
-  IncompleteData,
-  Complete,
-}
-
-const defaultCustomRecipientsState = false
-enum RecipientStatus {
-  Valid = 0,
-  NoEmail,
-}
-type Recipient = { name: string; donorId: string; status: RecipientStatus }
-
-function SelectRecipients({
+const SelectRecipients = ({
   possibleRecipients,
   setSelectedRecipientIds,
 }: {
   possibleRecipients: Recipient[]
   setSelectedRecipientIds: Dispatch<SetStateAction<Set<string>>>
-}) {
-  return (
-    <div className="mt-4 sm:grid sm:grid-cols-2">
-      {possibleRecipients.map(({ donorId, name, status }) => (
-        <Toggle
-          key={donorId}
-          id={donorId}
-          label={name}
-          defaultChecked={status === RecipientStatus.Valid}
-          disabled={status === RecipientStatus.NoEmail}
-          onChange={e =>
-            setSelectedRecipientIds(set =>
-              e.currentTarget.checked ? set.add(donorId) : (set.delete(donorId), set),
-            )
-          }
-          size="sm"
-        />
-      ))}
-    </div>
-  )
-}
+}) => (
+  <div className="mt-4 sm:grid sm:grid-cols-2">
+    {possibleRecipients.map(({ donorId, name, status }) => (
+      <Toggle
+        key={donorId}
+        id={donorId}
+        label={name}
+        defaultChecked={status === RecipientStatus.Valid}
+        disabled={status === RecipientStatus.NoEmail}
+        onChange={e => {
+          const checked = e.currentTarget.checked
+          setSelectedRecipientIds(set => {
+            const newSet = new Set(set)
+            if (checked) newSet.add(donorId)
+            else newSet.delete(donorId)
+            return newSet
+          })
+        }}
+        size="sm"
+      />
+    ))}
+  </div>
+)
 
-function RecipientsMissingEmails({
+const RecipientsMissingEmails = ({
   selectedRecipientIds,
   possibleRecipients,
 }: {
   selectedRecipientIds: Set<string>
   possibleRecipients: Recipient[]
-}) {
-  return (
-    <div className="flex flex-col justify-center gap-6">
-      <p className="text-gray-500 dark:text-gray-400">
-        {selectedRecipientIds.size > 0 ? "Some" : "All"} of your users are missing emails. Please
-        add emails to these users on QuickBooks if you wish to send receipts to all your donor.
-      </p>
-      <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
-      <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
-        {possibleRecipients
-          .filter(recipient => recipient.status === RecipientStatus.NoEmail)
-          .map(recipient => (
-            <li className="truncate" key={recipient.donorId}>
-              {recipient.name}
-            </li>
-          ))}
-      </ul>
-    </div>
-  )
-}
+}) => (
+  <div className="flex flex-col justify-center gap-6">
+    <p className="text-gray-500 dark:text-gray-400">
+      {selectedRecipientIds.size > 0 ? "Some" : "All"} of your users are missing emails. Please add
+      emails to these users on QuickBooks if you wish to send receipts to all your donor.
+    </p>
+    <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
+    <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
+      {possibleRecipients
+        .filter(recipient => recipient.status === RecipientStatus.NoEmail)
+        .map(recipient => (
+          <li className="truncate" key={recipient.donorId}>
+            {recipient.name}
+          </li>
+        ))}
+    </ul>
+  </div>
+)
 
 type CompleteAccountProps = {
   accountStatus: AccountStatus.Complete
   donee: DoneeInfo
   possibleRecipients: Recipient[]
-  emailHistory: EmailHistory | null
+  emailHistory: EmailHistory[] | null
   checksum: string
 }
 
@@ -413,7 +412,7 @@ function CompleteAccountEmail({
   )
 }
 
-// --- page ---
+// --- page --- //
 
 type IncompleteAccountProps = {
   accountStatus: AccountStatus.IncompleteData
@@ -436,7 +435,7 @@ export default function Email(serialisedProps: SerialisedProps) {
   else return <CompleteAccountEmail {...props} />
 }
 
-// --- server-side props ---
+// --- server side props --- //
 
 export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
@@ -517,9 +516,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   if (!user.subscription || !isUserSubscribed(user.subscription))
     return { redirect: { permanent: false, destination: "subscribe" } }
 
-  // at least one of these must be set otherwise we would have returned already
-  const realmId = session.accountId as string
-
   const { doneeInfo, userData } = account
   if (!doneeInfo || !userData) {
     const props: Props = {
@@ -534,9 +530,10 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   }
 
   await refreshTokenIfNeeded(account)
+
   const donations = await getDonations(
     account.accessToken,
-    realmId,
+    account.realmId,
     { startDate: userData.startDate, endDate: userData.endDate },
     userData.items ? userData.items.split(",") : [],
   )
