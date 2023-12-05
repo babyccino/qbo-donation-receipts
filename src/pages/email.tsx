@@ -445,7 +445,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const [user, accountList] = await Promise.all([
     db.query.users.findFirst({
       // if the realmId is specified get that account otherwise just get the first account for the user
-      where: eq(users, session.user.id),
+      where: eq(users.id, session.user.id),
       columns: { name: true },
       with: {
         accounts: {
