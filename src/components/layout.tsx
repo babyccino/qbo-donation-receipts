@@ -29,10 +29,9 @@ import { DataType } from "@/pages/api/switch-company"
 
 export type LayoutProps = {
   session: Session | null
-} & (
-  | { companies: { companyName: string; id: string }[]; selectedAccountId: string }
-  | { companies?: null; selectedAccountId?: null }
-)
+  companies?: { companyName: string; id: string }[] | null
+  selectedAccountId?: string | null
+}
 
 export default function Layout(
   props: {

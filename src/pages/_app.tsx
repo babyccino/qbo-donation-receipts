@@ -3,7 +3,6 @@
 
 import "./globals.scss"
 
-import { Session } from "next-auth"
 import { NextSeo } from "next-seo"
 import { AppProps } from "next/app"
 import Head from "next/head"
@@ -43,19 +42,13 @@ export default function App({ Component, pageProps }: AppProps<LayoutProps & Rec
         <meta name="description" content="Expedite your organisation's year-end!" />
       </Head>
       <ErrorBoundary>
-        {pageProps.companies ? (
-          <Layout
-            session={pageProps.session}
-            companies={pageProps.companies}
-            selectedAccountId={pageProps.selectedAccountId}
-          >
-            <Component {...pageProps} />
-          </Layout>
-        ) : (
-          <Layout session={pageProps.session}>
-            <Component {...pageProps} />
-          </Layout>
-        )}
+        <Layout
+          session={pageProps.session}
+          companies={pageProps.companies}
+          selectedAccountId={pageProps.selectedAccountId}
+        >
+          <Component {...pageProps} />
+        </Layout>
       </ErrorBoundary>
     </>
   )
