@@ -64,78 +64,76 @@ export const parser = z.object({
   signatoryName: zodRegularString,
   signature: z.string().optional().refine(dataUrlRefiner),
   smallLogo: z.string().optional().refine(dataUrlRefiner),
-  realmId: z.string(),
 })
 export type DataType = z.infer<typeof parser>
 
 const handler: AuthorisedHandler = async (req, res, session) => {
+  if (!session.accountId) throw new ApiError(401, "user not connected")
   const id = session.user.id
 
-  const { realmId, ...data } = parseRequestBody(parser, req.body)
+  const data = parseRequestBody(parser, req.body)
 
   const account = await db.query.accounts.findFirst({
-    where: and(eq(accounts.userId, id), eq(accounts.realmId, realmId)),
+    where: eq(accounts.id, session.accountId),
     columns: {
       id: true,
       accessToken: true,
       expiresAt: true,
       refreshToken: true,
       refreshTokenExpiresAt: true,
+      realmId: true,
     },
     with: { doneeInfo: { columns: { id: true } } },
   })
 
   if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
+  const { realmId } = account
+  if (!realmId) throw new ApiError(401, "account not associated with a company")
 
   await refreshTokenIfNeeded(account)
 
-  if (!account.doneeInfo) {
-    if (!data.signature || !data.smallLogo)
-      throw new ApiError(
-        400,
-        "when setting user data for the first time, signature and logo images must be provided",
-      )
+  if (!account.doneeInfo && (!data.signature || !data.smallLogo))
+    throw new ApiError(
+      400,
+      "when setting user data for the first time, signature and logo images must be provided",
+    )
 
-    const [signatureUrl, smallLogoUrl] = await Promise.all([
-      resizeAndUploadImage(data.signature, { height: 150 }, `${id}/signature`, false),
-      resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true),
-    ])
+  const signaturePath = `${id}/${realmId}/signature`
+  const smallLogoPath = `${id}/${realmId}/smallLogo`
+  const [signatureUrl, smallLogoUrl] = await Promise.all([
+    data.signature
+      ? resizeAndUploadImage(data.signature, { height: 150 }, signaturePath, false)
+      : undefined,
+    data.smallLogo
+      ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, smallLogoPath, true)
+      : undefined,
+  ])
 
-    await db.insert(doneeInfos).values({
-      id: createId(),
-      accountId: account.id,
-      signature: signatureUrl,
-      smallLogo: smallLogoUrl,
-      largeLogo: "",
-      ...data,
-    })
-  } else {
-    const [signatureUrl, smallLogoUrl] = await Promise.all([
-      data.signature
-        ? resizeAndUploadImage(data.signature, { height: 150 }, `${id}/signature`, false)
-        : undefined,
-      data.smallLogo
-        ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true)
-        : undefined,
-    ])
+  const doneeInfo = account.doneeInfo
+    ? await db
+        .update(doneeInfos)
+        .set({
+          ...data,
+          signature: signatureUrl,
+          smallLogo: smallLogoUrl,
+          largeLogo: "",
+          updatedAt: new Date(),
+        })
+        .where(eq(doneeInfos.id, account.doneeInfo.id))
+        .returning()
+    : await db
+        .insert(doneeInfos)
+        .values({
+          ...data,
+          id: createId(),
+          accountId: account.id,
+          signature: signatureUrl as string,
+          smallLogo: smallLogoUrl as string,
+          largeLogo: "",
+        })
+        .returning()
 
-    await db
-      .update(doneeInfos)
-      .set({
-        ...data,
-        signature: signatureUrl,
-        smallLogo: smallLogoUrl,
-        largeLogo: "",
-        updatedAt: new Date(),
-      })
-      .where(eq(doneeInfos.id, account.doneeInfo.id))
-  }
-
-  const set = await db
-    .select()
-    .from(doneeInfos)
-    .where(and(eq(doneeInfos.accountId, account.id)))
-  res.status(200).json(set)
+  res.status(200).json(doneeInfo)
 }
 
 export default createAuthorisedHandler(handler, ["POST"])

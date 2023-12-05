@@ -66,7 +66,6 @@ const DatePicker = dynamic(import("react-tailwindcss-datepicker"), {
 type Props = ({
   items: Item[]
   detailsFilledIn: boolean
-  realmId: string
 } & (
   | { itemsFilledIn: false }
   | {
@@ -94,7 +93,7 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
 
 export default function Items(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
-  const { items, detailsFilledIn, realmId } = props
+  const { items, detailsFilledIn } = props
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
@@ -150,13 +149,12 @@ export default function Items(serialisedProps: SerialisedProps) {
     event.preventDefault()
 
     const items = getItems()
-    const postData: ItemsApiDataType = { items, dateRange: customDateState, realmId }
+    const postData: ItemsApiDataType = { items, dateRange: customDateState }
     await postJsonData("/api/items", postData)
 
     const destination = detailsFilledIn ? "/generate-receipts" : "/details"
     await router.push({
       pathname: destination,
-      query: `realmId=${realmId}`,
     })
   }
 
@@ -258,8 +256,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
             userData: { columns: { items: true, startDate: true, endDate: true } },
             doneeInfo: { columns: { id: true } },
           },
-          // get the first account with "accounting" scope if there is one
-          orderBy: [asc(accounts.scope)],
         })
       : null,
     db.query.accounts.findMany({
@@ -296,8 +292,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
           userData: { columns: { items: true, startDate: true, endDate: true } },
           doneeInfo: { columns: { id: true } },
         },
-        // get the first account with "accounting" scope if there is one
-        orderBy: [asc(accounts.scope)],
       }),
     ])
     account = newAccount
@@ -324,7 +318,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
         session,
         items,
         detailsFilledIn,
-        realmId,
         companies: accountList,
         selectedAccountId: session.accountId,
       } satisfies Props),
@@ -340,7 +333,6 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
       items,
       detailsFilledIn,
       selectedItems,
-      realmId,
       dateRange: { startDate: userData.startDate, endDate: userData.endDate },
       companies: accountList,
       selectedAccountId: session.accountId,

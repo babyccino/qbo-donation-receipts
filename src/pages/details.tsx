@@ -65,12 +65,11 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
     event.preventDefault()
 
     const formData = await getFormData()
-    await postJsonData("/api/details", { ...formData, realmId } satisfies DetailsApiDataType)
+    await postJsonData("/api/details", formData satisfies DetailsApiDataType)
 
     const destination = itemsFilledIn ? "/generate-receipts" : "/items"
     await router.push({
       pathname: destination,
-      query: `realmId=${realmId}`,
     })
   }
 
@@ -177,7 +176,7 @@ export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
-  if (!session) return signInRedirect("items")
+  if (!session) return signInRedirect("details")
 
   let [account, accountList] = await Promise.all([
     session.accountId
@@ -207,8 +206,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
               },
             },
           },
-          // get the first account with "accounting" scope if there is one
-          orderBy: [asc(accounts.scope)],
         })
       : null,
     db.query.accounts.findMany({
@@ -254,8 +251,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
             },
           },
         },
-        // get the first account with "accounting" scope if there is one
-        orderBy: [asc(accounts.scope)],
       }),
     ])
     account = newAccount

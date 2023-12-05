@@ -17,27 +17,28 @@ export const parser = z.object({
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),
   }),
-  realmId: z.string(),
 })
 
 export type DataType = z.infer<typeof parser>
 
 const handler: AuthorisedHandler = async (req, res, session) => {
-  const id = session.user.id
+  if (!session.accountId) throw new ApiError(401, "user not connected")
+
   const data = parseRequestBody(parser, req.body)
   const {
     items: itemsStr,
     dateRange: { startDate, endDate },
-    realmId,
   } = data
+
   const account = await db.query.accounts.findFirst({
-    where: and(eq(accounts.userId, id), eq(accounts.realmId, realmId)),
+    where: eq(accounts.id, session.accountId),
     columns: {
       id: true,
       scope: true,
     },
   })
   if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
+
   const items = itemsStr.join(",")
   await db
     .insert(userDatas)
