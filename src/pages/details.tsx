@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { ApiError } from "next/dist/server/api-utils"
@@ -9,6 +9,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Session, getServerSession } from "next-auth"
 
 import { Fieldset, ImageInput, Legend } from "@/components/form"
+import { LayoutProps } from "@/components/layout"
 import { buttonStyling } from "@/components/link"
 import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { RemoveTimestamps, refreshTokenIfNeeded } from "@/lib/db/db-helper"
@@ -18,8 +19,7 @@ import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/li
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
-import { DoneeInfo, accounts, sessions, users } from "db/schema"
-import { LayoutProps } from "@/components/layout"
+import { DoneeInfo, accounts, sessions } from "db/schema"
 
 const imageHelper = "PNG, JPG or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -178,36 +178,37 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("details")
 
-  let [account, accountList] = await Promise.all([
-    session.accountId
-      ? db.query.accounts.findFirst({
-          // if the realmId is specified get that account otherwise just get the first account for the user
-          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+  const [account, accountList] = await Promise.all([
+    db.query.accounts.findFirst({
+      // if the realmId is specified get that account otherwise just get the first account for the user
+      where: session.accountId
+        ? eq(accounts.id, session.accountId)
+        : eq(accounts.scope, "accounting"),
+      orderBy: desc(accounts.updatedAt),
+      columns: {
+        id: true,
+        accessToken: true,
+        scope: true,
+        realmId: true,
+        createdAt: true,
+        expiresAt: true,
+        refreshToken: true,
+        refreshTokenExpiresAt: true,
+      },
+      with: {
+        userData: { columns: { id: true } },
+        doneeInfo: {
           columns: {
-            id: true,
-            accessToken: true,
-            scope: true,
-            realmId: true,
-            createdAt: true,
-            expiresAt: true,
-            refreshToken: true,
-            refreshTokenExpiresAt: true,
+            companyAddress: true,
+            companyName: true,
+            country: true,
+            registrationNumber: true,
+            signatoryName: true,
+            smallLogo: true,
           },
-          with: {
-            userData: { columns: { id: true } },
-            doneeInfo: {
-              columns: {
-                companyAddress: true,
-                companyName: true,
-                country: true,
-                registrationNumber: true,
-                signatoryName: true,
-                smallLogo: true,
-              },
-            },
-          },
-        })
-      : null,
+        },
+      },
+    }),
     db.query.accounts.findMany({
       columns: { companyName: true, id: true },
       where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
@@ -219,41 +220,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
   // if the session does not specify an account but there is a connected account
   // then the session is connected to one of these accounts
-  if (session.accountId === null && accountList.length > 0) {
-    session.accountId = accountList[0].id
-    const [_, newAccount] = await Promise.all([
-      db
-        .update(sessions)
-        .set({ accountId: accountList[0].id })
-        .where(eq(sessions.userId, session.user.id)),
-      db.query.accounts.findFirst({
-        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
-        columns: {
-          id: true,
-          accessToken: true,
-          scope: true,
-          realmId: true,
-          createdAt: true,
-          expiresAt: true,
-          refreshToken: true,
-          refreshTokenExpiresAt: true,
-        },
-        with: {
-          userData: { columns: { id: true } },
-          doneeInfo: {
-            columns: {
-              companyAddress: true,
-              companyName: true,
-              country: true,
-              registrationNumber: true,
-              signatoryName: true,
-              smallLogo: true,
-            },
-          },
-        },
-      }),
-    ])
-    account = newAccount
+  if (!session.accountId && account) {
+    session.accountId = account.id
+    await db
+      .update(sessions)
+      .set({ accountId: account.id })
+      .where(eq(sessions.userId, session.user.id))
   }
 
   if (

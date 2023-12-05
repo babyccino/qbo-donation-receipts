@@ -1,5 +1,5 @@
 import { InformationCircleIcon } from "@heroicons/react/24/solid"
-import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
@@ -237,27 +237,29 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("items")
 
-  let [account, accountList] = await Promise.all([
-    session.accountId
-      ? db.query.accounts.findFirst({
-          // if the realmId is specified get that account otherwise just get the first account for the user
-          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
-          columns: {
-            id: true,
-            accessToken: true,
-            scope: true,
-            realmId: true,
-            createdAt: true,
-            expiresAt: true,
-            refreshToken: true,
-            refreshTokenExpiresAt: true,
-          },
-          with: {
-            userData: { columns: { items: true, startDate: true, endDate: true } },
-            doneeInfo: { columns: { id: true } },
-          },
-        })
-      : null,
+  const [account, accountList] = await Promise.all([
+    db.query.accounts.findFirst({
+      // if the realmId is specified get that account otherwise just get the first account for the user
+      where: and(
+        eq(accounts.userId, session.user.id),
+        session.accountId ? eq(accounts.id, session.accountId) : eq(accounts.scope, "accounting"),
+      ),
+      columns: {
+        id: true,
+        accessToken: true,
+        scope: true,
+        realmId: true,
+        createdAt: true,
+        expiresAt: true,
+        refreshToken: true,
+        refreshTokenExpiresAt: true,
+      },
+      with: {
+        userData: { columns: { items: true, startDate: true, endDate: true } },
+        doneeInfo: { columns: { id: true } },
+      },
+      orderBy: desc(accounts.updatedAt),
+    }),
     db.query.accounts.findMany({
       columns: { companyName: true, id: true },
       where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
@@ -269,32 +271,12 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
 
   // if the session does not specify an account but there is a connected account
   // then the session is connected to one of these accounts
-  if (session.accountId === null && accountList.length > 0) {
-    session.accountId = accountList[0].id
-    const [_, newAccount] = await Promise.all([
-      db
-        .update(sessions)
-        .set({ accountId: accountList[0].id })
-        .where(eq(sessions.userId, session.user.id)),
-      db.query.accounts.findFirst({
-        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
-        columns: {
-          id: true,
-          accessToken: true,
-          scope: true,
-          realmId: true,
-          createdAt: true,
-          expiresAt: true,
-          refreshToken: true,
-          refreshTokenExpiresAt: true,
-        },
-        with: {
-          userData: { columns: { items: true, startDate: true, endDate: true } },
-          doneeInfo: { columns: { id: true } },
-        },
-      }),
-    ])
-    account = newAccount
+  if (!session.accountId && account) {
+    session.accountId = account.id
+    await db
+      .update(sessions)
+      .set({ accountId: account.id })
+      .where(eq(sessions.userId, session.user.id))
   }
 
   if (
