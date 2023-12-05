@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
-import { and, eq } from "drizzle-orm"
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm"
 import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
@@ -31,7 +31,8 @@ import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
-import { DoneeInfo, accounts } from "db/schema"
+import { DoneeInfo, accounts, sessions } from "db/schema"
+import { LayoutProps } from "@/components/layout"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -47,12 +48,12 @@ const ShowReceipt = dynamic(() => import("@/components/receipt/pdf").then(imp =>
   loadImmediately: true,
 })
 
-function DownloadAllFiles({ realmId }: { realmId: string }) {
+function DownloadAllFiles({ accountId }: { accountId: string }) {
   const [loading, setLoading] = useState(false)
 
   const onClick = async () => {
     setLoading(true)
-    const response = await fetchJsonData(`/api/receipts/${realmId}`)
+    const response = await fetchJsonData(`/api/receipts/${accountId}`)
     if (!response.ok) throw new Error("There was an issue downloading the ZIP file")
     setLoading(false)
     download(await response.blob())
@@ -149,20 +150,22 @@ const blurredRows = new Array(10).fill(0).map((_, idx) => (
   </Tr>
 ))
 
-type Props =
+type Props = (
   | {
       receiptsReady: true
       session: Session
       donations: Donation[]
       doneeInfo: Omit<DoneeInfo, "accountId" | "createdAt" | "id" | "updatedAt">
       subscribed: boolean
-      realmId: string
+      accountId: string
     }
   | {
       receiptsReady: false
       filledIn: { items: boolean; doneeDetails: boolean }
-      realmId: string
+      accountId: string
     }
+) &
+  LayoutProps
 
 enum Sort {
   Default = 0,
@@ -213,9 +216,9 @@ const formatter = new Intl.NumberFormat("en-US", { style: "currency", currency: 
 export default function IndexPage(props: Props) {
   const [sort, setSort] = useState<Sort>(Sort.Default)
 
-  if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} realmId={props.realmId} />
+  if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
-  const { doneeInfo, subscribed, realmId } = props
+  const { doneeInfo, subscribed, accountId } = props
   const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
@@ -248,7 +251,7 @@ export default function IndexPage(props: Props) {
     <section className="flex h-full w-full flex-col p-8">
       <Show when={subscribed}>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <DownloadAllFiles realmId={realmId} />
+          <DownloadAllFiles accountId={accountId} />
           <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
             <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
             <Link href="/email">Email</Link>
@@ -302,53 +305,101 @@ export default function IndexPage(props: Props) {
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
-  const queryRealmId = typeof query.realmId === "string" ? query.realmId : undefined
-  if (!session)
-    return signInRedirect(
-      "generate-receipts" + (queryRealmId ? `%3FrealmId%3D${queryRealmId}` : ""),
-    )
+  if (!session) return signInRedirect("generate-receipts")
 
-  const account = await db.query.accounts.findFirst({
-    // if the realmId is specified get that account otherwise just get the first account for the user
-    where: and(
-      eq(accounts.userId, session.user.id),
-      queryRealmId ? eq(accounts.realmId, queryRealmId) : eq(accounts.scope, "accounting"),
-    ),
-    columns: {
-      id: true,
-      accessToken: true,
-      scope: true,
-      realmId: true,
-      createdAt: true,
-      expiresAt: true,
-      refreshToken: true,
-      refreshTokenExpiresAt: true,
-    },
-    with: {
-      doneeInfo: { columns: { createdAt: false, updatedAt: false, id: false, accountId: false } },
-      userData: { columns: { items: true, startDate: true, endDate: true } },
-      user: {
-        columns: {},
-        with: { subscription: { columns: { status: true, currentPeriodEnd: true } } },
-      },
-    },
-  })
-  if (queryRealmId && !account)
-    throw new ApiError(500, "account for given user and company realmId not found in db")
-  if (!account || account.scope !== "accounting" || !account.accessToken)
+  let [account, accountList] = await Promise.all([
+    session.accountId
+      ? db.query.accounts.findFirst({
+          // if the realmId is specified get that account otherwise just get the first account for the user
+          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+          columns: {
+            id: true,
+            accessToken: true,
+            scope: true,
+            realmId: true,
+            createdAt: true,
+            expiresAt: true,
+            refreshToken: true,
+            refreshTokenExpiresAt: true,
+          },
+          with: {
+            doneeInfo: {
+              columns: { createdAt: false, updatedAt: false, id: false, accountId: false },
+            },
+            userData: { columns: { items: true, startDate: true, endDate: true } },
+            user: {
+              columns: {},
+              with: { subscription: { columns: { status: true, currentPeriodEnd: true } } },
+            },
+          },
+        })
+      : null,
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
+  ])
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
+
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (session.accountId === null && accountList.length > 0) {
+    session.accountId = accountList[0].id
+    const [_, newAccount] = await Promise.all([
+      db
+        .update(sessions)
+        .set({ accountId: accountList[0].id })
+        .where(eq(sessions.userId, session.user.id)),
+      db.query.accounts.findFirst({
+        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+        columns: {
+          id: true,
+          accessToken: true,
+          scope: true,
+          realmId: true,
+          createdAt: true,
+          expiresAt: true,
+          refreshToken: true,
+          refreshTokenExpiresAt: true,
+        },
+        with: {
+          doneeInfo: {
+            columns: { createdAt: false, updatedAt: false, id: false, accountId: false },
+          },
+          userData: { columns: { items: true, startDate: true, endDate: true } },
+          user: {
+            columns: {},
+            with: { subscription: { columns: { status: true, currentPeriodEnd: true } } },
+          },
+        },
+      }),
+    ])
+    account = newAccount
+  }
+
+  if (
+    !account ||
+    account.scope !== "accounting" ||
+    !account.accessToken ||
+    !account.realmId ||
+    !session.accountId
+  )
     return disconnectedRedirect
-  const { doneeInfo, userData } = account
-  const realmId = queryRealmId ?? account.realmId
-  if (!realmId) return disconnectedRedirect
-  account.realmId = realmId
+  const { doneeInfo, userData, realmId } = account
+  const { accountId } = session
 
   if (!doneeInfo || !userData)
     return {
       props: {
         receiptsReady: false,
         filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
-        realmId,
-      },
+        accountId: account.id,
+        session,
+        companies: accountList,
+        selectedAccountId: account.id,
+      } satisfies Props,
     }
 
   await refreshTokenIfNeeded(account)
@@ -375,7 +426,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       donations: subscribed ? donations : donations.slice(0, 3),
       doneeInfo,
       subscribed,
-      realmId,
+      accountId,
+      companies: accountList,
+      selectedAccountId: account.id,
     } satisfies Props,
   }
 }
