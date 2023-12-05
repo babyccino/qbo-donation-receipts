@@ -20,7 +20,7 @@ import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { LayoutProps } from "@/components/layout"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { accounts, sessions } from "db/schema"
 import { authOptions } from "../api/auth/[...nextauth]"
 

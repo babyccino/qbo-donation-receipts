@@ -13,7 +13,7 @@ import { LayoutProps } from "@/components/layout"
 import { buttonStyling } from "@/components/link"
 import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { getItems } from "@/lib/qbo-api"
 import {
   DateRange,

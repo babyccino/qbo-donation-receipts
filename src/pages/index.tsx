@@ -9,7 +9,7 @@ import { twMerge } from "tailwind-merge"
 
 import { LayoutProps } from "@/components/layout"
 import { Link as StyledLink } from "@/components/link"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { QboPermission } from "@/types/next-auth-helper"

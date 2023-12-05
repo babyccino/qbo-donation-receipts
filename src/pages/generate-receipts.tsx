@@ -24,7 +24,7 @@ import {
 } from "@/lib/auth/next-auth-helper-server"
 import { downloadImageAndConvertToPng } from "@/lib/db/db-helper"
 import { storageBucket } from "@/lib/db/firebase"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"

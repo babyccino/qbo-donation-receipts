@@ -8,7 +8,7 @@ import { ApiError } from "next/dist/server/api-utils"
 
 import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
 import crypto from "@/lib/crypto"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { refreshAccessToken } from "@/lib/qbo-api"
 import { config } from "@/lib/util/config"
 import { getBaseUrl } from "@/lib/util/request"

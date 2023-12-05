@@ -9,7 +9,7 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { config } from "@/lib/util/config"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { eq } from "drizzle-orm"
 import { subscriptions } from "db/schema"
 

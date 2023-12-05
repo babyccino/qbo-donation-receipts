@@ -5,7 +5,7 @@ import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
 import { serverSignIn } from "@/lib/auth/next-auth-helper-server"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
 import { getResponseContent } from "@/lib/util/request"

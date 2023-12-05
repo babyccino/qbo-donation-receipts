@@ -67,6 +67,8 @@ const vitalKeys = [
   "AWS_SECRET_ACCESS_KEY",
   "RESEND_API_KEY",
   "DOMAIN",
+  "LIB_SQL_DB_URL",
+  "LIB_SQL_AUTH_TOKEN",
 ] as const
 const nonVitalKeys = [
   "FIREBASE_API_KEY",

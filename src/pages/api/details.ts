@@ -6,7 +6,7 @@ import { z } from "zod"
 
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
 import { storageBucket } from "@/lib/db/firebase"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import {
   base64FileSize,

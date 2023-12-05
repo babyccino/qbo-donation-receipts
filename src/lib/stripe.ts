@@ -2,7 +2,7 @@ import Stripe from "stripe"
 
 import { config } from "@/lib/util/config"
 import { Subscription, subscriptions } from "db/schema"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { and, eq, gt } from "drizzle-orm"
 
 export const stripe = new Stripe(config.stripePrivateKey, { apiVersion: "2023-08-16" })

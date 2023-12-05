@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { manageSubscriptionStatusChange, stripe } from "@/lib/stripe"
 import {
   AuthorisedHandler,

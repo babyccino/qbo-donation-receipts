@@ -5,7 +5,7 @@ import { ApiError } from "next/dist/server/api-utils"
 import Image from "next/image"
 
 import { LayoutProps } from "@/components/layout"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { accounts, sessions } from "db/schema"
 import { authOptions } from "./api/auth/[...nextauth]"
 

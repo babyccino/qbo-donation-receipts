@@ -3,7 +3,7 @@ import { NextApiHandler, NextApiRequest } from "next"
 import { Readable } from "node:stream"
 import Stripe from "stripe"
 
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { manageSubscriptionStatusChange, stripe } from "@/lib/stripe"
 import { config as envConfig } from "@/lib/util/config"
 import { billingAddresses, prices, products } from "db/schema"

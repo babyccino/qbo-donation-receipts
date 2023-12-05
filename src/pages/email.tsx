@@ -20,7 +20,7 @@ import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helpe
 import { storageBucket } from "@/lib/db/firebase"
 import { downloadImagesForDonee } from "@/lib/db/db-helper"
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { defaultEmailBody, formatEmailBody, templateDonorName, trimHistoryById } from "@/lib/email"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"

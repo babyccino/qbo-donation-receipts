@@ -4,7 +4,7 @@ import { OAuthConfig } from "next-auth/providers"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { DrizzleAdapter } from "@/lib/auth/drizzle-adapter"
-import { db } from "@/lib/db/test"
+import { db } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { fetchJsonData } from "@/lib/util/request"
 import { OpenIdUserInfo, QBOProfile, QboAccount } from "@/types/qbo-api"
