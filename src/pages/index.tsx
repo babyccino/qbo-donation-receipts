@@ -132,14 +132,16 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
   }
 
   let [account, accountList] = await Promise.all([
-    session.accountId
-      ? db.query.accounts.findFirst({
-          // if the realmId is specified get that account otherwise just get the first account for the user
-          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
-          columns: { scope: true },
-          with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
-        })
-      : null,
+    db.query.accounts.findFirst({
+      // if the realmId is specified get that account otherwise just get the first account for the user
+      where: and(
+        eq(accounts.userId, session.user.id),
+        session.accountId ? eq(accounts.id, session.accountId) : eq(accounts.scope, "accounting"),
+      ),
+      columns: { scope: true, id: true },
+      with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
+      orderBy: desc(accounts.updatedAt),
+    }),
     db.query.accounts.findMany({
       columns: { companyName: true, id: true },
       where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
@@ -151,20 +153,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
 
   // if the session does not specify an account but there is a connected account
   // then the session is connected to one of these accounts
-  if (session.accountId === null && accountList.length > 0) {
-    session.accountId = accountList[0].id
-    const [_, newAccount] = await Promise.all([
-      db
-        .update(sessions)
-        .set({ accountId: accountList[0].id })
-        .where(eq(sessions.userId, session.user.id)),
-      db.query.accounts.findFirst({
-        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
-        columns: { scope: true },
-        with: { userData: { columns: { id: true } }, doneeInfo: { columns: { id: true } } },
-      }),
-    ])
-    account = newAccount
+  if (!session.accountId && account) {
+    session.accountId = account.id
+    await db
+      .update(sessions)
+      .set({ accountId: account.id })
+      .where(eq(sessions.userId, session.user.id))
   }
 
   if (!session.accountId || !account) return { props: { session, filledIn: null } satisfies Props }
