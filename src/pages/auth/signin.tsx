@@ -9,7 +9,7 @@ import { useSearchParams } from "next/navigation"
 export default function SignInPage() {
   const [checked, setChecked] = useState(false)
   const searchParams = useSearchParams()
-  const callback = searchParams.get("callback")
+  const callback = searchParams?.get("callback")
 
   return (
     <div className="flex h-full flex-grow flex-col justify-center gap-8 align-middle">
