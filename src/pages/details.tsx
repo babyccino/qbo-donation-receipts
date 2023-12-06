@@ -1,22 +1,28 @@
-import { GetServerSideProps } from "next"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
-import { Session } from "next-auth"
+import { GetServerSideProps } from "next"
+import { ApiError } from "next/dist/server/api-utils"
 import { useRouter } from "next/router"
 import { FormEventHandler, useRef } from "react"
 
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { Session, getServerSession } from "next-auth"
+
 import { Fieldset, ImageInput, Legend } from "@/components/form"
+import { LayoutProps } from "@/components/layout"
 import { buttonStyling } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
-import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
+import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
+import { RemoveTimestamps } from "@/lib/db/db-helper"
+import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db"
+import { getCompanyInfo } from "@/lib/qbo-api"
+import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { disconnectedRedirect, getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
-import { DoneeInfo } from "@/types/db"
+import { DoneeInfo, accounts, sessions } from "db/schema"
 
-const imageHelper = "PNG, JPG or GIF (max 100kb)."
+const imageHelper = "PNG, JPG, WebP or GIF (max 100kb)."
 const imageNotRequiredHelper = (
   <>
     <p className="mb-2">{imageHelper}</p>
@@ -24,13 +30,16 @@ const imageNotRequiredHelper = (
   </>
 )
 
+type PDoneeInfo = Partial<Omit<RemoveTimestamps<DoneeInfo>, "id" | "userId">>
+
 type Props = {
-  doneeInfo: DoneeInfo
+  doneeInfo: PDoneeInfo
   session: Session
   itemsFilledIn: boolean
-}
+  realmId: string
+} & LayoutProps
 
-export default function Details({ doneeInfo, itemsFilledIn }: Props) {
+export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -56,11 +65,11 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
 
-    const formData: DetailsApiDataType = await getFormData()
-    await postJsonData("/api/details", formData)
+    const formData = await getFormData()
+    await postJsonData("/api/details", formData satisfies DetailsApiDataType)
 
     const destination = itemsFilledIn ? "/generate-receipts" : "/items"
-    router.push({
+    await router.push({
       pathname: destination,
     })
   }
@@ -80,7 +89,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             defaultValue={doneeInfo.companyAddress}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <p>
@@ -93,7 +102,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             defaultValue={doneeInfo.companyName}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <p>
@@ -107,7 +116,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             defaultValue={doneeInfo.country}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <p>
@@ -118,7 +127,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             name="registrationNumber"
             id="registrationNumber"
             minLength={15}
-            defaultValue={doneeInfo.registrationNumber}
+            defaultValue={doneeInfo.registrationNumber ?? undefined}
             required
             title="Canadian registration numbers are of the format: 123456789AA1234"
             pattern={charityRegistrationNumberRegex}
@@ -132,10 +141,10 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             name="signatoryName"
             id="signatoryName"
             minLength={5}
-            defaultValue={doneeInfo.signatoryName}
+            defaultValue={doneeInfo.signatoryName ?? undefined}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={regularCharactersRegex}
+            pattern={htmlRegularCharactersRegex}
           />
         </p>
         <ImageInput
@@ -166,18 +175,85 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
-  const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect("details")
 
-  const user = await getUserData(session.user.id)
-  if (!user.donee) return disconnectedRedirect
+  const [account, accountList] = await Promise.all([
+    db.query.accounts.findFirst({
+      // if the realmId is specified get that account otherwise just get the first account for the user
+      where: session.accountId
+        ? eq(accounts.id, session.accountId)
+        : eq(accounts.scope, "accounting"),
+      orderBy: desc(accounts.updatedAt),
+      columns: {
+        id: true,
+        accessToken: true,
+        scope: true,
+        realmId: true,
+        createdAt: true,
+        expiresAt: true,
+        refreshToken: true,
+        refreshTokenExpiresAt: true,
+      },
+      with: {
+        userData: { columns: { id: true } },
+        doneeInfo: {
+          columns: {
+            companyAddress: true,
+            companyName: true,
+            country: true,
+            registrationNumber: true,
+            signatoryName: true,
+            smallLogo: true,
+          },
+        },
+      },
+    }),
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
+  ])
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
+
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (!session.accountId && account) {
+    session.accountId = account.id
+    await db
+      .update(sessions)
+      .set({ accountId: account.id })
+      .where(eq(sessions.userId, session.user.id))
+  }
+
+  if (
+    !account ||
+    account.scope !== "accounting" ||
+    !account.accessToken ||
+    !account.realmId ||
+    !session.accountId
+  )
+    return disconnectedRedirect
+
+  await refreshTokenIfNeeded(account)
+  const realmId = account.realmId
+  const itemsFilledIn = Boolean(account.userData)
+
+  const doneeInfo = account.doneeInfo
+    ? account.doneeInfo
+    : await getCompanyInfo(account.accessToken, realmId)
 
   return {
     props: {
       session,
-      doneeInfo: user.donee,
-      itemsFilledIn: checkUserDataCompletion(user).items,
-    },
+      doneeInfo,
+      itemsFilledIn,
+      realmId,
+      companies: accountList,
+      selectedAccountId: session.accountId,
+    } satisfies Props,
   }
 }

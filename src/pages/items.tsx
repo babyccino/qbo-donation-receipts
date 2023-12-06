@@ -1,15 +1,19 @@
 import { InformationCircleIcon } from "@heroicons/react/24/solid"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Alert, Button, Label, Select } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
+import { getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 import dynamic from "next/dynamic"
 import { useRouter } from "next/router"
 import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from "react"
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
+import { LayoutProps } from "@/components/layout"
 import { buttonStyling } from "@/components/link"
-import { getUserData } from "@/lib/db"
-import { checkUserDataCompletion } from "@/lib/db-helper"
+import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
+import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db"
 import { getItems } from "@/lib/qbo-api"
 import {
   DateRange,
@@ -21,12 +25,12 @@ import {
   startOfThisYear,
   utcEpoch,
 } from "@/lib/util/date"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
+import { accounts, sessions } from "db/schema"
 
 const DumbDatePicker = () => (
   <div className="relative w-full text-gray-700">
@@ -59,18 +63,18 @@ const DatePicker = dynamic(import("react-tailwindcss-datepicker"), {
   loading: props => <DumbDatePicker />,
 })
 
-type Props = {
+type Props = ({
   items: Item[]
-  session: Session
   detailsFilledIn: boolean
 } & (
   | { itemsFilledIn: false }
   | {
       itemsFilledIn: true
-      selectedItems: number[]
+      selectedItems: string[]
       dateRange: DateRange
     }
-)
+)) &
+  LayoutProps
 type SerialisedProps = SerialiseDates<Props>
 
 type DateValueType = { startDate: Date | string | null; endDate: Date | string | null } | null
@@ -138,7 +142,7 @@ export default function Items(serialisedProps: SerialisedProps) {
     if (!formRef.current) throw new Error("Form html element has not yet been initialised")
 
     const formData = new FormData(formRef.current)
-    return (formData.getAll("items") as string[]).map(item => parseInt(item))
+    return formData.getAll("items") as string[]
   }
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
@@ -149,7 +153,7 @@ export default function Items(serialisedProps: SerialisedProps) {
     await postJsonData("/api/items", postData)
 
     const destination = detailsFilledIn ? "/generate-receipts" : "/details"
-    router.push({
+    await router.push({
       pathname: destination,
     })
   }
@@ -230,37 +234,90 @@ export default function Items(serialisedProps: SerialisedProps) {
 // --- server-side props --- //
 
 export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
-  const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect("items")
 
-  const [user, items] = await Promise.all([
-    getUserData(session.user.id),
-    getItems(session.accessToken, session.realmId),
+  const [account, accountList] = await Promise.all([
+    db.query.accounts.findFirst({
+      // if the realmId is specified get that account otherwise just get the first account for the user
+      where: and(
+        eq(accounts.userId, session.user.id),
+        session.accountId ? eq(accounts.id, session.accountId) : eq(accounts.scope, "accounting"),
+      ),
+      columns: {
+        id: true,
+        accessToken: true,
+        scope: true,
+        realmId: true,
+        createdAt: true,
+        expiresAt: true,
+        refreshToken: true,
+        refreshTokenExpiresAt: true,
+      },
+      with: {
+        userData: { columns: { items: true, startDate: true, endDate: true } },
+        doneeInfo: { columns: { id: true } },
+      },
+      orderBy: desc(accounts.updatedAt),
+    }),
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
   ])
-  if (!user) throw new Error("User has no corresponding db entry")
-  const detailsFilledIn = checkUserDataCompletion(user).doneeDetails
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
 
-  if (user.dateRange && user.items) {
-    const props = {
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (!session.accountId && account) {
+    session.accountId = account.id
+    await db
+      .update(sessions)
+      .set({ accountId: account.id })
+      .where(eq(sessions.userId, session.user.id))
+  }
+
+  if (
+    !account ||
+    account.scope !== "accounting" ||
+    !account.accessToken ||
+    !account.realmId ||
+    !session.accountId
+  )
+    return disconnectedRedirect
+
+  await refreshTokenIfNeeded(account)
+  const realmId = account.realmId
+  const items = await getItems(account.accessToken, realmId)
+  const detailsFilledIn = Boolean(account.doneeInfo)
+
+  if (!account.userData) {
+    return {
+      props: serialiseDates({
+        itemsFilledIn: false,
+        session,
+        items,
+        detailsFilledIn,
+        companies: accountList,
+        selectedAccountId: session.accountId,
+      } satisfies Props),
+    }
+  }
+
+  const { userData } = account
+  const selectedItems = userData.items ? userData.items.split(",") : []
+  return {
+    props: serialiseDates({
       itemsFilledIn: true,
       session,
       items,
       detailsFilledIn,
-      selectedItems: user.items,
-      dateRange: user.dateRange,
-    } satisfies Props
-    return {
-      props: serialiseDates(props),
-    }
-  }
-
-  const props = {
-    itemsFilledIn: false,
-    session,
-    items,
-    detailsFilledIn,
-  } satisfies Props
-  return {
-    props: serialiseDates(props),
+      selectedItems,
+      dateRange: { startDate: userData.startDate, endDate: userData.endDate },
+      companies: accountList,
+      selectedAccountId: session.accountId,
+    } satisfies Props),
   }
 }

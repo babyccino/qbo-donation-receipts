@@ -19,7 +19,7 @@ import { twMerge } from "tailwind-merge"
 
 type ToggleProps = {
   className?: string
-  id: number
+  id: string
   defaultChecked: boolean
   label: string
   disabled?: boolean

@@ -1,18 +1,17 @@
-import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
-import { getServerSession } from "next-auth"
-import { getToken } from "next-auth/jwt"
+import { and, eq } from "drizzle-orm"
+import { NextApiHandler, NextApiRequest } from "next"
+import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
-import { user } from "@/lib/db"
+import { serverSignIn } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
-import { isSessionQboConnected } from "@/lib/util/next-auth-helper"
-import { serverSignIn, updateServerSession } from "@/lib/util/next-auth-helper-server"
 import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { QboPermission } from "@/types/next-auth-helper"
+import { accounts } from "db/schema"
 
 const {
   qboClientId,
@@ -44,21 +43,21 @@ async function revokeAccessToken(token: string): Promise<void> {
   }
 }
 
-async function disconnectClient(req: NextApiRequest, res: NextApiResponse) {
-  const token = await getToken({ req, secret, secureCookie: Boolean(vercelEnv) })
-  if (!token) throw new ApiError(500, "Client has session but session token was not found")
+async function getAccount(query: NextApiRequest["query"], session: Session | null) {
+  const queryRealmId = query["realmId"]
+  if (typeof queryRealmId === "string") return { realmId: queryRealmId, accessToken: undefined }
 
-  token.accessToken = null
-  token.realmId = null
-  token.qboPermission = QboPermission.None
-  return updateServerSession(res, token)
-}
+  if (!session || !session.accountId)
+    throw new ApiError(500, "realmId not provided in query params or session")
 
-async function disconnectUserByRealmId(realmId: string) {
-  const query = await user.where("realmId", "==", realmId).get()
-  if (query.empty) return
-  const promises = query.docs.map(doc => doc.ref.set({ connected: false }, { merge: true }))
-  await Promise.all(promises)
+  const account = await db.query.accounts.findFirst({
+    columns: { realmId: true, accessToken: true },
+    where: and(eq(accounts.id, session.accountId), eq(accounts.userId, session.user.id)),
+  })
+  if (!account?.realmId || !account?.accessToken)
+    throw new ApiError(500, "session's account does not have a company to disconnect")
+
+  return account as { realmId: string; accessToken: string }
 }
 
 export const parser = z.object({
@@ -71,24 +70,36 @@ const handler: NextApiHandler = async (req, res) => {
   if (!(req.method === "GET" || req.method === "POST")) return res.status(405).end()
 
   const session = await getServerSession(req, res, authOptions)
+  const { realmId, accessToken } = await getAccount(req.query, session)
 
-  const realmId = req.query["realmId"]
-  if (session) user.doc(session.user.id).set({ connected: false }, { merge: true })
-  else if (typeof realmId === "string") disconnectUserByRealmId(realmId)
-
-  // the caller can specify whether or not they want their access token to be disconnected
-  // this is because if the user has been disconnected from within QBO then they will have
-  // already revoked their tokens
-  // if the user is disconnecting from within the application the tokens will need to be
-  // revoked by us
   const shouldRevokeAccessToken = req.query["revoke"] === "true"
-  if (session && session.accessToken && shouldRevokeAccessToken)
-    await revokeAccessToken(session.accessToken)
+  await Promise.all([
+    db
+      .update(accounts)
+      .set({
+        accessToken: null,
+        expiresAt: null,
+        refreshToken: null,
+        refreshTokenExpiresAt: null,
+        scope: "profile",
+      })
+      .where(
+        and(
+          eq(accounts.realmId, realmId),
+          session ? eq(accounts.userId, session.user.id) : undefined,
+        ),
+      ),
+    // the caller can specify whether or not they want their access token to be disconnected
+    // this is because if the user has been disconnected from within QBO then they will have
+    // already revoked their tokens
+    // if the user is disconnecting from within the application the tokens will need to be
+    // revoked by us
+    session && shouldRevokeAccessToken && accessToken && revokeAccessToken(accessToken),
+  ])
 
-  // if the user is signed in already and disconnected there is nothing for us to do
-  if (session && !isSessionQboConnected(session)) return res.redirect(302, "/auth/disconnected")
-
-  const { redirect, reconnect } = parseRequestBody(parser, req.body || {})
+  const { redirect, reconnect } = req.body
+    ? parseRequestBody(parser, req.body)
+    : { redirect: true, reconnect: false }
 
   // if reconnect is specified user will be re-signed in, without the accounting permissions
   // i.e. signed in, in the `disconnected` state
@@ -106,9 +117,6 @@ const handler: NextApiHandler = async (req, res) => {
     if (redirect) return
     else res.status(200).json({ redirect: redirectUrl })
   } else {
-    // no longer valid access tokens need to be removed from the user's session
-    await disconnectClient(req, res)
-
     if (redirect) res.redirect(302, "/auth/disconnected")
     else res.status(200).json({ redirect: "/auth/disconnected" })
   }

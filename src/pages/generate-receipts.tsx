@@ -1,11 +1,14 @@
 import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
+import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Alert, Button, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
-import { Session } from "next-auth"
+import { Session, getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
 import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
+import { LayoutProps } from "@/components/layout"
 import { Link } from "@/components/link"
 import {
   DownloadReceiptLoading,
@@ -14,24 +17,25 @@ import {
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
 import { MissingData } from "@/components/ui"
-import { getUserData, storageBucket } from "@/lib/db"
 import {
-  checkUserDataCompletion,
-  downloadImageAndConvertToPng,
-  isUserDataComplete
-} from "@/lib/db-helper"
+  disconnectedRedirect,
+  refreshTokenIfNeeded,
+  signInRedirect,
+} from "@/lib/auth/next-auth-helper-server"
+import { downloadImageAndConvertToPng } from "@/lib/db/db-helper"
+import { storageBucket } from "@/lib/db/firebase"
+import { db } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
-import { assertSessionIsQboConnected } from "@/lib/util/next-auth-helper"
-import { getServerSessionOrThrow } from "@/lib/util/next-auth-helper-server"
 import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
-import { subscribe } from "@/lib/util/request"
-import { DoneeInfo } from "@/types/db"
+import { fetchJsonData, subscribe } from "@/lib/util/request"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
+import { DoneeInfo, accounts, sessions } from "db/schema"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -47,12 +51,12 @@ const ShowReceipt = dynamic(() => import("@/components/receipt/pdf").then(imp =>
   loadImmediately: true,
 })
 
-function DownloadAllFiles() {
+function DownloadAllFiles({ accountId }: { accountId: string }) {
   const [loading, setLoading] = useState(false)
 
   const onClick = async () => {
     setLoading(true)
-    const response = await fetch("/api/receipts")
+    const response = await fetchJsonData("/api/receipts")
     if (!response.ok) throw new Error("There was an issue downloading the ZIP file")
     setLoading(false)
     download(await response.blob())
@@ -77,23 +81,39 @@ const ReceiptLimitCard = () => (
       To save and send all of your organisation{"'"}s receipts click the link below to go pro
     </p>
     <div className="">
-      <Button onClick={() => subscribe("/generate-receipts")}>Click here to go pro!</Button>
+      <Button color="blue" onClick={() => subscribe("/generate-receipts")}>
+        Click here to go pro!
+      </Button>
     </div>
   </Card>
 )
 
 const names = [
-  "Gus",
-  "Stephanie",
-  "Matthew",
-  "Ryan",
-  "Nicholas",
-  "Spencer",
-  "Papadopoulos",
-  "Macdonald",
+  "Jeff",
+  "Jeffina",
+  "Jefferly",
+  "Jefferson",
+  "Formerly",
+  "Jefferton",
+  "McJeff",
+  "Geoff",
+  "Breff",
+  "Jeffany",
+  "Jeffry",
+  "Jeffy",
+  "Jeffery",
+  "Jefferey",
+  "Jeffory",
+  "Geoffrey",
+  "Jeffeory",
+  "Geffrey",
+  "Chef",
 ]
 const getRandomName = () => `${names[randInt(0, names.length)]} ${names[randInt(0, names.length)]}`
-const getRandomBalance = () => `$${randInt(100, 100000)}.00`
+const getRandomBalance = () => {
+  const mag = randInt(2, 5)
+  return `$${Math.floor(Math.random() * Math.pow(10, mag))}.00`
+}
 
 const Tr = ({ children, className }: { children?: ReactNode; className?: string }) => (
   <tr
@@ -133,18 +153,22 @@ const blurredRows = new Array(10).fill(0).map((_, idx) => (
   </Tr>
 ))
 
-type Props =
+type Props = (
   | {
       receiptsReady: true
       session: Session
       donations: Donation[]
-      doneeInfo: DoneeInfo
+      doneeInfo: Omit<DoneeInfo, "accountId" | "createdAt" | "id" | "updatedAt">
       subscribed: boolean
+      accountId: string
     }
   | {
       receiptsReady: false
       filledIn: { items: boolean; doneeDetails: boolean }
+      accountId: string
     }
+) &
+  LayoutProps
 
 enum Sort {
   Default = 0,
@@ -197,7 +221,7 @@ export default function IndexPage(props: Props) {
 
   if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
-  const { doneeInfo, subscribed } = props
+  const { doneeInfo, subscribed, accountId } = props
   const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
@@ -213,7 +237,7 @@ export default function IndexPage(props: Props) {
     }
 
     return (
-      <Tr key={entry.id}>
+      <Tr key={entry.donorId}>
         <Th>{entry.name}</Th>
         <Td>{formatter.format(entry.total)}</Td>
         <Td>
@@ -230,7 +254,7 @@ export default function IndexPage(props: Props) {
     <section className="flex h-full w-full flex-col p-8">
       <Show when={subscribed}>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <DownloadAllFiles />
+          <DownloadAllFiles accountId={accountId} />
           <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
             <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
             <Link href="/email">Email</Link>
@@ -282,38 +306,132 @@ export default function IndexPage(props: Props) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
-  const session = await getServerSessionOrThrow(req, res)
-  assertSessionIsQboConnected(session)
+export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+  const session = await getServerSession(req, res, authOptions)
+  if (!session) return signInRedirect("generate-receipts")
 
-  const user = await getUserData(session.user.id)
-  if (!user) throw new Error("No user data found in database")
+  let [account, accountList] = await Promise.all([
+    session.accountId
+      ? db.query.accounts.findFirst({
+          // if the realmId is specified get that account otherwise just get the first account for the user
+          where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+          columns: {
+            id: true,
+            accessToken: true,
+            scope: true,
+            realmId: true,
+            createdAt: true,
+            expiresAt: true,
+            refreshToken: true,
+            refreshTokenExpiresAt: true,
+          },
+          with: {
+            doneeInfo: {
+              columns: { createdAt: false, updatedAt: false, id: false, accountId: false },
+            },
+            userData: { columns: { items: true, startDate: true, endDate: true } },
+            user: {
+              columns: {},
+              with: { subscription: { columns: { status: true, currentPeriodEnd: true } } },
+            },
+          },
+        })
+      : null,
+    db.query.accounts.findMany({
+      columns: { companyName: true, id: true },
+      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
+      orderBy: desc(accounts.updatedAt),
+    }) as Promise<{ companyName: string; id: string }[]>,
+  ])
+  if (session.accountId && !account)
+    throw new ApiError(500, "account for given user and session not found in db")
 
-  if (!isUserDataComplete(user))
+  // if the session does not specify an account but there is a connected account
+  // then the session is connected to one of these accounts
+  if (session.accountId === null && accountList.length > 0) {
+    session.accountId = accountList[0].id
+    const [_, newAccount] = await Promise.all([
+      db
+        .update(sessions)
+        .set({ accountId: accountList[0].id })
+        .where(eq(sessions.userId, session.user.id)),
+      db.query.accounts.findFirst({
+        where: and(eq(accounts.userId, session.user.id), eq(accounts.id, session.accountId)),
+        columns: {
+          id: true,
+          accessToken: true,
+          scope: true,
+          realmId: true,
+          createdAt: true,
+          expiresAt: true,
+          refreshToken: true,
+          refreshTokenExpiresAt: true,
+        },
+        with: {
+          doneeInfo: {
+            columns: { createdAt: false, updatedAt: false, id: false, accountId: false },
+          },
+          userData: { columns: { items: true, startDate: true, endDate: true } },
+          user: {
+            columns: {},
+            with: { subscription: { columns: { status: true, currentPeriodEnd: true } } },
+          },
+        },
+      }),
+    ])
+    account = newAccount
+  }
+
+  if (
+    !account ||
+    account.scope !== "accounting" ||
+    !account.accessToken ||
+    !account.realmId ||
+    !session.accountId
+  )
+    return disconnectedRedirect
+  const { doneeInfo, userData, realmId } = account
+  const { accountId } = session
+
+  if (!doneeInfo || !userData)
     return {
       props: {
         receiptsReady: false,
-        filledIn: checkUserDataCompletion(user),
-      },
+        filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
+        accountId: account.id,
+        session,
+        companies: accountList,
+        selectedAccountId: account.id,
+      } satisfies Props,
     }
 
-  const { donee } = user
+  await refreshTokenIfNeeded(account)
+
   const [donations, pngSignature, pngLogo] = await Promise.all([
-    getDonations(session.accessToken, session.realmId, user.dateRange, user.items),
-    downloadImageAndConvertToPng(storageBucket, donee.signature),
-    downloadImageAndConvertToPng(storageBucket, donee.smallLogo),
+    getDonations(
+      account.accessToken,
+      realmId,
+      { startDate: userData.startDate, endDate: userData.endDate },
+      userData.items ? userData.items.split(",") : [],
+    ),
+    downloadImageAndConvertToPng(storageBucket, doneeInfo.signature),
+    downloadImageAndConvertToPng(storageBucket, doneeInfo.smallLogo),
   ])
-  donee.signature = pngSignature
-  donee.smallLogo = pngLogo
-  const subscribed = isUserSubscribed(user)
+  doneeInfo.signature = pngSignature
+  doneeInfo.smallLogo = pngLogo
+  const subscription = account.user.subscription
+  const subscribed = subscription ? isUserSubscribed(subscription) : false
 
   return {
     props: {
       receiptsReady: true,
       session,
       donations: subscribed ? donations : donations.slice(0, 3),
-      doneeInfo: donee,
+      doneeInfo,
       subscribed,
-    },
+      accountId,
+      companies: accountList,
+      selectedAccountId: account.id,
+    } satisfies Props,
   }
 }

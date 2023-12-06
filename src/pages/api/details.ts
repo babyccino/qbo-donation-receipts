@@ -1,8 +1,12 @@
+import { createId } from "@paralleldrive/cuid2"
+import { eq } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
 import sharp from "sharp"
 import { z } from "zod"
 
-import { storageBucket, user } from "@/lib/db"
+import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { storageBucket } from "@/lib/db/firebase"
+import { db } from "@/lib/db"
 import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
 import {
   base64FileSize,
@@ -16,7 +20,9 @@ import {
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
+import { accounts, doneeInfos } from "db/schema"
 
+// TODO move file storage to another service
 async function resizeAndUploadImage(
   dataUrl: string,
   dimensions: { width?: number; height?: number },
@@ -62,23 +68,72 @@ export const parser = z.object({
 export type DataType = z.infer<typeof parser>
 
 const handler: AuthorisedHandler = async (req, res, session) => {
+  if (!session.accountId) throw new ApiError(401, "user not connected")
   const id = session.user.id
 
   const data = parseRequestBody(parser, req.body)
 
+  const account = await db.query.accounts.findFirst({
+    where: eq(accounts.id, session.accountId),
+    columns: {
+      id: true,
+      accessToken: true,
+      expiresAt: true,
+      refreshToken: true,
+      refreshTokenExpiresAt: true,
+      realmId: true,
+    },
+    with: { doneeInfo: { columns: { id: true } } },
+  })
+
+  if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
+  const { realmId } = account
+  if (!realmId) throw new ApiError(401, "account not associated with a company")
+
+  await refreshTokenIfNeeded(account)
+
+  if (!account.doneeInfo && (!data.signature || !data.smallLogo))
+    throw new ApiError(
+      400,
+      "when setting user data for the first time, signature and logo images must be provided",
+    )
+
+  const signaturePath = `${id}/${realmId}/signature`
+  const smallLogoPath = `${id}/${realmId}/smallLogo`
   const [signatureUrl, smallLogoUrl] = await Promise.all([
     data.signature
-      ? resizeAndUploadImage(data.signature, { height: 150 }, `${id}/signature`, false)
+      ? resizeAndUploadImage(data.signature, { height: 150 }, signaturePath, false)
       : undefined,
     data.smallLogo
-      ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, `${id}/smallLogo`, true)
+      ? resizeAndUploadImage(data.smallLogo, { height: 100, width: 100 }, smallLogoPath, true)
       : undefined,
   ])
 
-  const newData = { donee: { ...data, signature: signatureUrl, smallLogo: smallLogoUrl } }
-  await user.doc(id).set(newData, { merge: true })
+  const doneeInfo = account.doneeInfo
+    ? await db
+        .update(doneeInfos)
+        .set({
+          ...data,
+          signature: signatureUrl,
+          smallLogo: smallLogoUrl,
+          largeLogo: "",
+          updatedAt: new Date(),
+        })
+        .where(eq(doneeInfos.id, account.doneeInfo.id))
+        .returning()
+    : await db
+        .insert(doneeInfos)
+        .values({
+          ...data,
+          id: createId(),
+          accountId: account.id,
+          signature: signatureUrl as string,
+          smallLogo: smallLogoUrl as string,
+          largeLogo: "",
+        })
+        .returning()
 
-  res.status(200).json(newData)
+  res.status(200).json(doneeInfo)
 }
 
 export default createAuthorisedHandler(handler, ["POST"])

@@ -124,7 +124,7 @@ export function DonationReceiptEmailInner({
         <Text style={sharedStyle.productsTitle}>Donations</Text>
       </Section>
       <Section>
-        {donation.items.map(({ name, total, id }: { name: string; id: number; total: number }) => (
+        {donation.items.map(({ name, total, id }) => (
           <Row key={id}>
             <Column style={{ paddingLeft: "22px" }}>
               <Text style={sharedStyle.productTitle}>{name}</Text>

@@ -1,10 +1,12 @@
+import { eq } from "drizzle-orm"
 import { NextApiHandler, NextApiRequest } from "next"
-import Stripe from "stripe"
 import { Readable } from "node:stream"
+import Stripe from "stripe"
 
-import { stripe, manageSubscriptionStatusChange } from "@/lib/stripe"
-import { price, product, user } from "@/lib/db"
+import { db } from "@/lib/db"
+import { manageSubscriptionStatusChange, stripe } from "@/lib/stripe"
 import { config as envConfig } from "@/lib/util/config"
+import { billingAddresses, prices, products } from "db/schema"
 
 export const config = {
   api: {
@@ -56,6 +58,7 @@ const webhookHandler: NextApiHandler = async (req, res) => {
     res.json({ received: true })
   } catch (error: any) {
     console.error(`❌ Error message: ${error.message}`)
+    console.error(error.stack)
     return res.status(400).json(`Webhook Error: ${error.message}`)
   }
 }
@@ -105,27 +108,34 @@ function getId(product: string | { id: string } | null) {
 }
 
 async function updateProduct(data: Stripe.Product) {
-  const doc = product.doc(data.id)
-  if (data.deleted) await doc.delete()
+  if (data.deleted) await db.delete(products).where(eq(products.id, data.id))
   else
-    await doc.set(
-      {
+    await db
+      .insert(products)
+      .values({
         id: data.id,
         active: data.active,
         name: data.name,
         metadata: data.metadata,
-      },
-      { merge: true },
-    )
+      })
+      .onConflictDoUpdate({
+        target: [products.id],
+        set: {
+          active: data.active,
+          name: data.name,
+          metadata: data.metadata,
+          updatedAt: new Date(),
+        },
+      })
 }
 
 async function upsertPrice(data: Stripe.Price) {
   const productId = getId(data.product)
-  const doc = price(productId).doc(data.id)
-  if (data.deleted) await doc.delete()
+  if (data.deleted) await db.delete(prices).where(eq(prices.id, productId))
   else
-    await doc.set(
-      {
+    await db
+      .insert(prices)
+      .values({
         id: data.id,
         active: data.active,
         unitAmount: data.unit_amount ?? undefined,
@@ -134,9 +144,20 @@ async function upsertPrice(data: Stripe.Price) {
         metadata: data.metadata,
         interval: data.recurring?.interval,
         intervalCount: data.recurring?.interval_count,
-      },
-      { merge: true },
-    )
+      })
+      .onConflictDoUpdate({
+        target: [prices.id],
+        set: {
+          active: data.active,
+          unitAmount: data.unit_amount ?? undefined,
+          currency: data.currency,
+          type: data.type,
+          metadata: data.metadata,
+          interval: data.recurring?.interval,
+          intervalCount: data.recurring?.interval_count,
+          updatedAt: new Date(),
+        },
+      })
 }
 
 async function getSubscriptionFromCheckoutSession({
@@ -166,14 +187,32 @@ async function addBillingAddress(subscription: Stripe.Subscription) {
   const paymentMethod = await getPaymentMethodFromSubscription(subscription)
   const { address, phone, name } = paymentMethod.billing_details
 
-  return await user.doc(clientId).set(
-    {
-      billingAddress: {
-        address: address ?? undefined,
+  await db
+    .insert(billingAddresses)
+    .values({
+      id: subscription.id,
+      userId: clientId,
+      city: address?.city,
+      country: address?.city,
+      line1: address?.line1,
+      line2: address?.line2,
+      postalCode: address?.postal_code,
+      state: address?.state,
+      phone: phone ?? undefined,
+      name: name ?? undefined,
+    })
+    .onConflictDoUpdate({
+      target: [billingAddresses.userId],
+      set: {
+        city: address?.city,
+        country: address?.city,
+        line1: address?.line1,
+        line2: address?.line2,
+        postalCode: address?.postal_code,
+        state: address?.state,
         phone: phone ?? undefined,
         name: name ?? undefined,
+        updatedAt: new Date(),
       },
-    },
-    { merge: true },
-  )
+    })
 }

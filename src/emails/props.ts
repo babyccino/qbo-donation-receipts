@@ -3,17 +3,17 @@ import { EmailProps, WithBodyProps } from "@/types/receipt"
 export const dummyEmailProps: EmailProps = {
   donation: {
     name: "John Doe",
-    id: 12345,
+    donorId: "12345",
     total: 100,
     items: [
       {
         name: "Product 1",
-        id: 1,
+        id: "1",
         total: 50,
       },
       {
         name: "Product 2",
-        id: 2,
+        id: "2",
         total: 50,
       },
     ],
@@ -29,6 +29,7 @@ export const dummyEmailProps: EmailProps = {
     signatoryName: "Jane Smith",
     signature: "/images/signature.webp",
     smallLogo: "/android-chrome-192x192.png",
+    largeLogo: "",
   },
   currentDate: new Date(),
   donationDate: new Date("2023-05-17"),

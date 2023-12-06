@@ -103,19 +103,19 @@ describe("createDonationsFromSalesReport", () => {
     const expected: DonationWithoutAddress[] = [
       {
         name: "John",
-        id: 123,
+        donorId: "123",
         total: 100.0,
         items: [
           {
             name: "Product A",
-            id: 456,
+            id: "456",
             total: 100.0,
           },
         ],
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, [456])
+    const result = createDonationsFromSalesReport(report, ["456"])
     expect(result).toEqual(expected)
   })
 
@@ -220,19 +220,19 @@ describe("createDonationsFromSalesReport", () => {
     const expected: DonationWithoutAddress[] = [
       {
         name: "Jeff",
-        id: 22,
+        donorId: "22",
         total: 100.0,
         items: [
           {
             name: "Product A",
-            id: 456,
+            id: "456",
             total: 100.0,
           },
         ],
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, [456])
+    const result = createDonationsFromSalesReport(report, ["456"])
     expect(result).toEqual(expected)
   })
 
@@ -307,7 +307,7 @@ describe("createDonationsFromSalesReport", () => {
       },
     }
 
-    const result = createDonationsFromSalesReport(report, [1])
+    const result = createDonationsFromSalesReport(report, ["1"])
     expect(result).toEqual([])
   })
 
@@ -382,61 +382,61 @@ describe("createDonationsFromSalesReport", () => {
     const expected: DonationWithoutAddress[] = [
       {
         name: "Customer A",
-        id: 1,
+        donorId: "1",
         total: 30,
         items: [
-          { name: "Widget A", id: 1001, total: 10 },
-          { name: "Widget C", id: 1003, total: 20 },
+          { name: "Widget A", id: "1001", total: 10 },
+          { name: "Widget C", id: "1003", total: 20 },
         ],
       },
       {
         name: "Customer B",
-        id: 2,
+        donorId: "2",
         total: 40,
         items: [
-          { name: "Widget A", id: 1001, total: 15 },
-          { name: "Widget B", id: 1002, total: 25 },
+          { name: "Widget A", id: "1001", total: 15 },
+          { name: "Widget B", id: "1002", total: 25 },
         ],
       },
       {
         name: "Customer C",
-        id: 3,
+        donorId: "3",
         total: 55,
         items: [
-          { name: "Widget A", id: 1001, total: 20 },
-          { name: "Widget C", id: 1003, total: 35 },
+          { name: "Widget A", id: "1001", total: 20 },
+          { name: "Widget C", id: "1003", total: 35 },
         ],
       },
     ]
 
-    const result = createDonationsFromSalesReport(report, [1001, 1002, 1003])
+    const result = createDonationsFromSalesReport(report, ["1001", "1002", "1003"])
     expect(result).toEqual(expected)
 
     const expected2: DonationWithoutAddress[] = [
       {
         name: "Customer A",
-        id: 1,
+        donorId: "1",
         total: 10,
-        items: [{ name: "Widget A", id: 1001, total: 10 }],
+        items: [{ name: "Widget A", id: "1001", total: 10 }],
       },
       {
         name: "Customer B",
-        id: 2,
+        donorId: "2",
         total: 40,
         items: [
-          { name: "Widget A", id: 1001, total: 15 },
-          { name: "Widget B", id: 1002, total: 25 },
+          { name: "Widget A", id: "1001", total: 15 },
+          { name: "Widget B", id: "1002", total: 25 },
         ],
       },
       {
         name: "Customer C",
-        id: 3,
+        donorId: "3",
         total: 20,
-        items: [{ name: "Widget A", id: 1001, total: 20 }],
+        items: [{ name: "Widget A", id: "1001", total: 20 }],
       },
     ]
 
-    const result2 = createDonationsFromSalesReport(report, [1001, 1002])
+    const result2 = createDonationsFromSalesReport(report, ["1001", "1002"])
     expect(result2).toEqual(expected2)
   })
 })
@@ -677,18 +677,18 @@ describe("addAddressesToCustomerData", () => {
   const donations: DonationWithoutAddress[] = [
     {
       name: "John",
-      id: 123,
+      donorId: "123",
       total: 100,
       items: [
-        { name: "Product 1", id: 1, total: 50 },
-        { name: "Product 2", id: 2, total: 50 },
+        { name: "Product 1", id: "1", total: 50 },
+        { name: "Product 2", id: "2", total: 50 },
       ],
     },
     {
       name: "Jane",
-      id: 456,
+      donorId: "456",
       total: 200,
-      items: [{ name: "Product 3", id: 3, total: 200 }],
+      items: [{ name: "Product 3", id: "3", total: 200 }],
     },
   ]
 
@@ -721,20 +721,20 @@ describe("addAddressesToCustomerData", () => {
     expect(result).toEqual([
       {
         name: "John",
-        id: 123,
+        donorId: "123",
         total: 100,
         items: [
-          { name: "Product 1", id: 1, total: 50 },
-          { name: "Product 2", id: 2, total: 50 },
+          { name: "Product 1", id: "1", total: 50 },
+          { name: "Product 2", id: "2", total: 50 },
         ],
         address: "123 Main St, San Francisco 94105 CA",
         email: "john@gmail.com",
       },
       {
         name: "Jane",
-        id: 456,
+        donorId: "456",
         total: 200,
-        items: [{ name: "Product 3", id: 3, total: 200 }],
+        items: [{ name: "Product 3", id: "3", total: 200 }],
         address: "No billing address on file",
         email: null,
       },
@@ -756,8 +756,8 @@ describe("formatItemQuery", () => {
 
     // Verify that the function returned the expected result
     expect(result).toEqual([
-      { id: 1, name: "Item 1" },
-      { id: 2, name: "Item 2" },
+      { id: "1", name: "Item 1" },
+      { id: "2", name: "Item 2" },
     ])
   })
 })

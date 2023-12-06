@@ -1,13 +1,15 @@
-import { z } from "zod"
+import { eq } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
+import { z } from "zod"
 
+import { db } from "@/lib/db"
 import { manageSubscriptionStatusChange, stripe } from "@/lib/stripe"
 import {
   AuthorisedHandler,
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { getUserData } from "@/lib/db"
+import { subscriptions } from "db/schema"
 
 export const parser = z.object({
   cancelAtPeriodEnd: z.boolean(),
@@ -17,10 +19,13 @@ export type DataType = z.infer<typeof parser>
 const handler: AuthorisedHandler = async ({ body }, res, session) => {
   const data = parseRequestBody(parser, body)
 
-  const user = await getUserData(session.user.id)
-  if (!user.subscription) throw new ApiError(500, "User is not subscribed")
+  const currentSubscription = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.userId, session.user.id),
+    columns: { id: true },
+  })
+  if (!currentSubscription) throw new ApiError(500, "User has no subscription")
 
-  const subscription = await stripe.subscriptions.update(user.subscription.id, {
+  const subscription = await stripe.subscriptions.update(currentSubscription.id, {
     cancel_at_period_end: data.cancelAtPeriodEnd,
   })
   manageSubscriptionStatusChange(subscription)

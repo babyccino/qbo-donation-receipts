@@ -1,24 +1,25 @@
 import { ApiError } from "next/dist/server/api-utils"
 
-import { formatDateHtmlReverse } from "@/lib/util/date"
-import { fetchJsonData } from "@/lib/util/request"
 import { config } from "@/lib/util/config"
+import { formatDateHtmlReverse } from "@/lib/util/date"
+import { base64EncodeString } from "@/lib/util/image-helper"
+import { fetchJsonData } from "@/lib/util/request"
 import {
-  ItemQueryResponse,
-  Item,
-  SalesRow,
-  SalesSectionRow,
-  Donation,
-  DonationWithoutAddress,
-  CompanyInfoQueryResult,
-  CompanyInfo,
   Address,
+  ColData,
+  CompanyInfo,
+  CompanyInfoQueryResult,
   CustomerQueryResult,
   CustomerSalesReport,
-  CustomerSalesReportRow,
   CustomerSalesReportError,
-  ColData,
+  CustomerSalesReportRow,
+  Donation,
+  DonationWithoutAddress,
+  Item,
+  ItemQueryResponse,
   RowData,
+  SalesRow,
+  SalesSectionRow,
 } from "@/types/qbo-api"
 
 const padIfExists = (str: string | null | undefined) => (str ? ` ${str}` : "")
@@ -63,9 +64,9 @@ export const addBillingAddressesToDonations = (
   customers: CustomerQueryResult,
 ) =>
   donations.map<Donation>(donation => {
-    const customer = customers.QueryResponse.Customer.find(el => parseInt(el.Id) === donation.id)
+    const customer = customers.QueryResponse.Customer.find(el => el.Id === donation.donorId)
 
-    if (!customer) throw new Error(`Customer not found for donation with id: ${donation.id}`)
+    if (!customer) throw new Error(`Customer not found for donation with id: ${donation.donorId}`)
 
     const address = customer.BillAddr
       ? getAddressString(customer.BillAddr)
@@ -78,7 +79,7 @@ const notGroupedRow = (row: CustomerSalesReportRow): row is SalesRow | SalesSect
   !("group" in row)
 export function createDonationsFromSalesReport(
   report: CustomerSalesReport,
-  selectedItemIds: number[],
+  selectedItemIds: string[],
 ): DonationWithoutAddress[] {
   const allItems = parseItemsFromReport(report)
 
@@ -93,10 +94,10 @@ export function createDonationsFromSalesReport(
 
 function createDonationFromRow(
   row: SalesRow | SalesSectionRow,
-  selectedItemIds: Set<number>,
+  selectedItemIds: Set<string>,
   allItems: Item[],
 ): DonationWithoutAddress {
-  const { data, id, name } = getRowData(row)
+  const { data, donorId, name } = getRowData(row)
 
   const items = data
     .map((total, index) => ({ total, ...allItems[index] }))
@@ -104,7 +105,7 @@ function createDonationFromRow(
 
   const total = items.reduce((sum, { total }) => sum + total, 0)
 
-  return { name, id, total, items }
+  return { name, donorId, total, items }
 }
 
 function skipFirstAndLast<T>(arr: T[]): T[] {
@@ -113,8 +114,7 @@ function skipFirstAndLast<T>(arr: T[]): T[] {
 const parseItemsFromReport = (report: CustomerSalesReport) =>
   skipFirstAndLast(report.Columns.Column).map((column, i) => {
     if (!column.MetaData) throw new Error(`Column ${i} is missing 'MetaData'`)
-    const id = parseInt(column.MetaData[0].Value)
-    return { name: column.ColTitle, id }
+    return { name: column.ColTitle, id: column.MetaData[0].Value }
   })
 
 function parseColData(col: ColData): number {
@@ -130,12 +130,12 @@ function getCustomerSalesSectionRowData(row: SalesSectionRow): RowData {
   if (!customer.id || !customer.value)
     throw new Error(`Customer section data is malformed, missing id or name\n`, row as any)
 
-  const id = parseInt(customer.id as string)
+  const donorId = customer.id
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
   const data: number[] = skipFirstAndLast(rawData).map<number>(parseColData)
 
-  return { data, id, total, name }
+  return { data, donorId, total, name }
 }
 
 function getCustomerSalesRowData(row: SalesRow): RowData {
@@ -145,12 +145,12 @@ function getCustomerSalesRowData(row: SalesRow): RowData {
   if (!customer || customer.id === undefined)
     throw new Error(`Customer data is malformed, missing id or name\n`, row as any)
 
-  const id = parseInt(customer.id)
+  const donorId = customer.id
   const name = customer.value
   const total = parseFloat(rawData.at(-1)!.value)
   const data = skipFirstAndLast(rawData).map<number>(parseColData)
 
-  return { data, id, total, name }
+  return { data, donorId, total, name }
 }
 
 function isSalesSectionRow(row: SalesRow | SalesSectionRow): row is SalesSectionRow {
@@ -199,7 +199,7 @@ export function getCustomerData(accessToken: string, realmId: string) {
 }
 
 export async function getItems(accessToken: string, realmId: string) {
-  const url = makeQueryUrl(realmId, "select * from Item")
+  const url = makeQueryUrl(realmId.toString(), "select * from Item")
   const itemQuery = await fetchJsonData<ItemQueryResponse>(url, accessToken)
   return formatItemQuery(itemQuery)
 }
@@ -207,9 +207,7 @@ export async function getItems(accessToken: string, realmId: string) {
 export function formatItemQuery(itemQuery: ItemQueryResponse) {
   const items = itemQuery.QueryResponse.Item
   // TODO handle subitems
-  return items
-    .filter(item => !item.SubItem)
-    .map<Item>(({ Id, Name }) => ({ id: parseInt(Id), name: Name }))
+  return items.filter(item => !item.SubItem).map<Item>(({ Id, Name }) => ({ id: Id, name: Name }))
 }
 
 export async function getCompanyInfo(accessToken: string, realmId: string) {
@@ -242,7 +240,7 @@ export async function getDonations(
   accessToken: string,
   realmId: string,
   dates: { startDate: Date; endDate: Date },
-  items: number[],
+  items: string[],
 ) {
   const [salesReport, customerQueryResult] = await Promise.all([
     getCustomerSalesReport(accessToken, realmId, dates),
@@ -251,4 +249,33 @@ export async function getDonations(
 
   const donationDataWithoutAddresses = createDonationsFromSalesReport(salesReport, items)
   return addBillingAddressesToDonations(donationDataWithoutAddresses, customerQueryResult)
+}
+
+type RefreshToken = {
+  token_type: string
+  expires_in: number
+  refresh_token: string
+  x_refresh_token_expires_in: number
+  access_token: string
+}
+export async function refreshAccessToken(refreshToken: string): Promise<RefreshToken> {
+  console.log("refreshing access token")
+
+  const url = `${config.qboOauthRoute}/tokens/bearer`
+  const encoded = base64EncodeString(`${config.qboClientId}:${config.qboClientSecret}`)
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${encoded}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: `grant_type=refresh_token&refresh_token=${refreshToken}`,
+  })
+  const refreshedTokens = await response.json()
+  if (!response.ok) {
+    throw refreshedTokens
+  }
+
+  return refreshedTokens as RefreshToken
 }

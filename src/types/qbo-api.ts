@@ -18,6 +18,8 @@ export type QboAccount = {
   id_token: string
   refresh_token: string
   expires_at: number
+  scope: string
+  realmId?: string
 }
 
 export type OpenIdUserInfo = {
@@ -213,19 +215,19 @@ export type SalesTotalsRow = {
 
 export type Donation = {
   name: string
-  id: number
+  donorId: string
   total: number
-  items: { name: string; id: number; total: number }[]
+  items: { name: string; id: string; total: number }[]
   address: string
   email: string | null
 }
 export type DonationWithoutAddress = Omit<Donation, "address" | "email">
 
-export type Item = { name: string; id: number }
+export type Item = { name: string; id: string }
 
 export type RowData = {
   data: number[]
-  id: number
+  donorId: string
   total: number
   name: string
 }
