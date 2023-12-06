@@ -17,7 +17,8 @@ const Disconnected = () => (
         QuickBooks Online disconnected.
       </p>
       <p className="mb-6 text-lg font-light text-gray-500 dark:text-gray-400">
-        Your QuickBooks integration has been disconnected. Click below to reconnect:
+        Your QuickBooks integration has been disconnected with your current company. Click below to
+        reconnect:
       </p>
       <button
         className="mx-auto inline-block"
