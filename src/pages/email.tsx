@@ -28,7 +28,7 @@ import { formatDateHtml } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { EmailDataType } from "@/pages/api/email"
 import { EmailProps } from "@/types/receipt"
 import {

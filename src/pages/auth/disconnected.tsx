@@ -8,7 +8,7 @@ import { LayoutProps } from "@/components/layout"
 import { Connect } from "@/components/qbo"
 import { db } from "@/lib/db"
 import { accounts, sessions } from "db/schema"
-import { authOptions } from "../api/auth/[...nextauth]"
+import { authOptions } from "../../auth"
 
 const Disconnected = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">

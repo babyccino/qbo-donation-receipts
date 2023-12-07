@@ -16,7 +16,7 @@ import {
 } from "@/components/agreements"
 import { LayoutProps } from "@/components/layout"
 import { db } from "@/lib/db"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { accounts, sessions } from "db/schema"
 
 const { Panel, Title, Content } = Accordion

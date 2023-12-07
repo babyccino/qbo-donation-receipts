@@ -11,7 +11,7 @@ import { db } from "@/lib/db"
 import { isUserSubscribedSql } from "@/lib/stripe"
 import { subscribe } from "@/lib/util/request"
 import { accounts, sessions, subscriptions } from "db/schema"
-import { authOptions } from "./api/auth/[...nextauth]"
+import { authOptions } from "../auth"
 
 export default function Subscribe() {
   return (

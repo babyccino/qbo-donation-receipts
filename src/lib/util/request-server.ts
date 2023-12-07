@@ -2,7 +2,7 @@ import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
 import { ApiError } from "next/dist/server/api-utils"
 import { Session, getServerSession } from "next-auth"
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { TypeOf, ZodObject, ZodRawShape } from "zod"
 
 export function parseRequestBody<T extends ZodRawShape>(

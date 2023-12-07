@@ -10,7 +10,7 @@ import { config } from "@/lib/util/config"
 import { base64EncodeString } from "@/lib/util/image-helper"
 import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { accounts } from "db/schema"
 
 const {

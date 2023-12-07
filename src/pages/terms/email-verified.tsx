@@ -26,7 +26,7 @@ import { ApiError } from "next/dist/server/api-utils"
 import { LayoutProps } from "@/components/layout"
 import { db } from "@/lib/db"
 import { accounts, sessions } from "db/schema"
-import { authOptions } from "../api/auth/[...nextauth]"
+import { authOptions } from "../../auth"
 
 export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)

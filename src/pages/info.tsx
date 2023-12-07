@@ -7,7 +7,7 @@ import Image from "next/image"
 import { LayoutProps } from "@/components/layout"
 import { db } from "@/lib/db"
 import { accounts, sessions } from "db/schema"
-import { authOptions } from "./api/auth/[...nextauth]"
+import { authOptions } from "../auth"
 
 const Info = () => (
   <section className="flex min-h-screen flex-col p-4 sm:flex-row sm:justify-center">

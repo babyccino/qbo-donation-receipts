@@ -20,7 +20,7 @@ import { getCompanyInfo } from "@/lib/qbo-api"
 import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { postJsonData } from "@/lib/util/request"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo, accounts, sessions } from "db/schema"
 

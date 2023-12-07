@@ -27,7 +27,7 @@ import {
 } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { authOptions } from "@/auth"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
 import { accounts, sessions } from "db/schema"
