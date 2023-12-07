@@ -34,4 +34,8 @@ describe("isJpegOrPngDataURL", () => {
     const dataURL = "data:image/gif;base64,R0lGODlhAQ..."
     expect(isJpegOrPngDataURL(dataURL)).toBe(false)
   })
+
+  describe("real files", () => {
+    test("valid jpeg file should return true", async () => {})
+  })
 })
