@@ -1,4 +1,4 @@
-export const supportedExtensions = ["jpg", "jpeg", "png", "webp"]
+export const supportedExtensions = ["jpg", "jpeg", "png", "webp", "gif"]
 // 1mb = 2^20 bytes
 export const maxFileSizeBytes = 100 * Math.pow(2, 10)
 
@@ -7,7 +7,7 @@ export function isJpegOrPngDataURL(str: string): boolean {
   if (supportedExtensions.every(ext => !str.startsWith(`data:image/${ext};base64,`))) {
     return false
   }
-  const regex = /^data:image\/(jpeg|jpg|png|webp);base64,([a-zA-Z0-9+/]*={0,2})$/
+  const regex = /^data:image\/(jpeg|jpg|png|webp|gif);base64,([a-zA-Z0-9+/]*={0,2})$/
   return regex.test(str)
 }
 export const dataUrlToBase64 = (str: string) => str.slice(str.indexOf("base64,") + "base64,".length)
