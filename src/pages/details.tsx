@@ -1,24 +1,26 @@
 import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
 import { GetServerSideProps } from "next"
+import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { useRouter } from "next/router"
 import { FormEventHandler, useRef } from "react"
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { Session, getServerSession } from "next-auth"
-
 import { Fieldset, ImageInput, Legend } from "@/components/form"
 import { LayoutProps } from "@/components/layout"
 import { buttonStyling } from "@/components/link"
-import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
-import { RemoveTimestamps } from "@/lib/db/db-helper"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import {
+  disconnectedRedirect,
+  refreshTokenIfNeeded,
+  signInRedirect,
+} from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
+import { RemoveTimestamps } from "@/lib/db/db-helper"
 import { getCompanyInfo } from "@/lib/qbo-api"
 import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
 import { postJsonData } from "@/lib/util/request"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo, accounts, sessions } from "db/schema"
 
@@ -36,10 +38,9 @@ type Props = {
   doneeInfo: PDoneeInfo
   session: Session
   itemsFilledIn: boolean
-  realmId: string
 } & LayoutProps
 
-export default function Details({ doneeInfo, itemsFilledIn, realmId }: Props) {
+export default function Details({ doneeInfo, itemsFilledIn }: Props) {
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -251,7 +252,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       session,
       doneeInfo,
       itemsFilledIn,
-      realmId,
       companies: accountList,
       selectedAccountId: session.accountId,
     } satisfies Props,
