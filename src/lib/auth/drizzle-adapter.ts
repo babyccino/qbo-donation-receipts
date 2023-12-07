@@ -82,6 +82,8 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
     await db.delete(users).where(eq(users.id, userId))
   },
   async linkAccount(account, profile) {
+    if (!account.access_token) throw new ApiError(500, "qbo did not return access code")
+
     const expiresAt =
       account.expires_at !== undefined ? new Date(account.expires_at * 1000) : oneHrFromNow()
     const refreshTokenExpiresInSeconds = (account.x_refresh_token_expires_in ??
@@ -92,34 +94,48 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
           ? refreshTokenExpiresInSeconds * 1000
           : DEFAULT_QBO_REFRESH_PERIOD_MS),
     )
-    if (!account.access_token) throw new ApiError(500, "qbo did not return access code")
-    if (account.scope !== "profile" && account.scope !== "accounting")
-      throw new ApiError(500, "invalid account scope")
+    const scope = account.provider === "QBO" ? "accounting" : "profile"
     const realmId = (account as any).realmId as string | null | undefined
-    const companyInfo = realmId ? await getCompanyInfo(account.access_token, realmId) : undefined
-    const insert: typeof accounts.$inferInsert = {
-      id: createId(),
-      userId: account.userId,
-      realmId: realmId ?? null,
-      type: account.type,
-      provider: account.provider,
-      providerAccountId: account.providerAccountId,
-      accessToken: account.access_token,
-      expiresAt,
-      idToken: account.id_token as string,
-      refreshToken: account.refresh_token as string,
-      refreshTokenExpiresAt,
-      scope: account.scope,
-      tokenType: account.token_type,
-      companyName: companyInfo?.companyName,
-      updatedAt: new Date(),
-    }
+    if (scope === "accounting" && !realmId)
+      throw new ApiError(500, "account has accounting scope but no company realm id")
+    const companyInfo =
+      scope === "accounting"
+        ? await getCompanyInfo(account.access_token, realmId as string)
+        : undefined
+
     const [row] = await db
       .insert(accounts)
-      .values(insert)
+      .values({
+        id: createId(),
+        userId: account.userId,
+        realmId: realmId,
+        type: account.type,
+        provider: account.provider,
+        providerAccountId: account.providerAccountId,
+        accessToken: account.access_token,
+        expiresAt,
+        idToken: account.id_token,
+        refreshToken: account.refresh_token,
+        refreshTokenExpiresAt,
+        scope,
+        tokenType: account.token_type,
+        companyName: companyInfo?.companyName,
+      })
       .onConflictDoUpdate({
         target: [accounts.userId, accounts.realmId],
-        set: ((insert.id = undefined as any), insert),
+        set: {
+          type: account.type,
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+          accessToken: account.access_token,
+          expiresAt,
+          idToken: account.id_token,
+          refreshToken: account.refresh_token,
+          refreshTokenExpiresAt,
+          scope,
+          tokenType: account.token_type,
+          updatedAt: new Date(),
+        },
       })
       .returning()
     if (!row) throw new Error("User not found")

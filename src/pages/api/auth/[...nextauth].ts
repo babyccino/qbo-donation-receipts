@@ -1,4 +1,3 @@
-import { eq } from "drizzle-orm"
 import NextAuth, { CallbacksOptions, NextAuthOptions, Session } from "next-auth"
 import { OAuthConfig } from "next-auth/providers"
 import { ApiError } from "next/dist/server/api-utils"
@@ -8,7 +7,6 @@ import { db } from "@/lib/db"
 import { config } from "@/lib/util/config"
 import { fetchJsonData } from "@/lib/util/request"
 import { OpenIdUserInfo, QBOProfile, QboAccount } from "@/types/qbo-api"
-import { accounts, users } from "db/schema"
 
 const {
   qboClientId,
@@ -58,8 +56,6 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
 
   // realmId will be undefined if the user doesn't have qbo accounting permission
   const { realmid: realmId } = profile
-  const connectUser = Boolean(realmId)
-  account.scope = connectUser ? "accounting" : "profile"
   account.realmId = realmId
 
   const userInfo = await fetchJsonData<OpenIdUserInfo>(
