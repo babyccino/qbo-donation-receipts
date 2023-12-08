@@ -6,16 +6,18 @@ import { JWT, encode } from "next-auth/jwt"
 import { getCsrfToken } from "next-auth/react"
 import { ApiError } from "next/dist/server/api-utils"
 
+import { authOptions } from "@/auth"
 import { AccountStatus, accountStatus } from "@/lib/auth/drizzle-adapter"
 import crypto from "@/lib/crypto"
 import { db } from "@/lib/db"
 import { refreshAccessToken } from "@/lib/qbo-api"
 import { config } from "@/lib/util/config"
-import { getBaseUrl } from "@/lib/util/request"
-import { authOptions } from "@/auth"
+import { getBaseUrl, getResponseContent } from "@/lib/util/request"
 import { Account, accounts } from "db/schema"
+import { base64EncodeString } from "../util/image-helper"
 
-const { nextauthSecret, vercelEnv } = config
+const { nextauthSecret, vercelEnv, qboClientId, qboClientSecret, qboOauthRevocationEndpoint } =
+  config
 
 const sessionCookie = (vercelEnv ? "__Secure-" : "") + "next-auth.session-token"
 const callbackCookie = (vercelEnv ? "__Secure-" : "") + "next-auth.callback-url"
@@ -168,4 +170,25 @@ export async function refreshTokenIfNeeded<
   account.refreshToken = token.refresh_token
   account.refreshTokenExpiresAt = refreshTokenExpiresAt
   return { account, currentAccountStatus }
+}
+export async function revokeAccessToken(token: string): Promise<void> {
+  console.log("revoking access token")
+
+  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
+  const response = await fetch(qboOauthRevocationEndpoint, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${encoded}`,
+      "Content-Type": "application/json",
+    },
+    body: `{"token":"${token}"}`,
+  })
+
+  if (!response.ok) {
+    throw new ApiError(
+      500,
+      `access token could not be revoked: ${await getResponseContent(response)}`,
+    )
+  }
 }

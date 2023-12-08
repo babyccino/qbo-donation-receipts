@@ -7,11 +7,10 @@ import { z } from "zod"
 import { serverSignIn } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { config } from "@/lib/util/config"
-import { base64EncodeString } from "@/lib/util/image-helper"
-import { getResponseContent } from "@/lib/util/request"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { authOptions } from "@/auth"
 import { accounts } from "db/schema"
+import { revokeAccessToken } from "@/lib/auth/next-auth-helper-server"
 
 const {
   qboClientId,
@@ -20,28 +19,6 @@ const {
   nextauthSecret: secret,
   vercelEnv,
 } = config
-
-async function revokeAccessToken(token: string): Promise<void> {
-  console.log("revoking access token")
-
-  const encoded = base64EncodeString(`${qboClientId}:${qboClientSecret}`)
-  const response = await fetch(qboOauthRevocationEndpoint, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Basic ${encoded}`,
-      "Content-Type": "application/json",
-    },
-    body: `{"token":"${token}"}`,
-  })
-
-  if (!response.ok) {
-    throw new ApiError(
-      500,
-      `access token could not be revoked: ${await getResponseContent(response)}`,
-    )
-  }
-}
 
 async function getAccount(query: NextApiRequest["query"], session: Session | null) {
   const queryRealmId = query["realmId"]
