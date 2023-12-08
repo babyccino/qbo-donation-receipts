@@ -68,3 +68,21 @@ export async function downloadImageAndConvertToPng(storageBucket: Bucket, firest
   const inputBuf = await downloadImageAsBuffer(storageBucket, firestorePath)
   return bufferToPngDataUrl(inputBuf)
 }
+
+export async function resizeAndUploadArrayBuffer(
+  storageBucket: Bucket,
+  buf: ArrayBuffer,
+  dimensions: { width?: number; height?: number },
+  path: string,
+  pub: boolean,
+): Promise<string> {
+  const resizedBuffer = await sharp(buf)
+    .resize({ ...dimensions, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toFormat("webp")
+    .toBuffer()
+  const fullPath = `${path}.webp`
+  const file = storageBucket.file(fullPath)
+  await file.save(resizedBuffer, { contentType: "image/webp" })
+  if (pub) await file.makePublic()
+  return fullPath
+}
