@@ -3,7 +3,18 @@ import { z } from "zod"
 
 import resend from "@/lib/resend"
 import { regularCharactersRegexString } from "@/lib/util/regex"
-import { parseRequestBody } from "@/lib/util/request-server"
+import {
+  AuthorisedHandler,
+  createAuthorisedHandler,
+  parseRequestBody,
+} from "@/lib/util/request-server"
+import { db } from "@/lib/db"
+import { and, eq, gt, sql } from "drizzle-orm"
+import { supportTickets } from "db/schema"
+import { ApiError } from "next/dist/server/api-utils"
+import { createId } from "@paralleldrive/cuid2"
+
+const DAY_LENGTH_MS = 1000 * 60 * 60 * 24
 
 export const parser = z.object({
   from: z.string().email(),
@@ -12,27 +23,37 @@ export const parser = z.object({
 })
 export type DataType = z.infer<typeof parser>
 
-const handler: NextApiHandler = async (req, res) => {
-  if (req.method !== "POST") {
-    return res.status(405).end()
-  }
+const handler: AuthorisedHandler = async (req, res, session) => {
+  const [row] = await db
+    .select({ count: sql<number>`cast(count(*) as integer)` })
+    .from(supportTickets)
+    .where(
+      and(
+        eq(supportTickets.userId, session.user.id),
+        gt(supportTickets.createdAt, new Date(Date.now() - DAY_LENGTH_MS)),
+      ),
+    )
+  if (!row) throw new ApiError(500, "sql query failed")
+  if (row.count >= 3)
+    throw new ApiError(429, "User may only make 3 support requests in a 24 hr period")
 
-  try {
-    const data = parseRequestBody(parser, req.body)
+  const data = parseRequestBody(parser, req.body)
 
-    await resend.emails.send({
+  await Promise.all([
+    resend.emails.send({
       from: "contact@donationreceipt.online",
       to: "gus.ryan163@gmail.com",
       subject: `A user submitted a support ticket: ${data.subject}`,
       text: data.body,
       reply_to: data.from,
-    })
+    }),
+    db.insert(supportTickets).values({
+      ...data,
+      id: createId(),
+      userId: session.user.id,
+    }),
+  ])
 
-    res.status(200).json({ ok: true })
-  } catch (error) {
-    console.error(error)
-
-    res.status(500).json(error)
-  }
+  return res.status(200).json({ ok: true })
 }
-export default handler
+export default createAuthorisedHandler(handler, ["POST"])

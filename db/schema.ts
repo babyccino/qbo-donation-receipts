@@ -48,6 +48,31 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   sessions: many(sessions),
   subscription: one(subscriptions),
   billingAddress: one(billingAddresses),
+  supportTickets: many(supportTickets),
+}))
+
+export const supportTickets = sqliteTable(
+  "support_tickets",
+  {
+    id: text("id", { length: 191 }).primaryKey().notNull(),
+    userId: text("user_id", { length: 191 }).notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    from: text("from").notNull(),
+    createdAt: timestamp("created_at"),
+    updatedAt: timestamp("updated_at"),
+  },
+  supportTicket => ({
+    userIdIndex: index("support_tickets__user_id__idx").on(supportTicket.userId),
+  }),
+)
+export type SupportTicket = typeof supportTickets.$inferSelect
+
+export const supportTicketsRelations = relations(supportTickets, ({ one }) => ({
+  user: one(users, {
+    fields: [supportTickets.userId],
+    references: [users.id],
+  }),
 }))
 
 export const subscriptions = sqliteTable(
