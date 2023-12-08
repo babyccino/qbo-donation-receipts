@@ -1,45 +1,26 @@
+"use client"
+
 import {
   EnvelopeIcon,
   InformationCircleIcon as Info,
   ChevronUpIcon as UpArrow,
 } from "@heroicons/react/24/solid"
 import { batch, signal } from "@preact/signals-react"
-import makeChecksum from "checksum"
-import { and, desc, eq, gt, inArray, isNotNull, lt } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
-import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
-import { LayoutProps } from "@/components/layout"
-import { EmailSentToast, MissingData } from "@/components/ui"
+import { EmailSentToast } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
-import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
-import { storageBucket } from "@/lib/db/firebase"
-import { downloadImagesForDonee } from "@/lib/db/db-helper"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
-import { db } from "@/lib/db"
 import { defaultEmailBody, formatEmailBody, templateDonorName, trimHistoryById } from "@/lib/email"
-import { getDonations } from "@/lib/qbo-api"
-import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
-import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
+import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
-import { authOptions } from "@/auth"
 import { EmailDataType } from "@/pages/api/email"
 import { EmailProps } from "@/types/receipt"
-import {
-  Donation as DbDonation,
-  EmailHistory as DbEmailHistory,
-  accounts,
-  donations as donationsSchema,
-  emailHistories,
-  sessions,
-  users,
-} from "db/schema"
+import { Donation as DbDonation, EmailHistory as DbEmailHistory } from "db/schema"
 
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
@@ -50,11 +31,6 @@ const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => 
 type DoneeInfo = EmailProps["donee"]
 type EmailHistory = Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
   donations: Pick<DbDonation, "name" | "donorId">[]
-}
-enum AccountStatus {
-  NotSubscribed = 0,
-  IncompleteData,
-  Complete,
 }
 const defaultCustomRecipientsState = false
 enum RecipientStatus {
@@ -71,7 +47,7 @@ const showEmailSentToast = signal(false)
 const showEmailFailureToast = signal(false)
 const emailFailureText = signal("error")
 
-function EmailInput() {
+export function EmailInput() {
   // TODO maybe save email to db with debounce?
   return (
     <Fieldset>
@@ -171,11 +147,11 @@ function handleError(error: ApiError) {
         case "data missing":
           emailFailureText.value =
             "Data is unexpectedly missing from your account. Please reload the page and try again. \
-                    If this continues please contact an administrator."
+                      If this continues please contact an administrator."
         default:
           emailFailureText.value =
             "There was an unexpected client error. If this continues please contact an administrator. \
-                    If this continues please contact an administrator."
+                      If this continues please contact an administrator."
       }
       showEmailFailureToast.value = true
       break
@@ -184,7 +160,7 @@ function handleError(error: ApiError) {
         case "not subscribed":
           emailFailureText.value =
             "There was error with your subscription. Please reload the page and try again. \
-                    If this continues please contact an administrator."
+                      If this continues please contact an administrator."
           break
         default:
           emailFailureText.value =
@@ -311,20 +287,17 @@ const RecipientsMissingEmails = ({
   </div>
 )
 
-type CompleteAccountProps = {
-  accountStatus: AccountStatus.Complete
-  donee: DoneeInfo
-  possibleRecipients: Recipient[]
-  emailHistory: EmailHistory[] | null
-  checksum: string
-}
-
-function CompleteAccountEmail({
+export function CompleteAccountEmail({
   donee,
   possibleRecipients,
   emailHistory,
   checksum,
-}: CompleteAccountProps) {
+}: {
+  donee: DoneeInfo
+  possibleRecipients: Recipient[]
+  emailHistory: EmailHistory[] | null
+  checksum: string
+}) {
   const defaultRecipientIds = useMemo(
     () =>
       possibleRecipients
@@ -410,171 +383,4 @@ function CompleteAccountEmail({
       )}
     </section>
   )
-}
-
-// --- page --- //
-
-type IncompleteAccountProps = {
-  accountStatus: AccountStatus.IncompleteData
-  filledIn: { items: boolean; doneeDetails: boolean }
-  companyName?: string
-}
-type Props = (IncompleteAccountProps | CompleteAccountProps) & LayoutProps
-type SerialisedProps = SerialiseDates<Props>
-export default function Email(serialisedProps: SerialisedProps) {
-  const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
-  if (props.accountStatus === AccountStatus.IncompleteData)
-    return (
-      <section className="flex h-full flex-col justify-center gap-4 p-8 align-middle">
-        <MissingData filledIn={props.filledIn} />
-        <form>
-          <EmailInput />
-        </form>
-      </section>
-    )
-  else return <CompleteAccountEmail {...props} />
-}
-
-// --- server side props --- //
-
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
-  const session = await getServerSession(req, res, authOptions)
-  if (!session) return signInRedirect("email")
-
-  const [user, accountList] = await Promise.all([
-    db.query.users.findFirst({
-      // if the realmId is specified get that account otherwise just get the first account for the user
-      where: eq(users.id, session.user.id),
-      columns: { name: true },
-      with: {
-        accounts: {
-          where: session.accountId
-            ? eq(accounts.id, session.accountId)
-            : eq(accounts.scope, "accounting"),
-          orderBy: desc(accounts.updatedAt),
-          columns: {
-            id: true,
-            accessToken: true,
-            scope: true,
-            realmId: true,
-            createdAt: true,
-            expiresAt: true,
-            refreshToken: true,
-            refreshTokenExpiresAt: true,
-          },
-          with: {
-            doneeInfo: {
-              columns: { accountId: false, createdAt: false, id: false, updatedAt: false },
-            },
-            userData: { columns: { items: true, startDate: true, endDate: true } },
-          },
-        },
-        billingAddress: { columns: { name: true } },
-        subscription: {
-          columns: {
-            cancelAtPeriodEnd: true,
-            status: true,
-            createdAt: true,
-            currentPeriodEnd: true,
-          },
-        },
-      },
-    }),
-    db.query.accounts.findMany({
-      columns: { companyName: true, id: true },
-      where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
-      orderBy: desc(accounts.updatedAt),
-    }) as Promise<{ companyName: string; id: string }[]>,
-  ])
-  if (!user) throw new ApiError(500, "user not found in db")
-  let account = user.accounts?.[0] as (typeof user.accounts)[number] | undefined
-  if (session.accountId && !account)
-    throw new ApiError(500, "account for given user and session not found in db")
-
-  if (!account || account.scope !== "accounting" || !account.accessToken)
-    return disconnectedRedirect
-
-  // if the session does not specify an account but there is a connected account
-  // then the session is connected to one of these accounts
-  if (!session.accountId && account) {
-    session.accountId = account.id
-    await db
-      .update(sessions)
-      .set({ accountId: account.id })
-      .where(eq(sessions.userId, session.user.id))
-  }
-
-  if (
-    !account ||
-    account.scope !== "accounting" ||
-    !account.accessToken ||
-    !account.realmId ||
-    !session.accountId
-  )
-    return disconnectedRedirect
-
-  if (!user.subscription || !isUserSubscribed(user.subscription))
-    return { redirect: { permanent: false, destination: "subscribe" } }
-
-  const { doneeInfo, userData } = account
-  if (!doneeInfo || !userData) {
-    const props: Props = {
-      accountStatus: AccountStatus.IncompleteData,
-      filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
-      session,
-      companies: accountList,
-      selectedAccountId: account.id,
-    }
-    if (doneeInfo) props.companyName = doneeInfo.companyName
-    return { props: serialiseDates(props) }
-  }
-
-  await refreshTokenIfNeeded(account)
-
-  const donations = await getDonations(
-    account.accessToken,
-    account.realmId,
-    { startDate: userData.startDate, endDate: userData.endDate },
-    userData.items ? userData.items.split(",") : [],
-  )
-  const possibleRecipients = donations.map(({ donorId, name, email }) => ({
-    donorId,
-    name,
-    status: email ? RecipientStatus.Valid : RecipientStatus.NoEmail,
-  }))
-  const recipientIds = possibleRecipients.map(({ donorId }) => donorId)
-
-  const dateOverlap = and(
-    lt(emailHistories.startDate, userData.endDate),
-    gt(emailHistories.endDate, userData.startDate),
-  )
-  const emailHistory = (
-    await db.query.emailHistories.findMany({
-      columns: {
-        createdAt: true,
-        startDate: true,
-        endDate: true,
-      },
-      where: dateOverlap,
-      with: {
-        donations: {
-          columns: { name: true, donorId: true },
-          where: inArray(donationsSchema.donorId, recipientIds),
-        },
-      },
-    })
-  ).filter(item => item.donations.length > 0)
-
-  return {
-    props: serialiseDates({
-      accountStatus: AccountStatus.Complete,
-      donee: await downloadImagesForDonee(doneeInfo, storageBucket),
-      possibleRecipients,
-      emailHistory: emailHistory.length > 0 ? emailHistory : null,
-      checksum: makeChecksum(JSON.stringify(donations)),
-      session,
-      companies: accountList,
-      selectedAccountId: account.id,
-    } satisfies Props),
-  }
 }
