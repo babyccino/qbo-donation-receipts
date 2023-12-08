@@ -17,8 +17,11 @@ import {
 import { db } from "@/lib/db"
 import { RemoveTimestamps } from "@/lib/db/db-helper"
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/lib/util/etc"
 import { base64DataUrlEncodeFile } from "@/lib/util/image-helper"
+import {
+  charityRegistrationNumberRegexString,
+  htmlRegularCharactersRegexString,
+} from "@/lib/util/regex"
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
@@ -31,6 +34,7 @@ const imageNotRequiredHelper = (
     <p>Choose an image if you wish to replace your saved image</p>
   </>
 )
+const regularCharacterHelper = "alphanumeric as well as - _ , & @ # ; and whitespace"
 
 type PDoneeInfo = Partial<Omit<RemoveTimestamps<DoneeInfo>, "id" | "userId">>
 
@@ -89,8 +93,8 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             minLength={10}
             defaultValue={doneeInfo.companyAddress}
             required
-            title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            title={regularCharacterHelper}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <p>
@@ -102,8 +106,8 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             name="companyName"
             defaultValue={doneeInfo.companyName}
             required
-            title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            title={regularCharacterHelper}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <p>
@@ -116,8 +120,8 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             minLength={2}
             defaultValue={doneeInfo.country}
             required
-            title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            title={regularCharacterHelper}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <p>
@@ -131,7 +135,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             defaultValue={doneeInfo.registrationNumber ?? undefined}
             required
             title="Canadian registration numbers are of the format: 123456789AA1234"
-            pattern={charityRegistrationNumberRegex}
+            pattern={charityRegistrationNumberRegexString}
           />
         </p>
         <p>
@@ -144,8 +148,8 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
             minLength={5}
             defaultValue={doneeInfo.signatoryName ?? undefined}
             required
-            title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            title={regularCharacterHelper}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <ImageInput

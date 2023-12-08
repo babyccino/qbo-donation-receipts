@@ -5,9 +5,8 @@ import sharp from "sharp"
 import { z } from "zod"
 
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
-import { storageBucket } from "@/lib/db/firebase"
 import { db } from "@/lib/db"
-import { charityRegistrationNumberRegex, regularCharactersRegex } from "@/lib/util/etc"
+import { storageBucket } from "@/lib/db/firebase"
 import {
   base64FileSize,
   dataUrlToBase64,
@@ -15,6 +14,7 @@ import {
   maxFileSizeBytes,
   supportedExtensions,
 } from "@/lib/util/image-helper"
+import { charityRegistrationNumberRegexString, regularCharacterRegex } from "@/lib/util/regex"
 import {
   AuthorisedHandler,
   createAuthorisedHandler,
@@ -55,12 +55,12 @@ async function resizeAndUploadImage(
 
 const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
 
-const zodRegularString = z.string().regex(new RegExp(regularCharactersRegex))
+const zodRegularString = z.string().regex(regularCharacterRegex)
 export const parser = z.object({
   companyName: zodRegularString,
   companyAddress: zodRegularString,
   country: zodRegularString,
-  registrationNumber: z.string().regex(new RegExp(charityRegistrationNumberRegex)),
+  registrationNumber: z.string().regex(new RegExp(charityRegistrationNumberRegexString)),
   signatoryName: zodRegularString,
   signature: z.string().optional().refine(dataUrlRefiner),
   smallLogo: z.string().optional().refine(dataUrlRefiner),
