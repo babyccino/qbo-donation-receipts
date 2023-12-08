@@ -64,13 +64,11 @@ const signIn: QboCallbacksOptions["signIn"] = async ({ user, account, profile })
   )
   const { email, givenName: name } = userInfo
   if (typeof email !== "string") throw new ApiError(500, "email not returned by openid request")
-  if (typeof name !== "string") throw new ApiError(500, "name not returned by openid request")
 
-  // if (companyInfo && companyInfo.country !== "CA") return "/terms/country"
   if (!userInfo.emailVerified) return "/terms/email-verified"
 
   user.email = email
-  user.name = name
+  user.name ??= name
 
   return true
 }
