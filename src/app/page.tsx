@@ -84,10 +84,10 @@ export default async function IndexPage() {
       .where(eq(sessions.userId, session.user.id))
   }
 
-  if (!session?.accountId || !account) return { props: { session, filledIn: null } satisfies Props }
-
   // const user = await getUserDataOrThrow(session.user.id)
-  const filledIn = { items: Boolean(account.userData), doneeDetails: Boolean(account.doneeInfo) }
+  const filledIn = account
+    ? { items: Boolean(account.userData), doneeDetails: Boolean(account.doneeInfo) }
+    : undefined
 
   return (
     <section className="mx-auto max-w-screen-xl space-y-12 p-4 px-4 text-center sm:py-8 lg:py-16">
