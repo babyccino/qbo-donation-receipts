@@ -1,3 +1,5 @@
+"use client"
+
 import { Checkbox, Label } from "flowbite-react"
 import { signIn } from "next-auth/react"
 import Image from "next/image"
