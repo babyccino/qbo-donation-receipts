@@ -93,7 +93,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
       .from(emailHistories)
       .where(
         and(
-          eq(emailHistories.accountId, userId),
+          eq(emailHistories.accountId, session.accountId),
           gt(emailHistories.createdAt, new Date(Date.now() - DAY_LENGTH_MS)),
         ),
       )

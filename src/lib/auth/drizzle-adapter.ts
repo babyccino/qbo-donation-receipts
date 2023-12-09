@@ -157,7 +157,7 @@ export const DrizzleAdapter = (db: LibSQLDatabase<Schema>): Adapter => ({
       // TODO only find accounts which have valid refresh tokens
       // TODO then refresh the token
       const dbAccount = await db.query.accounts.findFirst({
-        where: isNotNull(accounts.realmId),
+        where: and(isNotNull(accounts.realmId), eq(accounts.userId, data.userId)),
         columns: {
           id: true,
         },

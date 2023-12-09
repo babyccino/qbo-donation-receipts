@@ -1,4 +1,5 @@
 import { test, describe, expect } from "bun:test"
+import { blobToBase64 } from "file64"
 
 import { base64EncodeString, isJpegOrPngDataURL } from "@/lib/util/image-helper"
 
@@ -10,28 +11,74 @@ describe("base64EncodeString", () => {
 })
 
 describe("isJpegOrPngDataURL", () => {
-  test("should return true for a valid JPEG data URL", () => {
-    const dataURL = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD"
-    expect(isJpegOrPngDataURL(dataURL)).toBe(true)
+  describe("strings", () => {
+    test("should return true for a valid JPEG data URL", () => {
+      const dataUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD"
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(true)
+    })
+
+    test("should return true for a valid PNG data URL", () => {
+      const dataUrl = "data:image/png;base64,iVBORw0KGg"
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(true)
+    })
+
+    test("should return false for an invalid data URL", () => {
+      const dataUrl = "data:image/tif;base64,R0lGODlhAQ"
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(false)
+    })
+
+    test("should return false for a non-base64 data URL", () => {
+      const dataUrl = "data:image/jpeg;url=https://example.com/image.jpg"
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(false)
+    })
+
+    test("should return false for a non-JPEG/PNG data URL", () => {
+      const dataUrl = "data:image/gif;base64,R0lGODlhAQ..."
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(false)
+    })
   })
 
-  test("should return true for a valid PNG data URL", () => {
-    const dataURL = "data:image/png;base64,iVBORw0KGg"
-    expect(isJpegOrPngDataURL(dataURL)).toBe(true)
-  })
+  describe("real files", () => {
+    test("valid jpeg file should return true", async () => {
+      const file = Bun.file("./__tests__/test-files/test.jpeg") as Blob
 
-  test("should return false for an invalid data URL", () => {
-    const dataURL = "data:image/gif;base64,R0lGODlhAQ"
-    expect(isJpegOrPngDataURL(dataURL)).toBe(false)
-  })
+      const dataUrl = await blobToBase64(file)
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(true)
+    })
 
-  test("should return false for a non-base64 data URL", () => {
-    const dataURL = "data:image/jpeg;url=https://example.com/image.jpg"
-    expect(isJpegOrPngDataURL(dataURL)).toBe(false)
-  })
+    test("valid jpg file should return true", async () => {
+      const file = Bun.file("./__tests__/test-files/test.jpg") as Blob
 
-  test("should return false for a non-JPEG/PNG data URL", () => {
-    const dataURL = "data:image/gif;base64,R0lGODlhAQ..."
-    expect(isJpegOrPngDataURL(dataURL)).toBe(false)
+      const dataUrl = await blobToBase64(file)
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(true)
+    })
+
+    test("valid png file should return true", async () => {
+      const file = Bun.file("./__tests__/test-files/test.png") as Blob
+
+      const dataUrl = await blobToBase64(file)
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(true)
+    })
+
+    test("valid webp file should return true", async () => {
+      const file = Bun.file("./__tests__/test-files/test.webp") as Blob
+
+      const dataUrl = await blobToBase64(file)
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(true)
+    })
+
+    test("valid gif file should return true", async () => {
+      const file = Bun.file("./__tests__/test-files/test.gif") as Blob
+
+      const dataUrl = await blobToBase64(file)
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(true)
+    })
+
+    test("invalid tif file should return true", async () => {
+      const file = Bun.file("./__tests__/test-files/test.tif") as Blob
+
+      const dataUrl = await blobToBase64(file)
+      expect(isJpegOrPngDataURL(dataUrl)).toBe(false)
+    })
   })
 })

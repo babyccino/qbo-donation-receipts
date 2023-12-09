@@ -13,7 +13,7 @@ import {
   charityRegistrationNumberRegexString,
   htmlRegularCharactersRegexString,
   regularCharacterRegex,
-} from "@/lib/regex"
+} from "@/lib/util/regex"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { createId } from "@paralleldrive/cuid2"
 import { accounts, doneeInfos, sessions } from "db/schema"

@@ -11,9 +11,8 @@ export function isFileSupported(file: File, maxSize: number) {
   return !supportedExtensions.includes(ext as any)
 }
 
-const dataImage = "data:image/"
 export function isJpegOrPngDataURL(str: string): boolean {
-  if (!str.startsWith(dataImage)) return false
+  if (!str.startsWith("data:image/")) return false
   if (supportedExtensions.every(ext => !str.startsWith(`data:image/${ext};base64,`))) {
     return false
   }
