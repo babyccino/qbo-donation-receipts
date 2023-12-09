@@ -36,7 +36,3 @@ export const wait = (secs: number) => new Promise<void>(res => setTimeout(res, s
 export const rand = (min: number, max: number) => Math.random() * (max - min) + min
 const { floor } = Math
 export const randInt = (min: number, max: number) => floor(rand(min, max))
-
-export const regularCharactersRegex = "^[a-zA-Z0-9\\-_\\s,]+$"
-export const htmlRegularCharactersRegex = "^[a-zA-Z0-9,-_ ]+$"
-export const charityRegistrationNumberRegex = "^\\d{9}[A-Z]{2}\\d{4}$"

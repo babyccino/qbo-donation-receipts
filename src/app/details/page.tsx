@@ -2,19 +2,27 @@ import { desc, eq } from "drizzle-orm"
 import { Label, TextInput } from "flowbite-react"
 import { ApiError } from "next/dist/server/api-utils"
 
-import { Fieldset, ImageInput, Legend } from "@/components/form"
+import { ImageInput } from "@/components/form-client"
+import { Fieldset, Legend } from "@/components/form-server"
 import { buttonStyling } from "@/components/link"
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
-import { resizeAndUploadArrayBuffer } from "@/lib/db/db-helper"
-import { storageBucket } from "@/lib/db/firebase"
 import { getCompanyInfo } from "@/lib/qbo-api"
-import { charityRegistrationNumberRegex, htmlRegularCharactersRegex } from "@/lib/util/etc"
-import { imageIsSupported } from "@/lib/util/image-helper"
+import {
+  charityRegistrationNumberRegex,
+  charityRegistrationNumberRegexString,
+  htmlRegularCharactersRegexString,
+  regularCharacterRegex,
+} from "@/lib/regex"
+import { imageIsSupported, isJpegOrPngDataURL } from "@/lib/util/image-helper"
+import { parseRequestBody } from "@/lib/util/request-server"
 import { createId } from "@paralleldrive/cuid2"
 import { accounts, doneeInfos, sessions } from "db/schema"
 import { redirect } from "next/navigation"
-import { getServerSession, getServerSessionOrThrow } from "../auth-util"
+import { z } from "zod"
+import { getServerSession } from "../auth-util"
+import { resizeAndUploadArrayBuffer } from "@/lib/db/db-helper"
+import { storageBucket } from "@/lib/db/firebase"
 
 const imageHelper = "PNG, JPG, WebP or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -32,9 +40,20 @@ function isFileSupported(file: File) {
   return !imageIsSupported(ext)
 }
 
+const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
+
+const zodRegularString = z.string().regex(regularCharacterRegex)
+export const parser = z.object({
+  companyName: zodRegularString,
+  companyAddress: zodRegularString,
+  country: zodRegularString,
+  registrationNumber: z.string().regex(charityRegistrationNumberRegex),
+  signatoryName: zodRegularString,
+})
+
 export default async function Details() {
   const session = await getServerSession()
-  if (!session) return redirect("/auth/signin?callback=details")
+  if (!session) return redirect("/auth/signin?callback=details"), null
 
   const account = await db.query.accounts.findFirst({
     // if the realmId is specified get that account otherwise just get the first account for the user
@@ -86,7 +105,7 @@ export default async function Details() {
     !account.realmId ||
     !session.accountId
   )
-    return redirect("/auth/disconnected")
+    return redirect("/auth/disconnected"), null
 
   await refreshTokenIfNeeded(account)
 
@@ -105,8 +124,27 @@ export default async function Details() {
   }
 
   async function formAction(formData: FormData) {
-    const session = await getServerSessionOrThrow()
-    if (!session.accountId) throw new ApiError(401, "user's account not connected")
+    "use server"
+
+    const session = await getServerSession()
+    if (!session?.accountId) throw new ApiError(401, "user not connected")
+
+    const id = session.user.id
+
+    const body = {
+      companyName: formData.get("companyName"),
+      companyAddress: formData.get("companyAddress"),
+      country: formData.get("country"),
+      registrationNumber: formData.get("registrationNumber"),
+      signatoryName: formData.get("signatoryName"),
+    }
+    const data = parseRequestBody(parser, body)
+
+    const signature = formData.get("signature") as File
+    const smallLogo = formData.get("smallLogo") as File
+
+    // if (!(signature instanceof File)) throw new ApiError(400, "signature is not a file object")
+    // if (!(smallLogo instanceof File)) throw new ApiError(400, "smallLogo is not a file object")
 
     const account = await db.query.accounts.findFirst({
       where: eq(accounts.id, session.accountId),
@@ -125,8 +163,7 @@ export default async function Details() {
     const { realmId } = account
     if (!realmId) throw new ApiError(401, "account not associated with a company")
 
-    const signature = formData.get("signature") as File
-    const smallLogo = formData.get("smallLogo") as File
+    await refreshTokenIfNeeded(account)
 
     if (!account.doneeInfo && (!signature || !smallLogo))
       throw new ApiError(
@@ -134,13 +171,10 @@ export default async function Details() {
         "when setting user data for the first time, signature and logo images must be provided",
       )
 
-    await refreshTokenIfNeeded(account)
-
-    const signaturePath = `${session.user.id}/${realmId}/signature`
-    const smallLogoPath = `${session.user.id}/${realmId}/smallLogo`
-
+    const signaturePath = `${id}/${realmId}/signature`
+    const smallLogoPath = `${id}/${realmId}/smallLogo`
     const [signatureUrl, smallLogoUrl] = await Promise.all([
-      isFileSupported(signature)
+      signature
         ? resizeAndUploadArrayBuffer(
             storageBucket,
             await signature.arrayBuffer(),
@@ -149,7 +183,7 @@ export default async function Details() {
             false,
           )
         : undefined,
-      isFileSupported(smallLogo)
+      smallLogo
         ? resizeAndUploadArrayBuffer(
             storageBucket,
             await smallLogo.arrayBuffer(),
@@ -159,16 +193,6 @@ export default async function Details() {
           )
         : undefined,
     ])
-
-    const data = {
-      companyName: formData.get("companyName") as string,
-      companyAddress: formData.get("companyAddress") as string,
-      country: formData.get("country") as string,
-      registrationNumber: formData.get("registrationNumber") as string,
-      signatoryName: formData.get("signatoryName") as string,
-      signatureUrl,
-      smallLogoUrl,
-    }
 
     const doneeInfo = account.doneeInfo
       ? await db
@@ -193,6 +217,8 @@ export default async function Details() {
             largeLogo: "",
           })
           .returning()
+
+    redirect(itemsFilledIn ? "/generate-receipts" : "/items")
   }
 
   return (
@@ -210,7 +236,7 @@ export default async function Details() {
             defaultValue={doneeInfo.companyAddress}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <p>
@@ -223,7 +249,7 @@ export default async function Details() {
             defaultValue={doneeInfo.companyName}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <p>
@@ -237,7 +263,7 @@ export default async function Details() {
             defaultValue={doneeInfo.country}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <p>
@@ -251,7 +277,7 @@ export default async function Details() {
             defaultValue={doneeInfo.registrationNumber ?? undefined}
             required
             title="Canadian registration numbers are of the format: 123456789AA1234"
-            pattern={charityRegistrationNumberRegex}
+            pattern={charityRegistrationNumberRegexString}
           />
         </p>
         <p>
@@ -265,7 +291,7 @@ export default async function Details() {
             defaultValue={doneeInfo.signatoryName ?? undefined}
             required
             title="alphanumeric as well as '-', '_', ','"
-            pattern={htmlRegularCharactersRegex}
+            pattern={htmlRegularCharactersRegexString}
           />
         </p>
         <ImageInput
