@@ -10,7 +10,7 @@ import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { ApiError } from "next/dist/server/api-utils"
 import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
-import { Fieldset, TextArea, Toggle } from "@/components/form"
+import { Fieldset, TextArea, Toggle } from "@/components/form-server"
 import { EmailSentToast } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
 import { defaultEmailBody, formatEmailBody, templateDonorName, trimHistoryById } from "@/lib/email"

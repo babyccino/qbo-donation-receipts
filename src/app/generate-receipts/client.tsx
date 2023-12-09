@@ -12,25 +12,23 @@ import {
 } from "@/components/receipt/pdf-dumb"
 import { getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
-import { dynamic } from "@/lib/util/nextjs-helper"
 import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
 import { DoneeInfo } from "db/schema"
 import download from "downloadjs"
+import dynamic from "next/dynamic"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
   {
     loading: DownloadReceiptLoading,
     ssr: false,
-    loadImmediately: true,
   },
 )
 const ShowReceipt = dynamic(() => import("@/components/receipt/pdf").then(imp => imp.ShowReceipt), {
   loading: ShowReceiptLoading,
   ssr: false,
-  loadImmediately: true,
 })
 
 const ReceiptLimitCard = () => (
