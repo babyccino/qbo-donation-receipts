@@ -15,10 +15,8 @@ import ClientForm from "./client"
 
 const parser = z.object({
   items: z.array(z.string()),
-  dateRange: z.object({
-    startDate: z.coerce.date(),
-    endDate: z.coerce.date(),
-  }),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
 })
 
 export default async function Items() {
@@ -85,10 +83,7 @@ export default async function Items() {
       startDate: formData.get("dateRange.startDate"),
       endDate: formData.get("dateRange.endDate"),
     })
-    const {
-      items: itemsStr,
-      dateRange: { startDate, endDate },
-    } = data
+    const { items, startDate, endDate } = data
 
     const account = await db.query.accounts.findFirst({
       where: eq(accounts.id, session.accountId),
@@ -99,19 +94,19 @@ export default async function Items() {
     })
     if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
 
-    const items = itemsStr.join(",")
-    await db
+    const itemsString = items.join(",")
+    const ins = await db
       .insert(userDatas)
       .values({
         id: createId(),
         accountId: account.id,
         endDate,
         startDate,
-        items,
+        items: itemsString,
       })
       .onConflictDoUpdate({
         target: [userDatas.accountId],
-        set: { startDate, endDate, items, updatedAt: new Date() },
+        set: { startDate, endDate, items: itemsString, updatedAt: new Date() },
       })
 
     redirect(detailsFilledIn ? "/generate-receipts" : "/details")
