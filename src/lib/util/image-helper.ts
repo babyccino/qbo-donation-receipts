@@ -1,8 +1,15 @@
 export const supportedExtensions = ["jpg", "jpeg", "png", "webp", "gif"] as const
 export type supportedExtensions = (typeof supportedExtensions)[number]
-export const imageIsSupported = (ext: string): ext is supportedExtensions =>
-  supportedExtensions.includes(ext as any) // 1mb = 2^20 bytes
 export const maxFileSizeBytes = 100 * Math.pow(2, 10)
+
+export function isFileSupported(file: File, maxSize: number) {
+  if (!file.size) return false
+  if (!file.name) return false
+  const ext = file.name.split(".").pop()
+  if (!ext) return false
+  if (file.size > maxSize) return false
+  return !supportedExtensions.includes(ext as any)
+}
 
 const dataImage = "data:image/"
 export function isJpegOrPngDataURL(str: string): boolean {

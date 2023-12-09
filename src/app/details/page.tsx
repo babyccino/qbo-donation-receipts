@@ -14,7 +14,6 @@ import {
   htmlRegularCharactersRegexString,
   regularCharacterRegex,
 } from "@/lib/regex"
-import { imageIsSupported, isJpegOrPngDataURL } from "@/lib/util/image-helper"
 import { parseRequestBody } from "@/lib/util/request-server"
 import { createId } from "@paralleldrive/cuid2"
 import { accounts, doneeInfos, sessions } from "db/schema"
@@ -23,6 +22,7 @@ import { z } from "zod"
 import { getServerSession } from "../auth-util"
 import { resizeAndUploadArrayBuffer } from "@/lib/db/db-helper"
 import { storageBucket } from "@/lib/db/firebase"
+import { isFileSupported } from "@/lib/util/image-helper"
 
 const imageHelper = "PNG, JPG, WebP or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -32,13 +32,7 @@ const imageNotRequiredHelper = (
   </>
 )
 
-function isFileSupported(file: File) {
-  if (!file.size) return false
-  if (!file.name) return false
-  const ext = file.name.split(".").pop()
-  if (!ext) return false
-  return !imageIsSupported(ext)
-}
+const MAX_FILE_SIZE = 102400
 
 const zodRegularString = z.string().regex(regularCharacterRegex)
 export const parser = z.object({
@@ -141,9 +135,9 @@ export default async function Details() {
     const signature = formData.get("signature") as File
     const smallLogo = formData.get("smallLogo") as File
 
-    if (signature && !isFileSupported(signature))
+    if (signature && !isFileSupported(signature, MAX_FILE_SIZE))
       throw new ApiError(400, "signature's file type is not supported'")
-    if (smallLogo && !isFileSupported(smallLogo))
+    if (smallLogo && !isFileSupported(smallLogo, MAX_FILE_SIZE))
       throw new ApiError(400, "smallLogo's file type is not supported'")
 
     const account = await db.query.accounts.findFirst({
@@ -297,14 +291,14 @@ export default async function Details() {
         <ImageInput
           id="signature"
           label="Image of signatory's signature"
-          maxSize={102400}
+          maxSize={MAX_FILE_SIZE}
           helper={doneeInfo.signatoryName ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.signatoryName)}
         />
         <ImageInput
           id="smallLogo"
           label="Small image of organisation's logo"
-          maxSize={102400}
+          maxSize={MAX_FILE_SIZE}
           helper={doneeInfo.smallLogo ? imageNotRequiredHelper : imageHelper}
           required={!Boolean(doneeInfo.smallLogo)}
         />
