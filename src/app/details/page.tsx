@@ -40,8 +40,6 @@ function isFileSupported(file: File) {
   return !imageIsSupported(ext)
 }
 
-const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
-
 const zodRegularString = z.string().regex(regularCharacterRegex)
 export const parser = z.object({
   companyName: zodRegularString,
@@ -143,8 +141,10 @@ export default async function Details() {
     const signature = formData.get("signature") as File
     const smallLogo = formData.get("smallLogo") as File
 
-    // if (!(signature instanceof File)) throw new ApiError(400, "signature is not a file object")
-    // if (!(smallLogo instanceof File)) throw new ApiError(400, "smallLogo is not a file object")
+    if (signature && !isFileSupported(signature))
+      throw new ApiError(400, "signature's file type is not supported'")
+    if (smallLogo && !isFileSupported(smallLogo))
+      throw new ApiError(400, "smallLogo's file type is not supported'")
 
     const account = await db.query.accounts.findFirst({
       where: eq(accounts.id, session.accountId),

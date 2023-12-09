@@ -1,4 +1,4 @@
-export const supportedExtensions = ["jpg", "jpeg", "png", "webp"] as const
+export const supportedExtensions = ["jpg", "jpeg", "png", "webp", "gif"] as const
 export type supportedExtensions = (typeof supportedExtensions)[number]
 export const imageIsSupported = (ext: string): ext is supportedExtensions =>
   supportedExtensions.includes(ext as any) // 1mb = 2^20 bytes
@@ -10,7 +10,7 @@ export function isJpegOrPngDataURL(str: string): boolean {
   if (supportedExtensions.every(ext => !str.startsWith(`data:image/${ext};base64,`))) {
     return false
   }
-  const regex = /^data:image\/(jpeg|png|webp);base64,([a-zA-Z0-9+/]*={0,2})$/
+  const regex = /^data:image\/(jpg|jpeg|png|webp|gif);base64,([a-zA-Z0-9+/]*={0,2})$/
   return regex.test(str)
 }
 export const dataUrlToBase64 = (str: string) => str.slice(str.indexOf("base64,") + "base64,".length)
