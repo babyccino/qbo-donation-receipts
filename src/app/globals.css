@@ -8,10 +8,9 @@ legend {
   margin: 0;
   padding: 0;
   width: 100%;
-
-  & + * {
-    clear: both;
-  }
+}
+legend + * {
+  clear: both;
 }
 
 *::selection {
@@ -29,10 +28,9 @@ legend {
 ::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 20px;
-
-  &:hover {
-    background: #555;
-  }
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 details summary::-webkit-details-marker {
