@@ -1,13 +1,13 @@
 import { BriefcaseIcon, MapPinIcon } from "@heroicons/react/24/solid"
 import { and, desc, eq } from "drizzle-orm"
 import { Button, Card } from "flowbite-react"
-import { getServerSession } from "next-auth"
-import { signIn } from "next-auth/react"
 import { ApiError } from "next/dist/server/api-utils"
 import Image from "next/image"
+import NextLink from "next/link"
 import { redirect } from "next/navigation"
 
-import { Link } from "@/components/link"
+import { getServerSession, getServerSessionOrThrow } from "@/app/auth-util"
+import { Link as StyledLink } from "@/components/link"
 import { Connect } from "@/components/qbo"
 import { PricingCard } from "@/components/ui"
 import { revokeAccessToken } from "@/lib/auth/next-auth-helper-server"
@@ -15,9 +15,7 @@ import { db } from "@/lib/db"
 import { getImageUrl } from "@/lib/db/db-helper"
 import { manageSubscriptionStatusChange, stripe } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
-import { Show } from "@/lib/util/react"
 import { Subscription as DbSubscription, accounts, sessions, subscriptions, users } from "db/schema"
-import { getServerSessionOrThrow } from "../auth-util"
 
 type Subscription = Pick<
   DbSubscription,
@@ -42,18 +40,18 @@ async function ProfileCard({
   subscription?: Subscription | null
   connected: boolean
 }) {
-  const manageSubChange = async () => {
+  const manageSubChangeAction = async () => {
     "use server"
     const session = await getServerSessionOrThrow()
 
     const currentSubscription = await db.query.subscriptions.findFirst({
       where: eq(subscriptions.userId, session.user.id),
-      columns: { id: true },
+      columns: { id: true, cancelAtPeriodEnd: true },
     })
     if (!currentSubscription) throw new ApiError(500, "User has no subscription")
 
     const stripeSubscription = await stripe.subscriptions.update(currentSubscription.id, {
-      cancel_at_period_end: !subscription!.cancelAtPeriodEnd,
+      cancel_at_period_end: !currentSubscription?.cancelAtPeriodEnd,
     })
     manageSubscriptionStatusChange(stripeSubscription)
 
@@ -62,7 +60,6 @@ async function ProfileCard({
 
   const disconnectAction = async () => {
     "use server"
-
     const session = await getServerSessionOrThrow()
 
     if (!session.accountId)
@@ -111,14 +108,14 @@ async function ProfileCard({
       )}
       <h5 className="text-xl font-medium text-gray-500 dark:text-white">{name}</h5>
       <div className="space-y-1">
-        <Show when={Boolean(companyName)}>
+        {companyName && (
           <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
             <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
               <BriefcaseIcon />
             </div>
             {companyName}
           </p>
-        </Show>
+        )}
         <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
           <div className="mb-[-0.1rem] mr-2 inline-block h-4 w-4 text-white">
             <MapPinIcon />
@@ -135,7 +132,7 @@ async function ProfileCard({
             </span>
           </p>
           <p className="text-sm font-normal leading-tight text-gray-500 dark:text-gray-400">
-            Your subscription will {subscription!.cancelAtPeriodEnd ? "end" : "automatically renew"}{" "}
+            Your subscription will {subscription.cancelAtPeriodEnd ? "end" : "automatically renew"}{" "}
             in{" "}
             <span className="text-gray-900 dark:text-white">
               {getDaysBetweenDates(new Date(), new Date(subscription.currentPeriodEnd))}
@@ -143,11 +140,11 @@ async function ProfileCard({
             days
           </p>
           <Button
-            color={subscription!.cancelAtPeriodEnd ? undefined : "light"}
+            color={subscription.cancelAtPeriodEnd ? undefined : "light"}
             className="flex-shrink"
-            formAction={manageSubChange}
+            formAction={manageSubChangeAction}
           >
-            {subscription!.cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
+            {subscription.cancelAtPeriodEnd ? "Resubscribe" : "Unsubscribe"}
           </Button>
         </>
       )}
@@ -156,9 +153,9 @@ async function ProfileCard({
           Disconnect
         </Button>
       ) : (
-        <button className="flex-shrink self-center" onClick={e => void signIn("QBO")}>
+        <NextLink className="flex-shrink self-center" href="/api/auth/connect">
           <Connect />
-        </button>
+        </NextLink>
       )}
     </Card>
   )
@@ -231,7 +228,9 @@ export default async function AccountPage() {
           title="Your selected plan"
           plan={subscribed ? "pro" : "free"}
           button={
-            !subscribed ? <Link href="/api/stripe/create-checkout-session">Go pro</Link> : undefined
+            !subscribed ? (
+              <StyledLink href="/api/stripe/create-checkout-session">Go pro</StyledLink>
+            ) : undefined
           }
         />
       </div>
