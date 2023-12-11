@@ -4,7 +4,7 @@ import { ApiError } from "next/dist/server/api-utils"
 import { redirect } from "next/navigation"
 
 import { MissingData } from "@/components/ui"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { refreshTokenIfStale } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
@@ -103,7 +103,7 @@ export default async function Email() {
     )
   }
 
-  await refreshTokenIfNeeded(account)
+  await refreshTokenIfStale(account)
 
   const donations = await getDonations(
     account.accessToken,

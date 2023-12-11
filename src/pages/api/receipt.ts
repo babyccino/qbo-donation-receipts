@@ -1,12 +1,12 @@
-import { and, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import JSZip from "jszip"
 import { ApiError } from "next/dist/server/api-utils"
 
 import { ReceiptPdfDocument } from "@/components/receipt/pdf"
-import { storageBucket } from "@/lib/db/firebase"
-import { downloadImagesForDonee } from "@/lib/db/db-helper"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { refreshTokenIfStale } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
+import { downloadImagesForDonee } from "@/lib/db/db-helper"
+import { storageBucket } from "@/lib/db/firebase"
 import { getDonations } from "@/lib/qbo-api"
 import { getThisYear } from "@/lib/util/date"
 import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/util/request-server"
@@ -56,7 +56,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
 
   if (!doneeInfo || !userData) throw new ApiError(400, "Data missing from user")
 
-  await refreshTokenIfNeeded(account)
+  await refreshTokenIfStale(account)
 
   const [donations, donee] = await Promise.all([
     getDonations(

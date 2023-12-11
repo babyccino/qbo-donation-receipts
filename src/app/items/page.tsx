@@ -6,7 +6,7 @@ import { z } from "zod"
 
 import { getServerSession } from "@/app/auth-util"
 import { buttonStyling } from "@/components/link"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { refreshTokenIfStale } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { getItems } from "@/lib/qbo-api"
 import { parseRequestBody } from "@/lib/util/request-server"
@@ -67,7 +67,7 @@ export default async function Items() {
   )
     return redirect("/auth/disconnected")
 
-  await refreshTokenIfNeeded(account)
+  await refreshTokenIfStale(account)
   const realmId = account.realmId
   const items = await getItems(account.accessToken, realmId)
   const detailsFilledIn = Boolean(account.doneeInfo)

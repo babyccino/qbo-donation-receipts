@@ -5,7 +5,7 @@ import { ApiError } from "next/dist/server/api-utils"
 
 import { Link } from "@/components/link"
 import { MissingData } from "@/components/ui"
-import { disconnectedRedirect, refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { disconnectedRedirect, refreshTokenIfStale } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { downloadImageAndConvertToPng } from "@/lib/db/db-helper"
 import { storageBucket } from "@/lib/db/firebase"
@@ -76,7 +76,7 @@ export default async function GenerateReceipts() {
   if (!doneeInfo || !userData)
     return <MissingData filledIn={{ doneeDetails: Boolean(doneeInfo), items: Boolean(userData) }} />
 
-  await refreshTokenIfNeeded(account)
+  await refreshTokenIfStale(account)
 
   const [donations, pngSignature, pngLogo] = await Promise.all([
     getDonations(

@@ -9,7 +9,7 @@ import { getServerSession } from "@/app/auth-util"
 import { ImageInput } from "@/components/form-client"
 import { Fieldset, Legend } from "@/components/form-server"
 import { buttonStyling } from "@/components/link"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { refreshTokenIfStale } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { resizeAndUploadArrayBuffer } from "@/lib/db/db-helper"
 import { storageBucket } from "@/lib/db/firebase"
@@ -99,7 +99,7 @@ export default async function Details() {
   )
     return redirect("/auth/disconnected"), null
 
-  await refreshTokenIfNeeded(account)
+  await refreshTokenIfStale(account)
 
   const realmId = account.realmId
   const itemsFilledIn = Boolean(account.userData)
@@ -157,7 +157,7 @@ export default async function Details() {
     const { realmId } = account
     if (!realmId) throw new ApiError(401, "account not associated with a company")
 
-    await refreshTokenIfNeeded(account)
+    await refreshTokenIfStale(account)
 
     if (!account.doneeInfo && (!signature || !smallLogo))
       throw new ApiError(

@@ -136,7 +136,7 @@ export const signInRedirect = (callback?: string): { redirect: Redirect } => ({
   },
 })
 
-export async function refreshTokenIfNeeded<
+export async function refreshTokenIfStale<
   T extends Pick<
     Account,
     "id" | "accessToken" | "expiresAt" | "refreshToken" | "refreshTokenExpiresAt"

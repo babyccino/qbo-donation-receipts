@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { WithBody } from "@/components/receipt/email"
 import { ReceiptPdfDocument } from "@/components/receipt/pdf"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import { refreshTokenIfStale } from "@/lib/auth/next-auth-helper-server"
 import { bufferToPngDataUrl, downloadImageAsDataUrl } from "@/lib/db/db-helper"
 import { storageBucket } from "@/lib/db/firebase"
 import { db } from "@/lib/db"
@@ -105,7 +105,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   const { account, doneeInfo, userData, email } = row
   const realmId = account.realmId as string
 
-  await refreshTokenIfNeeded(account)
+  await refreshTokenIfStale(account)
 
   const [donations, signatureWebpDataUrl, logoWebpDataUrl] = await Promise.all([
     getDonations(
