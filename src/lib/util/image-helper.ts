@@ -3,12 +3,10 @@ export type supportedExtensions = (typeof supportedExtensions)[number]
 export const maxFileSizeBytes = 100 * Math.pow(2, 10)
 
 export function isFileSupported(file: File, maxSize: number) {
-  if (!file.size) return false
-  if (!file.name) return false
-  const ext = file.name.split(".").pop()
+  if (!file.size || !file.name || file.size > maxSize) return false
+  const ext = file.name.split(".").pop()?.toLocaleLowerCase()
   if (!ext) return false
-  if (file.size > maxSize) return false
-  return !supportedExtensions.includes(ext as any)
+  return supportedExtensions.includes(ext as any)
 }
 
 export function isJpegOrPngDataURL(str: string): boolean {
