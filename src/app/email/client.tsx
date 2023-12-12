@@ -5,9 +5,10 @@ import {
   InformationCircleIcon as Info,
   ChevronUpIcon as UpArrow,
 } from "@heroicons/react/24/solid"
-import { batch, signal } from "@preact/signals-react"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai"
 import { ApiError } from "next/dist/server/api-utils"
+import dynamic from "next/dynamic"
 import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form-server"
@@ -15,7 +16,6 @@ import { EmailSentToast } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
 import { defaultEmailBody, formatEmailBody, templateDonorName, trimHistoryById } from "@/lib/email"
 import { formatDateHtml } from "@/lib/util/date"
-import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
 import { EmailDataType } from "@/pages/api/email"
@@ -25,7 +25,6 @@ import { Donation as DbDonation, EmailHistory as DbEmailHistory } from "db/schem
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
   ssr: false,
-  loadImmediately: true,
 })
 
 type DoneeInfo = EmailProps["donee"]
@@ -40,22 +39,25 @@ enum RecipientStatus {
 type Recipient = { name: string; donorId: string; status: RecipientStatus }
 
 // global state
-const emailBody = signal(defaultEmailBody)
-const showEmailPreview = signal(false)
-const showSendEmail = signal(false)
-const showEmailSentToast = signal(false)
-const showEmailFailureToast = signal(false)
-const emailFailureText = signal("error")
+const atoms = {
+  emailBody: atom(defaultEmailBody),
+  showEmailPreview: atom(false),
+  showSendEmail: atom(false),
+  showEmailSentToast: atom(false),
+  showEmailFailureToast: atom(false),
+  emailFailureText: atom("error"),
+} as const
 
 export function EmailInput() {
   // TODO maybe save email to db with debounce?
+  const setEmailBody = useSetAtom(atoms.emailBody)
   return (
     <Fieldset>
       <TextArea
         id="email"
         label="Your Email Template"
-        defaultValue={emailBody.value}
-        onChange={e => (emailBody.value = e.target.value)}
+        defaultValue={defaultEmailBody}
+        onChange={e => setEmailBody(e.target.value)}
         rows={10}
       />
       <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -65,29 +67,33 @@ export function EmailInput() {
   )
 }
 
-const EmailPreview = ({ donee }: { donee: DoneeInfo }) => (
-  <Modal
-    dismissible
-    show={showEmailPreview.value}
-    onClose={() => (showEmailPreview.value = false)}
-    className="bg-white"
-  >
-    <Modal.Body className="bg-white">
-      <div className="overflow-scroll">
-        <WithBody
-          {...dummyEmailProps}
-          donee={{ ...dummyEmailProps.donee, ...donee }}
-          body={formatEmailBody(emailBody.value, dummyEmailProps.donation.name)}
-        />
-      </div>
-    </Modal.Body>
-    <Modal.Footer className="bg-white">
-      <Button color="blue" onClick={() => (showEmailPreview.value = false)}>
-        Close
-      </Button>
-    </Modal.Footer>
-  </Modal>
-)
+const EmailPreview = ({ donee }: { donee: DoneeInfo }) => {
+  const [showEmailPreview, setShowEmailPreview] = useAtom(atoms.showEmailPreview)
+  const emailBody = useAtomValue(atoms.emailBody)
+  return (
+    <Modal
+      dismissible
+      show={showEmailPreview}
+      onClose={() => setShowEmailPreview(false)}
+      className="bg-white"
+    >
+      <Modal.Body className="bg-white">
+        <div className="overflow-scroll">
+          <WithBody
+            {...dummyEmailProps}
+            donee={{ ...dummyEmailProps.donee, ...donee }}
+            body={formatEmailBody(emailBody, dummyEmailProps.donation.name)}
+          />
+        </div>
+      </Modal.Body>
+      <Modal.Footer className="bg-white">
+        <Button color="blue" onClick={() => setShowEmailPreview(false)}>
+          Close
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  )
+}
 
 const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory[] }) => (
   <details className="group flex w-full items-center justify-between rounded-xl border border-gray-200 p-3 text-left font-medium   text-gray-500 open:bg-gray-100 open:p-5 hover:bg-gray-100 dark:border-gray-500 dark:text-gray-400 dark:open:bg-gray-800 dark:hover:bg-gray-800">
@@ -136,44 +142,31 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory[] })
   </details>
 )
 
-function handleError(error: ApiError) {
+function getErrorText(error: ApiError) {
   switch (error.statusCode) {
     case 400:
       switch (error.message) {
         case "checksum mismatch":
-          emailFailureText.value =
-            "There has been a change to your accounting data. Please review your receipts again before sending."
-          break
+          return "There has been a change to your accounting data. Please review your receipts again before sending."
         case "data missing":
-          emailFailureText.value =
-            "Data is unexpectedly missing from your account. Please reload the page and try again. \
-                      If this continues please contact an administrator."
+          return "Data is unexpectedly missing from your account. Please reload the page and try again. \
+                  If this continues please contact an administrator."
         default:
-          emailFailureText.value =
-            "There was an unexpected client error. If this continues please contact an administrator. \
-                      If this continues please contact an administrator."
+          return "There was an unexpected client error. If this continues please contact an administrator. \
+                  If this continues please contact an administrator."
       }
-      showEmailFailureToast.value = true
-      break
     case 401:
       switch (error.message) {
         case "not subscribed":
-          emailFailureText.value =
-            "There was error with your subscription. Please reload the page and try again. \
-                      If this continues please contact an administrator."
-          break
+          return "There was error with your subscription. Please reload the page and try again. \
+                  If this continues please contact an administrator."
         default:
-          emailFailureText.value =
-            "There was an unexpected error with your authentication. If this continues please contact an administrator."
+          return "There was an unexpected error with your authentication. If this continues please contact an administrator."
       }
-      showEmailFailureToast.value = true
-      break
     case 429:
-      showEmailFailureToast.value = true
-      emailFailureText.value =
-        "You are only allowed 5 email campaigns within a 24 hour period on your current plan."
-      break
+      return "You are only allowed 5 email campaigns within a 24 hour period on your current plan."
     case 500:
+    default:
       throw error
   }
 }
@@ -187,27 +180,32 @@ function SendEmails({
   emailHistory: EmailHistory[] | null
   checksum: string
 }) {
+  const emailBody = useAtomValue(atoms.emailBody)
+  const [showSendEmail, setShowSendEmail] = useAtom(atoms.showSendEmail)
+  const setEmailFailureTest = useSetAtom(atoms.emailFailureText)
+  const setShowEmailFailureToast = useSetAtom(atoms.showEmailFailureToast)
+
   const handler = async () => {
     const data: EmailDataType = {
-      emailBody: emailBody.value,
+      emailBody: emailBody,
       recipientIds: Array.from(recipients),
       checksum,
     }
     try {
       await postJsonData("/api/email", data)
-      showSendEmail.value = false
+      setShowSendEmail(false)
     } catch (error) {
       console.error(error)
       if (!(error instanceof ApiError)) throw error
-      batch(() => {
-        handleError(error as ApiError)
-        showSendEmail.value = false
-      })
+      const errText = getErrorText(error)
+      setEmailFailureTest(errText)
+      setShowEmailFailureToast(true)
+      setShowSendEmail(false)
     }
   }
 
   return (
-    <Modal show={showSendEmail.value} size="lg" popup onClose={() => (showSendEmail.value = false)}>
+    <Modal show={showSendEmail} size="lg" popup onClose={() => setShowSendEmail(false)}>
       <Modal.Header />
       <Modal.Body>
         <div className="space-y-4 text-center">
@@ -222,7 +220,7 @@ function SendEmails({
             <Button color="failure" onClick={handler}>
               Yes, I{"'"}m sure
             </Button>
-            <Button color="gray" onClick={() => (showSendEmail.value = false)}>
+            <Button color="gray" onClick={() => setShowSendEmail(false)}>
               No, cancel
             </Button>
           </div>
@@ -309,6 +307,11 @@ export function CompleteAccountEmail({
   const [selectedRecipientIds, setSelectedRecipientIds] = useState(
     new Set<string>(defaultRecipientIds),
   )
+  const setShowEmailPreview = useSetAtom(atoms.showEmailPreview)
+  const setShowSendEmail = useSetAtom(atoms.showSendEmail)
+  const [showEmailSentToast, setShowEmailSentToast] = useAtom(atoms.showEmailSentToast)
+  const [showEmailFailureToast, setShowEmailFailureToast] = useAtom(atoms.showEmailFailureToast)
+  const emailFailureText = useAtomValue(atoms.emailFailureText)
 
   const trimmedHistory =
     customRecipients && emailHistory
@@ -345,14 +348,14 @@ export function CompleteAccountEmail({
       </form>
       <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
         <div className="flex justify-center gap-4">
-          <Button color="blue" onClick={() => (showEmailPreview.value = true)}>
+          <Button color="blue" onClick={() => setShowEmailPreview(true)}>
             Show Preview Email
           </Button>
           <Button
             color="blue"
             className={selectedRecipientIds.size > 0 ? undefined : "line-through"}
             disabled={selectedRecipientIds.size === 0}
-            onClick={() => (showSendEmail.value = true)}
+            onClick={() => setShowSendEmail(true)}
           >
             Send Emails
           </Button>
@@ -369,16 +372,14 @@ export function CompleteAccountEmail({
         emailHistory={trimmedHistory}
         checksum={checksum}
       />
-      {showEmailSentToast.value && (
-        <EmailSentToast onDismiss={() => (showEmailSentToast.value = false)} />
-      )}
-      {showEmailFailureToast.value && (
+      {showEmailSentToast && <EmailSentToast onDismiss={() => setShowEmailSentToast(false)} />}
+      {showEmailFailureToast && (
         <Toast className="fixed bottom-5 right-5">
           <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200">
             <EnvelopeIcon className="h-5 w-5" />
           </div>
-          <div className="ml-3 text-sm font-normal">{emailFailureText.value}</div>
-          <Toast.Toggle onDismiss={() => (showEmailFailureToast.value = false)} />
+          <div className="ml-3 text-sm font-normal">{emailFailureText}</div>
+          <Toast.Toggle onDismiss={() => setShowEmailFailureToast(false)} />
         </Toast>
       )}
     </section>

@@ -3,7 +3,7 @@
 import { FileInput, Label } from "flowbite-react"
 import { ChangeEventHandler, ReactNode, useState } from "react"
 
-import { isFileSupported, supportedExtensions } from "@/lib/util/image-helper"
+import { isFileSupported } from "@/lib/util/image-helper"
 
 export function ImageInput({
   label,
