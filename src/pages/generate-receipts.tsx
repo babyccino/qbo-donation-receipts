@@ -51,7 +51,7 @@ const ShowReceipt = dynamic(() => import("@/components/receipt/pdf").then(imp =>
   loadImmediately: true,
 })
 
-function DownloadAllFiles({ accountId }: { accountId: string }) {
+function DownloadAllFiles() {
   const [loading, setLoading] = useState(false)
 
   const onClick = async () => {
@@ -160,12 +160,10 @@ type Props = (
       donations: Donation[]
       doneeInfo: Omit<DoneeInfo, "accountId" | "createdAt" | "id" | "updatedAt">
       subscribed: boolean
-      accountId: string
     }
   | {
       receiptsReady: false
       filledIn: { items: boolean; doneeDetails: boolean }
-      accountId: string
     }
 ) &
   LayoutProps
@@ -221,7 +219,7 @@ export default function IndexPage(props: Props) {
 
   if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
-  const { doneeInfo, subscribed, accountId } = props
+  const { doneeInfo, subscribed } = props
   const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
@@ -254,7 +252,7 @@ export default function IndexPage(props: Props) {
     <section className="flex h-full w-full flex-col p-8">
       <Show when={subscribed}>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <DownloadAllFiles accountId={accountId} />
+          <DownloadAllFiles />
           <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
             <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
             <Link href="/email">Email</Link>
@@ -398,7 +396,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       props: {
         receiptsReady: false,
         filledIn: { doneeDetails: Boolean(doneeInfo), items: Boolean(userData) },
-        accountId: account.id,
         session,
         companies: accountList,
         selectedAccountId: account.id,
@@ -429,7 +426,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       donations: subscribed ? donations : donations.slice(0, 3),
       doneeInfo,
       subscribed,
-      accountId,
       companies: accountList,
       selectedAccountId: account.id,
     } satisfies Props,
