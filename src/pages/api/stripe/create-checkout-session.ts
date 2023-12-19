@@ -44,6 +44,7 @@ const handler: AuthorisedHandler = async ({ body }, res, session) => {
       },
       success_url: `${getBaseUrl()}/${redirect || ""}`,
       cancel_url: `${getBaseUrl()}/`,
+      allow_promotion_codes: true,
     }),
   ])
   if (subscription && isUserSubscribed(subscription))
