@@ -18,8 +18,8 @@ const Info = () => (
         </h2>
         <p className="mb-4">
           With DonationReceipt.Online, managing your donation receipts has never been easier.
-          Download and preview your receipts, and soon you{"'"}ll even be able to automatically send
-          them to your donors. Seamlessly integrate with QuickBooks Online by signing in to
+          Download, preview, and automatically send your donation receipts to your donors. Our
+          application seamlessly integrate with QuickBooks Online by signing in to
           DonationReceipt.Online using your QuickBooks account. By utilizing your QuickBooks Online
           data, we simplify the process of creating personalized donation receipts for your donors.
           Simplify your receipt management and enhance your donor relationships with
@@ -29,14 +29,14 @@ const Info = () => (
       <div className="relative mt-8 grid grid-cols-2 gap-4">
         <Image
           className="w-full rounded-lg"
-          src="/images/using-calc.webp"
+          src="/images/generate-receipts.webp"
           alt="person recording donations"
           width={100}
           height={100}
         />
         <Image
           className="mt-4 w-full rounded-lg lg:mt-10"
-          src="/images/volunteering.webp"
+          src="/images/sample-receipt.webp"
           alt="people volunteering"
           width={100}
           height={100}
