@@ -592,8 +592,6 @@ export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req,
     where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
   })) as { companyName: string; id: string }[]
 
-  if (session.accountId !== null && accountList.length === 0)
-    throw new ApiError(500, "session has account id but this was not found in the database")
   if (session.accountId === null && accountList.length > 0) {
     await db
       .update(sessions)

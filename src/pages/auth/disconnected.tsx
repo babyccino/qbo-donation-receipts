@@ -9,6 +9,7 @@ import { Connect } from "@/components/qbo"
 import { db } from "@/lib/db"
 import { accounts, sessions } from "db/schema"
 import { authOptions } from "../api/auth/[...nextauth]"
+import App from "next/app"
 
 const Disconnected = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">
@@ -42,8 +43,6 @@ export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req,
     where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
   })) as { companyName: string; id: string }[]
 
-  if (session.accountId !== null && accountList.length === 0)
-    throw new ApiError(500, "session has account id but this was not found in the database")
   if (session.accountId === null && accountList.length > 0) {
     await db
       .update(sessions)
