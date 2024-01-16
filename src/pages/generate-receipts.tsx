@@ -1,7 +1,7 @@
 import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
 import { and, desc, eq, isNotNull } from "drizzle-orm"
-import { Alert, Button, Card } from "flowbite-react"
+import { Alert, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
@@ -16,15 +16,15 @@ import {
   DummyShowReceipt,
   ShowReceiptLoading,
 } from "@/components/receipt/pdf-dumb"
-import { MissingData } from "@/components/ui"
+import { LoadingButton, MissingData } from "@/components/ui"
 import {
   disconnectedRedirect,
   refreshTokenIfNeeded,
   signInRedirect,
 } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db"
 import { downloadImageAndConvertToPng } from "@/lib/db/db-helper"
 import { storageBucket } from "@/lib/db/firebase"
-import { db } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getThisYear } from "@/lib/util/date"
@@ -65,9 +65,9 @@ function DownloadAllFiles() {
   return (
     <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
-      <Button onClick={onClick} disabled={loading} color="blue">
-        {loading ? "...Creating download" : "Download"}
-      </Button>
+      <LoadingButton loading={loading} onClick={onClick} disabled={loading} color="primary">
+        Download
+      </LoadingButton>
     </div>
   )
 }
@@ -81,9 +81,13 @@ const ReceiptLimitCard = () => (
       To save and send all of your organisation{"'"}s receipts click the link below to go pro
     </p>
     <div className="">
-      <Button color="blue" onClick={() => subscribe("/generate-receipts")}>
+      <LoadingButton
+        loadingImmediately
+        color="blue"
+        onClick={() => subscribe("/generate-receipts")}
+      >
         Click here to go pro!
-      </Button>
+      </LoadingButton>
     </div>
   </Card>
 )

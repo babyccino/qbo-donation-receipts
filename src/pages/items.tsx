@@ -10,9 +10,11 @@ import { ChangeEventHandler, FormEventHandler, useMemo, useRef, useState } from 
 
 import { Fieldset, Legend, Toggle } from "@/components/form"
 import { LayoutProps } from "@/components/layout"
-import { buttonStyling } from "@/components/link"
-import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
-import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
+import {
+  disconnectedRedirect,
+  refreshTokenIfNeeded,
+  signInRedirect,
+} from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { getItems } from "@/lib/qbo-api"
 import {
@@ -31,6 +33,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
 import { Item } from "@/types/qbo-api"
 import { accounts, sessions } from "db/schema"
+import { LoadingButton, LoadingSubmitButton } from "@/components/ui"
 
 const DumbDatePicker = () => (
   <div className="relative w-full text-gray-700">
@@ -94,6 +97,7 @@ function getDateRangeType({ startDate, endDate }: DateRange): DateRangeType {
 export default function Items(serialisedProps: SerialisedProps) {
   const props = useMemo(() => deSerialiseDates({ ...serialisedProps }), [serialisedProps])
   const { items, detailsFilledIn } = props
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
   const inputRefs = useRef<HTMLInputElement[]>([])
   const formRef = useRef<HTMLFormElement>(null)
@@ -147,6 +151,7 @@ export default function Items(serialisedProps: SerialisedProps) {
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
+    setLoading(true)
 
     const items = getItems()
     const postData: ItemsApiDataType = { items, dateRange: customDateState }
@@ -222,11 +227,9 @@ export default function Items(serialisedProps: SerialisedProps) {
           /> */}
         </p>
       </Fieldset>
-      <input
-        className={buttonStyling + " text-l"}
-        type="submit"
-        value={detailsFilledIn ? "Generate Receipts" : "Enter Donee Details"}
-      />
+      <LoadingSubmitButton loading={loading} color="blue">
+        {detailsFilledIn ? "Generate Receipts" : "Enter Donee Details"}
+      </LoadingSubmitButton>
     </form>
   )
 }

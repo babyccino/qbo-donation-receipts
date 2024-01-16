@@ -1,11 +1,9 @@
 import { and, desc, eq, isNotNull } from "drizzle-orm"
-import { Button } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
-import { ApiError } from "next/dist/server/api-utils"
 
 import { LayoutProps } from "@/components/layout"
-import { PricingCard } from "@/components/ui"
+import { LoadingButton, PricingCard } from "@/components/ui"
 import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { isUserSubscribedSql } from "@/lib/stripe"
@@ -24,20 +22,23 @@ export default function Subscribe() {
           title="Subscribe to use this feature"
           plan="pro"
           button={
-            <Button
+            <LoadingButton
+              loadingImmediately
               onClick={e => {
                 e.preventDefault()
                 subscribe("/subscribe")
               }}
             >
               Go pro
-            </Button>
+            </LoadingButton>
           }
         />
       </div>
     </section>
   )
 }
+
+// --- server-side props ---
 
 export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)

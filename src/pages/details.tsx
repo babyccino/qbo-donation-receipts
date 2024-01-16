@@ -4,11 +4,10 @@ import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { useRouter } from "next/router"
-import { FormEventHandler, useRef } from "react"
+import { FormEventHandler, useRef, useState } from "react"
 
 import { Fieldset, ImageInput, Legend } from "@/components/form"
 import { LayoutProps } from "@/components/layout"
-import { buttonStyling } from "@/components/link"
 import {
   disconnectedRedirect,
   refreshTokenIfNeeded,
@@ -26,6 +25,7 @@ import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo, accounts, sessions } from "db/schema"
+import { LoadingButton, LoadingSubmitButton } from "@/components/ui"
 
 const imageHelper = "PNG, JPG, WebP or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -45,6 +45,7 @@ type Props = {
 } & LayoutProps
 
 export default function Details({ doneeInfo, itemsFilledIn }: Props) {
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -69,6 +70,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
+    setLoading(true)
 
     const formData = await getFormData()
     await postJsonData("/api/details", formData satisfies DetailsApiDataType)
@@ -167,11 +169,9 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
           required={!Boolean(doneeInfo.smallLogo)}
         />
         <div className="flex flex-row items-center justify-center sm:col-span-2">
-          <input
-            className={buttonStyling + " text-l"}
-            type="submit"
-            value={itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
-          />
+          <LoadingSubmitButton loading={loading} color="blue">
+            {itemsFilledIn ? "Generate Receipts" : "Select Qualifying Items"}
+          </LoadingSubmitButton>
         </div>
       </Fieldset>
     </form>

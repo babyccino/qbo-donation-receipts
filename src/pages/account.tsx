@@ -11,10 +11,10 @@ import { useMemo } from "react"
 
 import { LayoutProps } from "@/components/layout"
 import { Connect } from "@/components/qbo"
-import { PricingCard } from "@/components/ui"
+import { LoadingButton, PricingCard } from "@/components/ui"
 import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
-import { getImageUrl } from "@/lib/db/db-helper"
 import { db } from "@/lib/db"
+import { getImageUrl } from "@/lib/db/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
 import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
@@ -166,14 +166,15 @@ export default function AccountPage(serialisedProps: SerialisedProps) {
           plan={subscribed ? "pro" : "free"}
           button={
             !subscribed ? (
-              <Button
+              <LoadingButton
+                loadingImmediately
                 onClick={e => {
                   e.preventDefault()
                   subscribe("/account")
                 }}
               >
                 Go pro
-              </Button>
+              </LoadingButton>
             ) : undefined
           }
         />

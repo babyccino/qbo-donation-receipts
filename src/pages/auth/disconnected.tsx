@@ -2,14 +2,12 @@ import { and, eq, isNotNull } from "drizzle-orm"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { signIn } from "next-auth/react"
-import { ApiError } from "next/dist/server/api-utils"
 
 import { LayoutProps } from "@/components/layout"
 import { Connect } from "@/components/qbo"
 import { db } from "@/lib/db"
 import { accounts, sessions } from "db/schema"
 import { authOptions } from "../api/auth/[...nextauth]"
-import App from "next/app"
 
 const Disconnected = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">

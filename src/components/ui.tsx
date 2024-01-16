@@ -1,12 +1,13 @@
 // svg from heroicons.dev
 // hand drawn arrows from svgrepo.com
 import { CheckIcon, EnvelopeIcon, XMarkIcon } from "@heroicons/react/24/solid"
-import { Card, Toast } from "flowbite-react"
+import { Button, Card, ButtonProps as FlowbiteButtonProps, Spinner, Toast } from "flowbite-react"
 import { ToastToggleProps } from "flowbite-react/lib/esm/components/Toast/ToastToggle"
-import { ReactNode } from "react"
+import { InputHTMLAttributes, ReactNode, useState } from "react"
+import { twMerge } from "tailwind-merge"
 
+import { Link, buttonStyling } from "@/components/link"
 import { Show } from "@/lib/util/react"
-import { Link } from "@/components/link"
 
 export const MissingData = ({
   filledIn,
@@ -94,3 +95,72 @@ export const EmailSentToast = ({ onDismiss }: { onDismiss?: ToastToggleProps["on
     <Toast.Toggle onDismiss={onDismiss} />
   </Toast>
 )
+
+const LoadingButtonInner = ({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) => (
+  <div className={twMerge(className, buttonStyling, "relative cursor-wait")}>
+    <div className="absolute left-1/2 -translate-x-1/2">
+      <Spinner />
+    </div>
+    <span className="opacity-0">{children}</span>
+  </div>
+)
+
+type SubmitProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "children"> & {
+  children: string
+  loading: boolean
+}
+export function LoadingSubmitButton({ loading, children, ...props }: SubmitProps) {
+  if (loading) return <LoadingButtonInner className={props.className} children={children} />
+  else
+    return (
+      <input
+        {...props}
+        className={twMerge(props.className, buttonStyling)}
+        type="submit"
+        value={children}
+      />
+    )
+}
+
+type ButtonProps = FlowbiteButtonProps &
+  (
+    | { loadingImmediately: true }
+    | {
+        loading: boolean
+      }
+  )
+export function LoadingButton(props: ButtonProps) {
+  if ("loadingImmediately" in props && props.loadingImmediately)
+    return <LoadingButtonImmediately {...props} />
+  else return <_LoadingButton {...(props as ButtonProps & { loading: boolean })} />
+}
+function _LoadingButton(
+  props: FlowbiteButtonProps & {
+    loading: boolean
+  },
+) {
+  if (props.loading)
+    return <LoadingButtonInner className={props.className} children={props.children} />
+  else return <Button {...props}></Button>
+}
+function LoadingButtonImmediately(props: FlowbiteButtonProps) {
+  const [loading, setLoading] = useState(false)
+
+  if (loading) return <LoadingButtonInner className={props.className} children={props.children} />
+  return (
+    <Button
+      {...props}
+      onClick={e => {
+        setLoading(true)
+        props.onClick?.(e)
+      }}
+      className={props.className}
+    />
+  )
+}

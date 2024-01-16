@@ -1,14 +1,23 @@
-import { Button, Label, TextInput } from "flowbite-react"
+import { accounts, sessions } from "db/schema"
+import { and, eq, isNotNull } from "drizzle-orm"
+import { Label, TextInput } from "flowbite-react"
+import { GetServerSideProps } from "next"
+import { getServerSession } from "next-auth"
 import { FormEventHandler, useRef, useState } from "react"
 
 import { TextArea } from "@/components/form"
-import { EmailSentToast } from "@/components/ui"
+import { LayoutProps } from "@/components/layout"
+import { EmailSentToast, LoadingSubmitButton } from "@/components/ui"
+import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
+import { db } from "@/lib/db"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as ContactDataType } from "@/pages/api/support"
+import { authOptions } from "./api/auth/[...nextauth]"
 
 function Support() {
   const formRef = useRef<HTMLFormElement>(null)
   const [showEmailSentToast, setShowEmailSentToast] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   function getFormData() {
     if (!formRef.current) throw new Error("Form html element has not yet been initialised")
@@ -28,8 +37,10 @@ function Support() {
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
+    setLoading(true)
     const formData: ContactDataType = getFormData()
     const apiResponse = await postJsonData("/api/support", formData)
+    setLoading(false)
     setShowEmailSentToast(true)
   }
 
@@ -71,12 +82,12 @@ function Support() {
             rows={6}
             required
           />
-          <Button
-            type="submit"
+          <LoadingSubmitButton
+            loading={loading}
             className="bg-primary-700 hover:bg-primary-800 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
           >
             Send message
-          </Button>
+          </LoadingSubmitButton>
         </form>
       </div>
       {showEmailSentToast && <EmailSentToast onDismiss={() => setShowEmailSentToast(false)} />}
@@ -86,17 +97,6 @@ function Support() {
 export default Support
 
 // --- server-side props ---
-
-import { and, eq, isNotNull } from "drizzle-orm"
-import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
-import { ApiError } from "next/dist/server/api-utils"
-
-import { LayoutProps } from "@/components/layout"
-import { db } from "@/lib/db"
-import { accounts, sessions } from "db/schema"
-import { authOptions } from "./api/auth/[...nextauth]"
-import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
 
 export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)

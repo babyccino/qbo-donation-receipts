@@ -1,5 +1,6 @@
+import { Spinner } from "flowbite-react"
 import NextLink from "next/link"
-import { ComponentProps } from "react"
+import { ComponentProps, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
 export const buttonStyling =
@@ -8,3 +9,28 @@ export const buttonStyling =
 export const Link = (props: ComponentProps<typeof NextLink>) => (
   <NextLink {...props} className={twMerge(props.className, buttonStyling)}></NextLink>
 )
+export function LoadingLink(props: ComponentProps<typeof NextLink>) {
+  const [loading, setLoading] = useState(false)
+
+  if (!loading)
+    return (
+      <div className={twMerge(props.className, buttonStyling, "relative cursor-wait")}>
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <Spinner />
+        </div>
+        <span className="opacity-0">{props.children}</span>
+      </div>
+    )
+  return (
+    <NextLink
+      {...props}
+      onClick={e => {
+        setLoading(true)
+        props.onClick?.(e)
+      }}
+      className={twMerge(props.className, buttonStyling)}
+    >
+      {props.children}
+    </NextLink>
+  )
+}

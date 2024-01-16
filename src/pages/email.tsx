@@ -14,7 +14,7 @@ import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
 import { LayoutProps } from "@/components/layout"
-import { EmailSentToast, MissingData } from "@/components/ui"
+import { EmailSentToast, LoadingButton, MissingData } from "@/components/ui"
 import { dummyEmailProps } from "@/emails/props"
 import { disconnectedRedirect, signInRedirect } from "@/lib/auth/next-auth-helper-server"
 import { storageBucket } from "@/lib/db/firebase"
@@ -40,6 +40,7 @@ import {
   sessions,
   users,
 } from "db/schema"
+import { set } from "zod"
 
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
@@ -211,7 +212,10 @@ function SendEmails({
   emailHistory: EmailHistory[] | null
   checksum: string
 }) {
+  const [loading, setLoading] = useState(false)
+
   const handler = async () => {
+    setLoading(true)
     const data: EmailDataType = {
       emailBody: emailBody.value,
       recipientIds: Array.from(recipients),
@@ -219,8 +223,10 @@ function SendEmails({
     }
     try {
       await postJsonData("/api/email", data)
+      setLoading(false)
       showSendEmail.value = false
     } catch (error) {
+      setLoading(false)
       console.error(error)
       if (!(error instanceof ApiError)) throw error
       batch(() => {
@@ -243,9 +249,9 @@ function SendEmails({
             Are you certain you wish to email all of your donors?
           </p>
           <div className="flex justify-center gap-4">
-            <Button color="failure" onClick={handler}>
+            <LoadingButton loading={loading} color="failure" onClick={handler}>
               Yes, I{"'"}m sure
-            </Button>
+            </LoadingButton>
             <Button color="gray" onClick={() => (showSendEmail.value = false)}>
               No, cancel
             </Button>

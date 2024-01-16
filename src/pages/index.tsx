@@ -1,4 +1,5 @@
 import { ArrowRightIcon, CheckIcon } from "@heroicons/react/24/solid"
+import { accounts, sessions } from "db/schema"
 import { and, desc, eq, isNotNull } from "drizzle-orm"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
@@ -12,8 +13,6 @@ import { Link as StyledLink } from "@/components/link"
 import { db } from "@/lib/db"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { QboPermission } from "@/types/next-auth-helper"
-import { accounts, sessions } from "db/schema"
 
 import HandDrawnUpArrow from "@/public/svg/hand-drawn-up-arrow.svg"
 
