@@ -42,14 +42,23 @@ export default function Layout(
   const { children, session } = props
   const user = session?.user
   const [showSidebar, setShowSidebar] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const companies = props.companies?.length ? props.companies : undefined
   const otherCompanies = companies?.filter(company => company.id !== props.selectedAccountId)
 
   useEffect(() => {
-    const cb = () => setShowSidebar(false)
-    router.events.on("routeChangeStart", cb)
-    return () => router.events.off("routeChangeStart", cb)
+    const routeChangeStartCb = () => {
+      setShowSidebar(false)
+      setLoading(true)
+    }
+    const routeChangeEndCb = () => setLoading(false)
+    router.events.on("routeChangeStart", routeChangeStartCb)
+    router.events.on("routeChangeComplete", routeChangeEndCb)
+    return () => {
+      router.events.off("routeChangeStart", routeChangeStartCb)
+      router.events.off("routeChangeComplete", routeChangeEndCb)
+    }
   }, [router.events])
 
   return (
@@ -155,7 +164,13 @@ export default function Layout(
       </header>
       <div className="hidden w-64 sm:block" />
 
-      <main className="flex min-h-screen flex-1 flex-col items-center">{children}</main>
+      <main
+        className={
+          "flex min-h-screen flex-1 flex-col items-center " + (loading ? "opacity-50" : "")
+        }
+      >
+        {children}
+      </main>
     </div>
   )
 }
