@@ -1,11 +1,10 @@
 import { accounts, sessions } from "db/schema"
 import { and, eq, isNotNull } from "drizzle-orm"
-import { Label, TextInput } from "flowbite-react"
+import { Label, TextInput, Textarea } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { FormEventHandler, useRef, useState } from "react"
 
-import { TextArea } from "@/components/form"
 import { LayoutProps } from "@/components/layout"
 import { EmailSentToast, LoadingSubmitButton } from "@/components/ui"
 import { signInRedirect } from "@/lib/auth/next-auth-helper-server"
@@ -13,6 +12,11 @@ import { db } from "@/lib/db"
 import { postJsonData } from "@/lib/util/request"
 import { DataType as ContactDataType } from "@/pages/api/support"
 import { authOptions } from "./api/auth/[...nextauth]"
+import {
+  htmlRegularCharactersRegexString,
+  regularCharacterHelperText,
+  regularCharacterRegex,
+} from "@/lib/util/regex"
 
 function Support() {
   const formRef = useRef<HTMLFormElement>(null)
@@ -37,7 +41,7 @@ function Support() {
 
   const onSubmit: FormEventHandler<HTMLFormElement> = async event => {
     event.preventDefault()
-    setLoading(true)
+    // setLoading(true)
     const formData: ContactDataType = getFormData()
     const apiResponse = await postJsonData("/api/support", formData)
     setLoading(false)
@@ -55,7 +59,9 @@ function Support() {
         </p>
         <form ref={formRef} onSubmit={onSubmit} className="space-y-8">
           <p>
-            <Label htmlFor="from">Your email</Label>
+            <Label className="mb-2 inline-block" htmlFor="from">
+              Your email
+            </Label>
             <TextInput
               name="from"
               id="from"
@@ -66,22 +72,31 @@ function Support() {
             />
           </p>
           <p>
-            <Label htmlFor="subject">Subject</Label>
+            <Label className="mb-2 inline-block" htmlFor="subject">
+              Subject
+            </Label>
             <TextInput
               name="subject"
               id="subject"
+              pattern={htmlRegularCharactersRegexString}
               minLength={5}
+              title={regularCharacterHelperText}
               placeholder="Let us know how we can help you"
             />
           </p>
-          <TextArea
-            id="body"
-            label="Leave a comment"
-            placeholder="Leave a comment..."
-            minLength={5}
-            rows={6}
-            required
-          />
+          <p>
+            <Label className="mb-2 inline-block" htmlFor="body">
+              Please describe the issue you're having
+            </Label>
+            <Textarea
+              name="body"
+              id="body"
+              minLength={5}
+              rows={6}
+              placeholder="How can we help you?..."
+              required
+            />
+          </p>
           <LoadingSubmitButton
             loading={loading}
             className="bg-primary-700 hover:bg-primary-800 focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"

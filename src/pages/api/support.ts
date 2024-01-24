@@ -1,24 +1,23 @@
-import { NextApiHandler } from "next"
+import { createId } from "@paralleldrive/cuid2"
+import { and, eq, gt, sql } from "drizzle-orm"
+import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 
+import { db } from "@/lib/db"
 import resend from "@/lib/resend"
-import { regularCharactersRegexString } from "@/lib/util/regex"
+import { regularCharacterRegex } from "@/lib/util/regex"
 import {
   AuthorisedHandler,
   createAuthorisedHandler,
   parseRequestBody,
 } from "@/lib/util/request-server"
-import { db } from "@/lib/db"
-import { and, eq, gt, sql } from "drizzle-orm"
 import { supportTickets } from "db/schema"
-import { ApiError } from "next/dist/server/api-utils"
-import { createId } from "@paralleldrive/cuid2"
 
 const DAY_LENGTH_MS = 1000 * 60 * 60 * 24
 
 export const parser = z.object({
   from: z.string().email(),
-  subject: z.string().min(5).regex(new RegExp(regularCharactersRegexString)),
+  subject: z.string().min(5).regex(regularCharacterRegex),
   body: z.string().min(5),
 })
 export type DataType = z.infer<typeof parser>
