@@ -1,13 +1,15 @@
-import { Checkbox, Label } from "flowbite-react"
+import { Checkbox, Label, Spinner } from "flowbite-react"
 import { signIn } from "next-auth/react"
 import Image from "next/image"
 import { useState } from "react"
 
 import { SignIn } from "@/components/qbo"
 import { useSearchParams } from "next/navigation"
+import { twMerge } from "tailwind-merge"
 
 export default function SignInPage() {
   const [checked, setChecked] = useState(false)
+  const [loading, setLoading] = useState(false)
   const searchParams = useSearchParams()
   const callback = searchParams?.get("callback")
 
@@ -34,13 +36,21 @@ export default function SignInPage() {
           </Label>
         </div>
         <button
-          className="mx-auto mt-4 inline-block"
+          className="mx-auto mt-4 inline-block bg-[#0077C5] rounded-md relative"
           onClick={e => {
             e.preventDefault()
+            setLoading(true)
             signIn("QBO-disconnected", { callbackUrl: "/" + (callback ?? "") })
           }}
         >
-          <SignIn disabled={!checked} />
+          {loading && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
+              <Spinner />
+            </div>
+          )}
+          <span className={loading ? "cursor-wait opacity-0" : ""}>
+            <SignIn disabled={!checked} />
+          </span>
         </button>
       </form>
     </div>
