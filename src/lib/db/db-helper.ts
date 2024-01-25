@@ -61,7 +61,7 @@ export async function downloadImageAsBuffer(storageBucket: Bucket, firestorePath
 
 export async function bufferToPngDataUrl(buffer: Buffer) {
   const outputBuf = await sharp(buffer).toFormat("png").toBuffer()
-  return bufferToDataUrl("iamge/png", outputBuf)
+  return bufferToDataUrl("image/png", outputBuf)
 }
 
 export async function downloadImageAndConvertToPng(storageBucket: Bucket, firestorePath: string) {
