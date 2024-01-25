@@ -140,7 +140,7 @@ export function LoadingButton(props: ButtonProps) {
     return <LoadingButtonImmediately {...props} />
   else return <_LoadingButton {...(props as ButtonProps & { loading: boolean })} />
 }
-function _LoadingButton(
+export function _LoadingButton(
   props: FlowbiteButtonProps & {
     loading: boolean
   },

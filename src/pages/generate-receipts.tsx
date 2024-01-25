@@ -65,7 +65,7 @@ function DownloadAllFiles() {
   return (
     <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
       <p className="inline font-normal text-gray-700 dark:text-gray-400">Download all receipts</p>
-      <LoadingButton loading={loading} onClick={onClick} disabled={loading} color="primary">
+      <LoadingButton loading={loading} onClick={onClick} disabled={loading} color="blue">
         Download
       </LoadingButton>
     </div>
