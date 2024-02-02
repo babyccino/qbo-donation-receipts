@@ -25,6 +25,7 @@ import {
 } from "@/lib/util/request-server"
 import { Donation } from "@/types/qbo-api"
 import { accounts, donations as donationsSchema, emailHistories } from "db/schema"
+import { wait } from "@/lib/util/etc"
 
 const DAY_LENGTH_MS = 1000 * 60 * 60 * 24
 
@@ -192,54 +193,80 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   if (!insertSuccess)
     throw new ApiError(500, "there was an error recording donations in the database")
 
-  const sendReceipt = async (entry: DonationWithEmail) => {
-    try {
-      const receiptNo = thisYear + counter * 10000
-      counter += 1
-      const props = {
-        currency: "CAD",
-        currentDate: new Date(),
-        donation: entry,
-        donationDate: userData.endDate,
-        donee: doneeWithPngDataUrls,
-        receiptNo,
-      }
-      const receiptBuffer = renderToBuffer(ReceiptPdfDocument(props))
-
-      const body = formatEmailBody(emailBody, entry.name)
-
-      await resend.emails.send({
-        from: `${companyName} <noreply@${config.domain}>`,
-        to: entry.email,
-        reply_to: email,
-        subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
-        attachments: [
-          {
-            filename: `${entry.name} Donations ${formatDateHtmlReverse(
-              userData.endDate,
-            )} - ${formatDateHtmlReverse(userData.startDate)}.pdf`,
-            content: await receiptBuffer,
-          },
-        ],
-        react: WithBody({
-          ...props,
-          donee: doneeWithWebpDataUrls,
-          body,
-        }),
-      })
-    } catch (e) {
-      return { donorId: entry.donorId, success: false }
+  type ReceiptSentSuccess = {
+    donorId: string
+    success: true
+    from: string
+    to: string
+    reply_to: string
+    subject: string
+    attachments: { filename: string; content: Buffer }[]
+    react: JSX.Element
+  }
+  async function getResendProps(entry: DonationWithEmail): Promise<ReceiptSentSuccess> {
+    const receiptNo = thisYear + counter * 10000
+    counter += 1
+    const props = {
+      currency: "CAD",
+      currentDate: new Date(),
+      donation: entry,
+      donationDate: userData.endDate,
+      donee: doneeWithPngDataUrls,
+      receiptNo,
     }
-    return { donorId: entry.donorId, success: true }
+
+    const body = formatEmailBody(emailBody, entry.name)
+    const receiptBuffer = await renderToBuffer(ReceiptPdfDocument(props))
+    return {
+      donorId: entry.donorId,
+      success: true,
+      from: `${companyName} <noreply@${config.domain}>`,
+      to: entry.email,
+      reply_to: email,
+      subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
+      attachments: [
+        {
+          filename: `${entry.name} Donations ${formatDateHtmlReverse(
+            userData.endDate,
+          )} - ${formatDateHtmlReverse(userData.startDate)}.pdf`,
+          content: receiptBuffer,
+        },
+      ],
+      react: WithBody({
+        ...props,
+        donee: doneeWithWebpDataUrls,
+        body,
+      }),
+    }
+  }
+  type ReceiptSentFailure = { donorId: string; success: false }
+  let receiptsSentSuccesses: string[] = []
+  let receiptsSentFailures: string[] = []
+  // batch the receipts to send in groups of maximum 100 receipts
+  while (receiptsToSend.length > 0) {
+    const batch = receiptsToSend.splice(0, 100)
+    const promises = batch.map(async (entry): Promise<ReceiptSentSuccess | ReceiptSentFailure> => {
+      try {
+        return getResendProps(entry)
+      } catch (e) {
+        return { donorId: entry.donorId, success: false }
+      }
+    })
+    const results = await Promise.all(promises)
+    const _receiptsSentSuccesses = results.filter(
+      (entry): entry is ReceiptSentSuccess => entry.success,
+    )
+    receiptsSentSuccesses = receiptsSentSuccesses.concat(
+      _receiptsSentSuccesses.map(entry => entry.donorId),
+    )
+    receiptsSentFailures = receiptsSentFailures.concat(
+      results.filter(entry => !entry.success).map(entry => entry.donorId),
+    )
+    // send the emails in the batch
+    // wait 1 second between each batch to avoid rate limiting
+    await Promise.all([resend.batch.send(_receiptsSentSuccesses), wait(1000)])
   }
 
-  const receiptsSent = await Promise.all(receiptsToSend.map(sendReceipt))
-  const receiptsSentSuccesses: string[] = []
-  const receiptsSentFailures: string[] = []
-  for (const { success, donorId } of receiptsSent) {
-    if (success) receiptsSentSuccesses.push(donorId)
-    else receiptsSentFailures.push(donorId)
-  }
   await Promise.all([
     receiptsSentFailures.length &&
       db
