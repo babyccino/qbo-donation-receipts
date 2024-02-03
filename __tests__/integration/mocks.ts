@@ -1,5 +1,4 @@
 import { createId } from "@paralleldrive/cuid2"
-import { Mock, mock } from "bun:test"
 import { eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
@@ -24,9 +23,9 @@ import {
 type ResMock = {
   getHeader: () => void
   setHeader: () => ResMock
-  status: Mock<(statusCode: number) => ResMock>
+  status: (statusCode: number) => ResMock
   end: () => void
-  json: Mock<(json: any) => void>
+  json: (json: any) => void
 }
 export function getMockApiContext(
   method: "GET" | "POST",
@@ -43,9 +42,9 @@ export function getMockApiContext(
   const res: ResMock = {
     getHeader: () => {},
     setHeader: () => res,
-    status: mock((statusCode: number) => res),
+    status: (statusCode: number) => res,
     end: () => {},
-    json: mock((json: any) => {}),
+    json: (json: any) => {},
   }
   return { req, res }
 }
@@ -68,7 +67,7 @@ export async function createUser(connected: boolean) {
     .insert(users)
     .values({
       id: userId,
-      email: Math.round(Math.random() * 10) + "@gmail.com",
+      email: Math.round(Math.random() * 15) + "@gmail.com",
       name: "Test User",
     })
     .returning()
