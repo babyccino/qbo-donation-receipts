@@ -18,6 +18,8 @@ export const endOfThisYear = () => new Date(getThisYear(), 11, 31)
 export const getCurrentDateHtml = () => formatDateHtml(new Date())
 export const utcEpoch = () => new Date(0)
 
+export const oneHrFromNow = () => new Date(Date.now() + 1000 * 60 * 60)
+
 export enum DateRangeType {
   LastYear = "LastYear",
   ThisYear = "ThisYear",

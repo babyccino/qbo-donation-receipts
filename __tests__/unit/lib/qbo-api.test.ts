@@ -7,6 +7,8 @@ import {
   addBillingAddressesToDonations,
   formatItemQuery,
   parseCompanyInfo,
+  makeSalesReportUrl,
+  makeQueryUrl,
 } from "@/lib/qbo-api"
 import {
   CustomerSalesReport,
@@ -16,6 +18,7 @@ import {
   ItemQueryResponse,
 } from "@/types/qbo-api"
 import { DeepPartial } from "@/lib/util/etc"
+import { config } from "@/lib/util/config"
 
 const Header = Object.freeze({
   Time: "2023-03-23T14:08:37.242Z",
@@ -908,5 +911,31 @@ describe("parseCompanyInfo", () => {
     expect(() => {
       parseCompanyInfo(companyInfoQueryResult)
     }).toThrow("No company info found")
+  })
+})
+
+describe("makeSalesReportUrl", () => {
+  test("should generate the correct report URL", () => {
+    const realmId = "123456789"
+    const startDate = new Date("2022-01-01")
+    const endDate = new Date("2022-12-31")
+
+    const result = makeSalesReportUrl(realmId, { startDate, endDate })
+
+    const expected = `${config.qboBaseApiRoute}/company/123456789/reports/CustomerSales?\
+summarize_column_by=ProductsAndServices&start_date=2022-01-01&end_date=2022-12-31`
+    expect(result).toEqual(expected)
+  })
+})
+
+describe("makeSalesReportUrl", () => {
+  test("makeQueryUrl should return the correct query URL", () => {
+    const realmId = "1234567890"
+    const query = "SELECT * FROM Customers"
+    const expected = `${config.qboBaseApiRoute}/company/${realmId}/query?query=${query}`
+
+    const result = makeQueryUrl(realmId, query)
+
+    expect(result).toEqual(expected)
   })
 })

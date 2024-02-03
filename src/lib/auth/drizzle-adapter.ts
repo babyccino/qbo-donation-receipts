@@ -6,13 +6,11 @@ import { ApiError } from "next/dist/server/api-utils"
 
 import { Account, Schema, accounts, sessions, users, verificationTokens } from "db/schema"
 import { getCompanyInfo } from "../qbo-api"
+import { oneHrFromNow } from "../util/date"
 
 const DEFAULT_QBO_REFRESH_PERIOD_DAYS = 101
 const SECONDS_IN_DAY = 60 * 60 * 24
 const DEFAULT_QBO_REFRESH_PERIOD_MS = DEFAULT_QBO_REFRESH_PERIOD_DAYS * SECONDS_IN_DAY * 1000
-
-const oneHrFromNow = () => new Date(Date.now() + 1000 * 60 * 60)
-
 export enum AccountStatus {
   Active = 0,
   AccessExpired,

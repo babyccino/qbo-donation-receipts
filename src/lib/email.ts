@@ -1,5 +1,5 @@
-import { DateRange, doDateRangesIntersect, getThisYear } from "@/lib/util/date"
-import { EmailHistory as DbEmailHistory, Donation as DbDonation } from "db/schema"
+import { getThisYear } from "@/lib/util/date"
+import { Donation as DbDonation, EmailHistory as DbEmailHistory } from "db/schema"
 
 export const templateDonorName = "FULL_NAME"
 export const formatEmailBody = (str: string, donorName: string) =>
