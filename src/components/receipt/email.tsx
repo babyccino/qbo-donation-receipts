@@ -86,16 +86,13 @@ export function DonationReceiptEmailInner({
       <Section style={sharedStyle.informationTable}>
         <Column>
           <Row style={sharedStyle.informationTableRow}>
-            <ColumnEntry
-              label="Donations Received"
-              content={donationDate.getFullYear().toString()}
-            />
+            <ColumnEntry label="Donations Received" content={donationDate} />
           </Row>
           <Row style={sharedStyle.informationTableRow}>
             <ColumnEntry label="Location Issued" content={donee.country} />
           </Row>
           <Row style={sharedStyle.informationTableRow}>
-            <ColumnEntry label="Receipt Issued" content={formatDate(donationDate)} />
+            <ColumnEntry label="Receipt Issued" content={formatDate(new Date())} />
           </Row>
         </Column>
         <Column>

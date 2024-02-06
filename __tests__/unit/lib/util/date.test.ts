@@ -6,6 +6,7 @@ import {
   formatDate,
   formatDateHtml,
   formatDateHtmlReverse,
+  getDonationRange,
 } from "@/lib/util/date"
 
 describe("formatDate", () => {
@@ -51,5 +52,61 @@ describe("doDateRangesIntersect", () => {
     const date6: DateRange = { startDate: new Date("2022-07-01"), endDate: new Date("2023-06-30") }
     const date7: DateRange = { startDate: new Date("2023-01-01"), endDate: new Date("2023-12-31") }
     expect(doDateRangesIntersect(date6, date7)).toBeTruthy()
+  })
+})
+
+describe("getDonationRange", () => {
+  test("returns correct range when donations span a single month", () => {
+    const startDate = new Date("2023-04-01T00:00:00.000Z")
+    const endDate = new Date("2023-04-30T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2023 April")
+  })
+
+  test("returns correct range when dates are in different years", () => {
+    const startDate = new Date("2022-12-01T00:00:00.000Z")
+    const endDate = new Date("2023-01-31T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2022-12-01 - 2023-01-31")
+  })
+
+  test("returns correct range when month start and end are on the first and last day of the month and different years", () => {
+    const startDate = new Date("2022-01-01T00:00:00.000Z")
+    const endDate = new Date("2023-12-31T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2022 - 2023")
+  })
+
+  test("returns correct range when month start and end are on the first and last day of the month and same year", () => {
+    const startDate = new Date("2022-01-01T00:00:00.000Z")
+    const endDate = new Date("2022-12-31T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2022")
+  })
+
+  test("returns correct range when month start and end are not on the first and last day of the month", () => {
+    const startDate = new Date("2023-04-01T00:00:00.000Z")
+    const endDate = new Date("2023-05-15T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2023-04-01 - 2023-05-15")
+  })
+
+  test("returns correct range when month start and end are not on the first and last day of the month and different years", () => {
+    const startDate = new Date("2022-12-15T00:00:00.000Z")
+    const endDate = new Date("2023-01-15T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2022-12-15 - 2023-01-15")
+  })
+
+  test("returns correct range when month start and end are on the first and last day of the month and same year but different months", () => {
+    const startDate = new Date("2022-04-01T00:00:00.000Z")
+    const endDate = new Date("2022-05-31T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2022 April - May")
+  })
+
+  test("returns correct range when month start and end are on the first and last day of the month and different years but same months", () => {
+    const startDate = new Date("2022-04-01T00:00:00.000Z")
+    const endDate = new Date("2023-04-30T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2022-04-01 - 2023-04-30")
+  })
+
+  test("returns correct range when month start and end are not on the first and last day of the month and different years but same months", () => {
+    const startDate = new Date("2022-04-15T00:00:00.000Z")
+    const endDate = new Date("2023-04-15T00:00:00.000Z")
+    expect(getDonationRange(startDate, endDate)).toEqual("2022-04-15 - 2023-04-15")
   })
 })

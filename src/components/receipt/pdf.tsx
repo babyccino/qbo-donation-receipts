@@ -125,9 +125,9 @@ export function ReceiptPdfDocument({
         </View>
         <View style={[styleSheet.informationTable, { justifyContent: "space-between" }]}>
           <View>
-            <PdfField label="Donations Received" content={donationDate.getFullYear().toString()} />
+            <PdfField label="Donations Received" content={donationDate} />
             <PdfField label="Location Issued" content={donee.country} />
-            <PdfField label="Receipt Issued" content={formatDate(donationDate)} />
+            <PdfField label="Receipt Issued" content={formatDate(new Date())} />
           </View>
           <View style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
             <PdfText

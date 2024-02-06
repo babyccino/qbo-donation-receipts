@@ -8,7 +8,7 @@ import { downloadImagesForDonee } from "@/lib/db/db-helper"
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
 import { getDonations } from "@/lib/qbo-api"
-import { getThisYear } from "@/lib/util/date"
+import { getDonationRange, getThisYear } from "@/lib/util/date"
 import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/util/request-server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { accounts } from "db/schema"
@@ -68,6 +68,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     downloadImagesForDonee(doneeInfo, storageBucket),
   ])
 
+  const donationDate = getDonationRange(userData.startDate, userData.endDate)
   const zip = new JSZip()
   let counter = getThisYear()
   for (const entry of donations) {
@@ -76,7 +77,7 @@ const handler: AuthorisedHandler = async (req, res, session) => {
         currency: "CAD",
         currentDate: new Date(),
         donation: entry,
-        donationDate: new Date(),
+        donationDate,
         donee,
         receiptNo: counter++,
       }),

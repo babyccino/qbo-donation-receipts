@@ -16,7 +16,7 @@ import { getDonations } from "@/lib/qbo-api"
 import resend from "@/lib/resend"
 import { isUserSubscribed } from "@/lib/stripe"
 import { config } from "@/lib/util/config"
-import { formatDateHtmlReverse, getThisYear } from "@/lib/util/date"
+import { formatDateHtmlReverse, getDonationRange, getThisYear } from "@/lib/util/date"
 import { dataUrlToBase64 } from "@/lib/util/image-helper"
 import {
   AuthorisedHandler,
@@ -192,15 +192,16 @@ const handler: AuthorisedHandler = async (req, res, session) => {
   if (!insertSuccess)
     throw new ApiError(500, "there was an error recording donations in the database")
 
+  const donationRange = getDonationRange(userData.startDate, userData.endDate)
   const sendReceipt = async (entry: DonationWithEmail) => {
     try {
-      const receiptNo = thisYear + counter * 10000
+      const receiptNo = thisYear * 100000 + counter
       counter += 1
       const props = {
         currency: "CAD",
         currentDate: new Date(),
         donation: entry,
-        donationDate: userData.endDate,
+        donationDate: donationRange,
         donee: doneeWithPngDataUrls,
         receiptNo,
       }
