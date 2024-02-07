@@ -110,7 +110,7 @@ export async function createUser(connected: boolean) {
 
 export const testRealmId = "123456789"
 const date = new Date("2022-01-01")
-const nonsense: Omit<
+const itemQueryResponseShared: Omit<
   ItemQueryResponseItem,
   "Id" | "Name" | "FullyQualifiedName" | "PurchaseCost" | "UnitPrice"
 > = {
@@ -136,7 +136,7 @@ export const mockItemQueryResponse: ItemQueryResponse = {
         FullyQualifiedName: "General Donations",
         PurchaseCost: 100,
         UnitPrice: 100,
-        ...nonsense,
+        ...itemQueryResponseShared,
       },
       {
         Id: "2",
@@ -144,7 +144,7 @@ export const mockItemQueryResponse: ItemQueryResponse = {
         FullyQualifiedName: "A Donations",
         PurchaseCost: 100,
         UnitPrice: 100,
-        ...nonsense,
+        ...itemQueryResponseShared,
       },
       {
         Id: "3",
@@ -152,7 +152,7 @@ export const mockItemQueryResponse: ItemQueryResponse = {
         FullyQualifiedName: "B Donations",
         PurchaseCost: 100,
         UnitPrice: 100,
-        ...nonsense,
+        ...itemQueryResponseShared,
       },
     ],
   },
@@ -175,3 +175,16 @@ export const deleteAll = () =>
     db.delete(supportTickets),
     db.delete(verificationTokens),
   ])
+
+export const mockDoneeInfo = (accountId: string) => ({
+  id: createId(),
+  accountId,
+  companyAddress: "123 Fake St",
+  companyName: "Apple Co",
+  country: "Canada",
+  largeLogo: "https://images.com/logo.png",
+  smallLogo: "https://images.com/logo.png",
+  registrationNumber: "123",
+  signatoryName: "John Smith",
+  signature: "https://images.com/signature.png",
+})
