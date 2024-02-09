@@ -24,7 +24,7 @@ module.exports = {
       {
         protocol: "https",
         hostname: "storage.googleapis.com",
-        port: "**",
+        port: "",
         pathname: "/**",
       },
     ],

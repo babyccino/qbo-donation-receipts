@@ -17,7 +17,7 @@ import { getDonations } from "@/lib/qbo-api"
 import resend from "@/lib/resend"
 import { isUserSubscribed } from "@/lib/stripe"
 import { config } from "@/lib/util/config"
-import { formatDateHtmlReverse, getThisYear } from "@/lib/util/date"
+import { formatDateHtmlReverse, getDonationRange, getThisYear } from "@/lib/util/date"
 import { wait } from "@/lib/util/etc"
 import { dataUrlToBase64 } from "@/lib/util/image-helper"
 import {
@@ -212,6 +212,7 @@ export const createEmailHandler =
       attachments: { filename: string; content: Buffer }[]
       react: JSX.Element
     }
+    const donationRange = getDonationRange(userData.startDate, userData.endDate)
     async function getResendProps(
       entry: DonationWithEmail,
     ): Promise<ReceiptSentSuccess | ReceiptSentFailure> {
@@ -222,7 +223,7 @@ export const createEmailHandler =
           currency: "CAD",
           currentDate: new Date(),
           donation: entry,
-          donationDate: userData.endDate,
+          donationDate: donationRange,
           donee: doneeWithPngDataUrls,
           receiptNo,
         }
@@ -238,9 +239,7 @@ export const createEmailHandler =
           subject: `Your ${getThisYear()} ${companyName} Donation Receipt`,
           attachments: [
             {
-              filename: `${entry.name} Donations ${formatDateHtmlReverse(
-                userData.endDate,
-              )} - ${formatDateHtmlReverse(userData.startDate)}.pdf`,
+              filename: `${entry.name} Donations ${donationRange}.pdf`,
               content: receiptBuffer,
             },
           ],

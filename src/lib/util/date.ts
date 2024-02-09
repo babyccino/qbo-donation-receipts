@@ -1,3 +1,5 @@
+import moment from "moment"
+
 const padZero = (n: number) => (n < 10 ? `0${n}` : n.toString())
 export const formatDate = (date: Date) =>
   `${padZero(date.getDate())}/${padZero(date.getMonth() + 1)}/${date.getFullYear()}`
@@ -11,10 +13,10 @@ export const startOfPreviousYearHtml = () => `${getThisYear() - 1}-01-01`
 export const endOfPreviousYearHtml = () => `${getThisYear() - 1}-12-31`
 export const startOfThisYearHtml = () => `${getThisYear()}-01-01`
 export const endOfThisYearHtml = () => `${getThisYear()}-12-31`
-export const startOfPreviousYear = () => new Date(getThisYear() - 1, 0, 1)
-export const endOfPreviousYear = () => new Date(getThisYear() - 1, 11, 31)
-export const startOfThisYear = () => new Date(getThisYear(), 0, 1)
-export const endOfThisYear = () => new Date(getThisYear(), 11, 31)
+export const startOfPreviousYear = () => new Date(startOfPreviousYearHtml() + "T00:00:00.000Z")
+export const endOfPreviousYear = () => new Date(endOfPreviousYearHtml() + "T00:00:00.000Z")
+export const startOfThisYear = () => new Date(startOfThisYearHtml() + "T00:00:00.000Z")
+export const endOfThisYear = () => new Date(endOfThisYearHtml() + "T00:00:00.000Z")
 export const getCurrentDateHtml = () => formatDateHtml(new Date())
 export const utcEpoch = () => new Date(0)
 
@@ -49,3 +51,26 @@ export const createDateRange = (startDateString: string, endDateString: string):
   startDate: new Date(startDateString),
   endDate: new Date(endDateString),
 })
+
+export function getDonationRange(startDate: Date, endDate: Date): string {
+  const monthStart = startDate.getDate() === 1
+  const a = moment(endDate).clone().endOf("month").get("date")
+  const monthEnd = a === endDate.getDate()
+  if (!monthStart || !monthEnd)
+    return `${formatDateHtmlReverse(startDate)} - ${formatDateHtmlReverse(endDate)}`
+  const yearStart = startDate.getMonth() === 0
+  const yearEnd = endDate.getMonth() === 11
+  const startDateYear = startDate.getFullYear()
+  const endStateYear = endDate.getFullYear()
+  const sameYear = startDateYear === endStateYear
+  if (!yearStart || !yearEnd) {
+    if (!sameYear) return `${formatDateHtmlReverse(startDate)} - ${formatDateHtmlReverse(endDate)}`
+    if (startDate.getMonth() === endDate.getMonth())
+      return `${startDateYear} ${moment(startDate).format("MMMM")}`
+    return `${startDateYear} ${moment(startDate).format("MMMM")} - ${moment(endDate).format(
+      "MMMM",
+    )}`
+  }
+  if (sameYear) return `${startDateYear}`
+  return `${startDateYear} - ${endStateYear}`
+}

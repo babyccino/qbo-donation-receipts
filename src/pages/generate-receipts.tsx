@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from "@heroicons/react/24/solid"
 import download from "downloadjs"
-import { and, desc, eq, isNotNull } from "drizzle-orm"
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm"
 import { Alert, Card } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { Session, getServerSession } from "next-auth"
@@ -27,7 +27,7 @@ import { downloadImageAndConvertToPng } from "@/lib/db/db-helper"
 import { storageBucket } from "@/lib/db/firebase"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
-import { getThisYear } from "@/lib/util/date"
+import { getDonationRange, getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
 import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
@@ -35,7 +35,7 @@ import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
-import { DoneeInfo, accounts, sessions } from "db/schema"
+import { DoneeInfo, accounts, emailHistories, sessions } from "db/schema"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -164,6 +164,8 @@ type Props = (
       donations: Donation[]
       doneeInfo: Omit<DoneeInfo, "accountId" | "createdAt" | "id" | "updatedAt">
       subscribed: boolean
+      counterStart: number
+      donationRange: string
     }
   | {
       receiptsReady: false
@@ -223,7 +225,7 @@ export default function IndexPage(props: Props) {
 
   if (!props.receiptsReady) return <MissingData filledIn={props.filledIn} />
 
-  const { doneeInfo, subscribed } = props
+  const { doneeInfo, subscribed, counterStart } = props
   const donations = getSortedDonations(props.donations, sort)
 
   const currentYear = getThisYear()
@@ -233,9 +235,9 @@ export default function IndexPage(props: Props) {
       currency: "CAD",
       currentDate: new Date(),
       donation: entry,
-      donationDate: new Date(),
+      donationDate: props.donationRange,
       donee: doneeInfo,
-      receiptNo: currentYear + index,
+      receiptNo: currentYear * 100000 + index + counterStart,
     }
 
     return (
@@ -393,7 +395,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   )
     return disconnectedRedirect
   const { doneeInfo, userData, realmId } = account
-  const { accountId } = session
 
   if (!doneeInfo || !userData)
     return {
@@ -408,20 +409,28 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
   await refreshTokenIfNeeded(account)
 
-  const [donations, pngSignature, pngLogo] = await Promise.all([
+  const { startDate, endDate, items } = userData
+  const [donations, pngSignature, pngLogo, counterQuery] = await Promise.all([
     getDonations(
       account.accessToken,
       realmId,
-      { startDate: userData.startDate, endDate: userData.endDate },
-      userData.items ? userData.items.split(",") : [],
+      { startDate: startDate, endDate: endDate },
+      items ? items.split(",") : [],
     ),
     downloadImageAndConvertToPng(storageBucket, doneeInfo.signature),
     downloadImageAndConvertToPng(storageBucket, doneeInfo.smallLogo),
+    db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(emailHistories)
+      .where(and(eq(emailHistories.accountId, session.user.id))),
   ])
   doneeInfo.signature = pngSignature
   doneeInfo.smallLogo = pngLogo
   const subscription = account.user.subscription
   const subscribed = subscription ? isUserSubscribed(subscription) : false
+
+  if (counterQuery.length !== 1) throw new ApiError(500, "counter query returned more than one row")
+  const counterStart = counterQuery[0].count + 1
 
   return {
     props: {
@@ -432,6 +441,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       subscribed,
       companies: accountList,
       selectedAccountId: account.id,
+      counterStart,
+      donationRange: getDonationRange(startDate, endDate),
     } satisfies Props,
   }
 }

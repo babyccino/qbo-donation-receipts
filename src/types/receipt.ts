@@ -6,7 +6,7 @@ export type EmailProps = {
   receiptNo: number
   donee: Omit<DoneeInfo, "accountId" | "createdAt" | "id" | "updatedAt">
   currentDate: Date
-  donationDate: Date
+  donationDate: string
   currency: string
 }
 export type WithBodyProps = EmailProps & { body: string }

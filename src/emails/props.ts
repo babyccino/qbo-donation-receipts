@@ -32,7 +32,7 @@ export const dummyEmailProps: EmailProps = {
     largeLogo: "",
   },
   currentDate: new Date(),
-  donationDate: new Date("2023-05-17"),
+  donationDate: (new Date().getFullYear() - 1).toString(),
   currency: "CAD",
 }
 
