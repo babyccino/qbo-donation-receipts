@@ -176,7 +176,7 @@ export const accountsRelations = relations(accounts, ({ many, one }) => ({
   }),
   userData: one(userDatas),
   doneeInfo: one(doneeInfos),
-  emailHistories: many(emailHistories),
+  campaigns: many(campaigns),
 }))
 
 export const userDatas = sqliteTable(
@@ -232,8 +232,8 @@ export const doneeInfosRelations = relations(doneeInfos, ({ one }) => ({
   }),
 }))
 
-export const emailHistories = sqliteTable(
-  "email_histories",
+export const campaigns = sqliteTable(
+  "campaigns",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
     accountId: text("account_id", { length: 191 }).notNull(),
@@ -241,41 +241,52 @@ export const emailHistories = sqliteTable(
     endDate: integer("end_date", { mode: "timestamp_ms" }).notNull(),
     createdAt: timestamp("created_at"),
   },
-  emailHistory => ({
-    accountIndex: index("email_histories__account_id__idx").on(emailHistory.accountId),
+  campaign => ({
+    accountIndex: index("campaigns__account_id__idx").on(campaign.accountId),
   }),
 )
-export type EmailHistory = typeof emailHistories.$inferSelect
+export type Campaign = typeof campaigns.$inferSelect
 
-export const emailHistoriesRelations = relations(emailHistories, ({ many, one }) => ({
+export const campaignsRelations = relations(campaigns, ({ many, one }) => ({
   account: one(accounts, {
-    fields: [emailHistories.accountId],
+    fields: [campaigns.accountId],
     references: [accounts.id],
   }),
-  donations: many(donations),
+  receipts: many(receipts),
 }))
 
-export const donations = sqliteTable(
-  "donations",
+type EmailStatus =
+  | "sent"
+  | "delivered"
+  | "delivery_delayed"
+  | "complained"
+  | "bounced"
+  | "opened"
+  | "clicked"
+export const receipts = sqliteTable(
+  "receipts",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
-    emailHistoryId: text("email_history_id", { length: 191 }).notNull(),
+    // emailId: text("email_id", { length: 191 }).notNull(),
+    campaignId: text("email_history_id", { length: 191 }).notNull(),
+    emailStatus: stringEnum<EmailStatus>("email_status").notNull(),
     donorId: text("donor_id", { length: 191 }).notNull(),
     total: integer("total", { mode: "number" }).notNull(),
     name: text("name").notNull(),
     email: text("email").notNull(),
     createdAt: timestamp("created_at"),
   },
-  donation => ({
-    emailHistoryIndex: index("donations__email_history_id__idx").on(donation.emailHistoryId),
+  receipt => ({
+    // emailIdIndex: uniqueIndex("receipts__email_id__idx").on(receipt.emailId),
+    campaignIndex: index("receipts__email_history_id__idx").on(receipt.campaignId),
   }),
 )
-export type Donation = typeof donations.$inferSelect
+export type Receipt = typeof receipts.$inferSelect
 
-export const donationsRelations = relations(donations, ({ one }) => ({
-  emailHistory: one(emailHistories, {
-    fields: [donations.emailHistoryId],
-    references: [emailHistories.id],
+export const receiptsRelations = relations(receipts, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [receipts.campaignId],
+    references: [campaigns.id],
   }),
 }))
 
@@ -360,10 +371,10 @@ export type Schema = {
   userDatasRelations: typeof userDatasRelations
   doneeInfos: typeof doneeInfos
   doneeInfosRelations: typeof doneeInfosRelations
-  emailHistories: typeof emailHistories
-  emailHistoriesRelations: typeof emailHistoriesRelations
-  donations: typeof donations
-  donationsRelations: typeof donationsRelations
+  campaigns: typeof campaigns
+  campaignsRelations: typeof campaignsRelations
+  receipts: typeof receipts
+  receiptsRelations: typeof receiptsRelations
   sessions: typeof sessions
   sessionsRelations: typeof sessionsRelations
   verificationTokens: typeof verificationTokens

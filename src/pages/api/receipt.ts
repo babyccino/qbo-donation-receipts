@@ -11,7 +11,7 @@ import { getDonations } from "@/lib/qbo-api"
 import { getDonationRange, getThisYear } from "@/lib/util/date"
 import { AuthorisedHandler, createAuthorisedHandler } from "@/lib/util/request-server"
 import { renderToBuffer } from "@react-pdf/renderer"
-import { accounts, emailHistories } from "db/schema"
+import { accounts, campaigns } from "db/schema"
 
 const handler: AuthorisedHandler = async (req, res, session) => {
   if (!session.accountId) throw new ApiError(401, "user not connected")
@@ -49,8 +49,8 @@ const handler: AuthorisedHandler = async (req, res, session) => {
     }),
     db
       .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(emailHistories)
-      .where(and(eq(emailHistories.accountId, session.user.id))),
+      .from(campaigns)
+      .where(and(eq(campaigns.accountId, session.user.id))),
   ])
 
   if (!account) throw new ApiError(401, "account not found for given userid and company realmid")
