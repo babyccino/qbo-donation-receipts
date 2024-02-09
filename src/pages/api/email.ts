@@ -1,7 +1,7 @@
 import { createId } from "@paralleldrive/cuid2"
 import { renderToBuffer } from "@react-pdf/renderer"
 import makeChecksum from "checksum"
-import { and, eq, gt, inArray, sql } from "drizzle-orm"
+import { and, eq, gt, sql } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
 import { Resend } from "resend"
 import { z } from "zod"
@@ -17,7 +17,7 @@ import { getDonations } from "@/lib/qbo-api"
 import resend from "@/lib/resend"
 import { isUserSubscribed } from "@/lib/stripe"
 import { config } from "@/lib/util/config"
-import { formatDateHtmlReverse, getDonationRange, getThisYear } from "@/lib/util/date"
+import { getDonationRange, getThisYear } from "@/lib/util/date"
 import { wait } from "@/lib/util/etc"
 import { dataUrlToBase64 } from "@/lib/util/image-helper"
 import {
@@ -26,7 +26,7 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { Donation } from "@/types/qbo-api"
-import { accounts, donations as donationsSchema, emailHistories } from "db/schema"
+import { accounts, campaigns, receipts } from "db/schema"
 
 const DAY_LENGTH_MS = 1000 * 60 * 60 * 24
 
@@ -99,11 +99,11 @@ export const createEmailHandler =
         }),
       db
         .select({ count: sql<number>`cast(count(*) as integer)` })
-        .from(emailHistories)
+        .from(campaigns)
         .where(
           and(
-            eq(emailHistories.accountId, session.accountId),
-            gt(emailHistories.createdAt, new Date(Date.now() - DAY_LENGTH_MS)),
+            eq(campaigns.accountId, session.accountId),
+            gt(campaigns.createdAt, new Date(Date.now() - DAY_LENGTH_MS)),
           ),
         )
         .then(([value]) => {
@@ -147,8 +147,8 @@ export const createEmailHandler =
       bufferToPngDataUrl(Buffer.from(dataUrlToBase64(logoWebpDataUrl), "base64")),
       db
         .select({ count: sql<number>`cast(count(*) as integer)` })
-        .from(emailHistories)
-        .where(and(eq(emailHistories.accountId, userId))),
+        .from(campaigns)
+        .where(and(eq(campaigns.accountId, userId))),
     ])
 
     const doneeWithPngDataUrls: typeof doneeInfo = {
@@ -167,7 +167,16 @@ export const createEmailHandler =
     let counter = (counterRows[0]?.count ?? 0) + 1
     const thisYear = getThisYear()
 
-    const emailHistoryId = createId()
+    type ResendProps = {
+      emailId?: string
+      from: string
+      to: string
+      reply_to: string
+      subject: string
+      attachments: { filename: string; content: Buffer }[]
+      react: JSX.Element
+    }
+
     const sendableReceipts: DonationWithEmail[] = []
     const receiptsNotSent: string[] = []
     for (const donation of donations) {
@@ -178,44 +187,10 @@ export const createEmailHandler =
 
     if (sendableReceipts.length === 0) throw new ApiError(500, "No receipts were sent")
 
-    // it's very important that only donations which have been successfully recorded are sent
-    // if there is any error recording the donations we will not send out any receipts
-    const insertSuccess = await db.transaction(async tx => {
-      const inserts = await Promise.all(
-        sendableReceipts.map(donation =>
-          tx.insert(donationsSchema).values({
-            id: createId(),
-            donorId: donation.donorId,
-            email,
-            emailHistoryId,
-            name: donation.name,
-            total: donation.total,
-          }),
-        ),
-      )
-      if (!inserts.every(val => val.rowsAffected > 0)) {
-        await tx.rollback()
-        return false
-      } else return true
-    })
-
-    if (!insertSuccess)
-      throw new ApiError(500, "there was an error recording donations in the database")
-
-    type ReceiptSentSuccess = {
-      donorId: string
-      success: true
-      from: string
-      to: string
-      reply_to: string
-      subject: string
-      attachments: { filename: string; content: Buffer }[]
-      react: JSX.Element
-    }
+    const receiptsSentFailures: string[] = []
+    const receiptsSentSuccesses: (DonationWithEmail & { send: ResendProps })[] = []
     const donationRange = getDonationRange(userData.startDate, userData.endDate)
-    async function getResendProps(
-      entry: DonationWithEmail,
-    ): Promise<ReceiptSentSuccess | ReceiptSentFailure> {
+    async function getResendProps(entry: DonationWithEmail): Promise<void> {
       try {
         const receiptNo = thisYear + counter * 10000
         counter += 1
@@ -230,9 +205,7 @@ export const createEmailHandler =
 
         const body = formatEmailBody(emailBody, entry.name)
         const receiptBuffer = await renderToBuffer(ReceiptPdfDocument(props))
-        return {
-          donorId: entry.donorId,
-          success: true,
+        ;(entry as DonationWithEmail & { send: ResendProps }).send = {
           from: `${companyName} <noreply@${config.domain}>`,
           to: entry.email,
           reply_to: email,
@@ -249,50 +222,49 @@ export const createEmailHandler =
             body,
           }),
         }
+        receiptsSentSuccesses.push(entry as DonationWithEmail & { send: ResendProps })
       } catch (e) {
-        return { donorId: entry.donorId, success: false }
+        receiptsSentFailures.push(entry.donorId)
       }
     }
-    type ReceiptSentFailure = { donorId: string; success: false }
-    let receiptsSentSuccesses: string[] = []
-    let receiptsSentFailures: string[] = []
     let timer = Promise.resolve()
     // batch the receipts to send in groups of maximum 100 receipts
     while (sendableReceipts.length > 0) {
       const batch = sendableReceipts.splice(0, 100)
-      const promises = batch.map(getResendProps)
-      const results = await Promise.all(promises)
-      const receiptsToSend = results.filter((entry): entry is ReceiptSentSuccess => entry.success)
-      receiptsSentSuccesses = receiptsSentSuccesses.concat(
-        receiptsToSend.map(entry => entry.donorId),
-      )
-      receiptsSentFailures = receiptsSentFailures.concat(
-        results.filter(entry => !entry.success).map(entry => entry.donorId),
-      )
+      await Promise.all(batch.map(getResendProps))
       // send the emails in the batch
       // wait 1 second between each batch to avoid rate limiting
       await timer
-      await resend.batch.send(receiptsToSend)
+      const resendRes = await resend.batch.send(receiptsSentSuccesses.map(entry => entry.send))
+      const data = resendRes.data?.data ?? []
+      for (let i = 0; i < (data.length as number); i++) {
+        const id = data[i].id
+        receiptsSentSuccesses[i].send.emailId = id
+      }
       timer = wait(1000)
     }
 
-    await Promise.all([
-      receiptsSentFailures.length &&
-        db
-          .delete(donationsSchema)
-          .where(
-            and(
-              inArray(donationsSchema.donorId, receiptsSentFailures),
-              eq(donationsSchema.emailHistoryId, emailHistoryId),
-            ),
-          ),
-      db.insert(emailHistories).values({
-        id: emailHistoryId,
+    const campaignId = createId()
+    const ops = [
+      db.insert(campaigns).values({
+        id: campaignId,
         endDate: userData.endDate,
         startDate: userData.startDate,
         accountId: account.id,
       }),
-    ])
+      ...receiptsSentSuccesses.map(entry =>
+        db.insert(receipts).values({
+          id: entry.send.emailId as string,
+          emailStatus: "sent",
+          campaignId,
+          donorId: entry.donorId,
+          email: entry.email,
+          name: entry.name,
+          total: entry.total,
+        }),
+      ),
+    ] as const
+    const results = await db.batch(ops)
     return res.status(200).json({
       sent: true,
       failures: receiptsSentFailures,
