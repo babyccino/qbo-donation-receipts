@@ -2,7 +2,6 @@ import { and, eq, isNotNull } from "drizzle-orm"
 import { Accordion } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
-import { ApiError } from "next/dist/server/api-utils"
 
 import {
   H1,

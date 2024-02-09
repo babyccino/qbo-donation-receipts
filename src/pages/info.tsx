@@ -1,7 +1,6 @@
 import { and, eq, isNotNull } from "drizzle-orm"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
-import { ApiError } from "next/dist/server/api-utils"
 import Image from "next/image"
 
 import { LayoutProps } from "@/components/layout"
