@@ -69,6 +69,7 @@ const vitalKeys = [
   "DOMAIN",
   "LIB_SQL_DB_URL",
   "LIB_SQL_AUTH_TOKEN",
+  "RESEND_WEBHOOK_SECRET",
 ] as const
 const nonVitalKeys = [
   "FIREBASE_API_KEY",
