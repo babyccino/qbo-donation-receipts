@@ -9,6 +9,7 @@ import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
+import { useRouter } from "next/router"
 import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
@@ -34,11 +35,11 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { EmailDataType } from "@/pages/api/email"
 import { EmailProps } from "@/types/receipt"
 import {
-  Receipt as DbReceipts,
   Campaign as DbCampaigns,
+  Receipt as DbReceipts,
   accounts,
-  receipts,
   campaigns,
+  receipts,
   sessions,
   users,
 } from "db/schema"
@@ -208,9 +209,10 @@ function SendEmails({
   campaign: Campaign[] | null
   checksum: string
 }) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const emailBody = useAtomValue(atoms.emailBody)
   const [showSendEmail, setShowSendEmail] = useAtom(atoms.showSendEmail)
+  const emailBody = useAtomValue(atoms.emailBody)
   const setEmailFailureTest = useSetAtom(atoms.emailFailureText)
   const setShowEmailFailureToast = useSetAtom(atoms.showEmailFailureToast)
 
@@ -222,7 +224,8 @@ function SendEmails({
       checksum,
     }
     try {
-      await postJsonData("/api/email", data)
+      const res = await postJsonData("/api/email", data)
+      if (res.campaignId) return router.push(`/campaign/${res.campaignId}`)
       setLoading(false)
       setShowSendEmail(false)
     } catch (error) {
