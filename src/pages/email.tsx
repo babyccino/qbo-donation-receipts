@@ -6,9 +6,11 @@ import {
 import makeChecksum from "checksum"
 import { and, desc, eq, gt, inArray, isNotNull, lt } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
+import { useRouter } from "next/router"
 import { Dispatch, SetStateAction, useMemo, useState } from "react"
 
 import { Fieldset, TextArea, Toggle } from "@/components/form"
@@ -34,15 +36,14 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { EmailDataType } from "@/pages/api/email"
 import { EmailProps } from "@/types/receipt"
 import {
-  Donation as DbDonation,
-  EmailHistory as DbEmailHistory,
+  Campaign as DbCampaigns,
+  Receipt as DbReceipts,
   accounts,
-  donations as donationsSchema,
-  emailHistories,
+  campaigns,
+  receipts,
   sessions,
   users,
 } from "db/schema"
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai"
 
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
@@ -51,8 +52,8 @@ const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => 
 })
 
 type DoneeInfo = EmailProps["donee"]
-type EmailHistory = Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
-  donations: Pick<DbDonation, "name" | "donorId">[]
+type Campaign = Pick<DbCampaigns, "createdAt" | "startDate" | "endDate"> & {
+  receipts: Pick<DbReceipts, "name" | "donorId">[]
 }
 enum AccountStatus {
   NotSubscribed = 0,
@@ -123,7 +124,7 @@ const EmailPreview = ({ donee }: { donee: DoneeInfo }) => {
   )
 }
 
-const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory[] }) => (
+const CampaignOverlap = ({ campaign }: { campaign: Campaign[] }) => (
   <details className="group flex w-full items-center justify-between rounded-xl border border-gray-200 p-3 text-left font-medium   text-gray-500 open:bg-gray-100 open:p-5 hover:bg-gray-100 dark:border-gray-500 dark:text-gray-400 dark:open:bg-gray-800 dark:hover:bg-gray-800">
     <summary className="mb-2 flex items-center justify-between gap-2">
       <Info className="mr-2 h-8 w-8" />
@@ -136,7 +137,7 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory[] })
         overlap with the current:
       </div>
       <ul>
-        {emailHistory.map((entry, index) => (
+        {campaign.map((entry, index) => (
           <li
             className="border-b border-gray-200 last:border-none hover:bg-gray-100 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 "
             key={index}
@@ -157,8 +158,8 @@ const EmailHistoryOverlap = ({ emailHistory }: { emailHistory: EmailHistory[] })
                 These donors will be sent receipts which overlap with the current campaign:
                 <br />
                 <ul className="list-inside list-disc mt-1">
-                  {entry.donations.map(donation => (
-                    <li key={donation.name}>{donation.name}</li>
+                  {entry.receipts.map(receipt => (
+                    <li key={receipt.name}>{receipt.name}</li>
                   ))}
                 </ul>
               </div>
@@ -201,16 +202,17 @@ function getErrorText(error: ApiError) {
 
 function SendEmails({
   recipients,
-  emailHistory,
+  campaign,
   checksum,
 }: {
   recipients: Set<string>
-  emailHistory: EmailHistory[] | null
+  campaign: Campaign[] | null
   checksum: string
 }) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const emailBody = useAtomValue(atoms.emailBody)
   const [showSendEmail, setShowSendEmail] = useAtom(atoms.showSendEmail)
+  const emailBody = useAtomValue(atoms.emailBody)
   const setEmailFailureTest = useSetAtom(atoms.emailFailureText)
   const setShowEmailFailureToast = useSetAtom(atoms.showEmailFailureToast)
 
@@ -222,7 +224,8 @@ function SendEmails({
       checksum,
     }
     try {
-      await postJsonData("/api/email", data)
+      const res = await postJsonData("/api/email", data)
+      if (res.campaignId) return router.push(`/campaign/${res.campaignId}`)
       setLoading(false)
       setShowSendEmail(false)
     } catch (error) {
@@ -241,7 +244,7 @@ function SendEmails({
       <Modal.Header />
       <Modal.Body>
         <div className="space-y-4 text-center">
-          {emailHistory && <EmailHistoryOverlap emailHistory={emailHistory} />}
+          {campaign && <CampaignOverlap campaign={campaign} />}
           <p className="font-normal text-gray-500 dark:text-gray-400">
             Please ensure that you confirm the accuracy of your receipts on the {'"'}Receipts{'"'}{" "}
             page prior to sending. <br />
@@ -321,14 +324,14 @@ type CompleteAccountProps = {
   accountStatus: AccountStatus.Complete
   donee: DoneeInfo
   possibleRecipients: Recipient[]
-  emailHistory: EmailHistory[] | null
+  campaign: Campaign[] | null
   checksum: string
 }
 
 function CompleteAccountEmail({
   donee,
   possibleRecipients,
-  emailHistory,
+  campaign,
   checksum,
 }: CompleteAccountProps) {
   const defaultRecipientIds = useMemo(
@@ -349,9 +352,7 @@ function CompleteAccountEmail({
   const emailFailureText = useAtomValue(atoms.emailFailureText)
 
   const trimmedHistory =
-    customRecipients && emailHistory
-      ? trimHistoryById(selectedRecipientIds, emailHistory)
-      : emailHistory
+    customRecipients && campaign ? trimHistoryById(selectedRecipientIds, campaign) : campaign
 
   return (
     <section className="flex h-full w-full max-w-2xl flex-col justify-center gap-4 p-8 align-middle">
@@ -402,11 +403,7 @@ function CompleteAccountEmail({
         </Show>
       </div>
       <EmailPreview donee={donee} />
-      <SendEmails
-        recipients={selectedRecipientIds}
-        emailHistory={trimmedHistory}
-        checksum={checksum}
-      />
+      <SendEmails recipients={selectedRecipientIds} campaign={trimmedHistory} checksum={checksum} />
       {showEmailSentToast && <EmailSentToast onDismiss={() => setShowEmailSentToast(false)} />}
       {showEmailFailureToast && (
         <Toast className="fixed bottom-5 right-5">
@@ -554,11 +551,11 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const recipientIds = possibleRecipients.map(({ donorId }) => donorId)
 
   const dateOverlap = and(
-    lt(emailHistories.startDate, userData.endDate),
-    gt(emailHistories.endDate, userData.startDate),
+    lt(campaigns.startDate, userData.endDate),
+    gt(campaigns.endDate, userData.startDate),
   )
-  const emailHistory = (
-    await db.query.emailHistories.findMany({
+  const campaign = (
+    await db.query.campaigns.findMany({
       columns: {
         createdAt: true,
         startDate: true,
@@ -566,24 +563,24 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
       },
       where: dateOverlap,
       with: {
-        donations: {
+        receipts: {
           columns: { name: true, donorId: true },
-          where: inArray(donationsSchema.donorId, recipientIds),
+          where: inArray(receipts.donorId, recipientIds),
         },
       },
     })
-  ).filter(item => item.donations.length > 0)
+  ).filter(item => item.receipts.length > 0)
 
   return {
     props: serialiseDates({
       accountStatus: AccountStatus.Complete,
       donee: await downloadImagesForDonee(doneeInfo, storageBucket),
       possibleRecipients,
-      emailHistory: emailHistory.length > 0 ? emailHistory : null,
       checksum: makeChecksum(JSON.stringify(donations)),
       session,
       companies: accountList,
       selectedAccountId: account.id,
+      campaign: campaign.length > 0 ? campaign : null,
     } satisfies Props),
   }
 }

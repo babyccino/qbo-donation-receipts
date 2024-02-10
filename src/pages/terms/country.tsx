@@ -1,3 +1,12 @@
+import { and, eq, isNotNull } from "drizzle-orm"
+import { GetServerSideProps } from "next"
+import { getServerSession } from "next-auth"
+
+import { LayoutProps } from "@/components/layout"
+import { db } from "@/lib/db"
+import { accounts, sessions } from "db/schema"
+import { authOptions } from "../api/auth/[...nextauth]"
+
 const Country = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">
     <div className="mx-auto max-w-screen-sm px-4 py-8 text-center lg:px-6 lg:py-16">
@@ -13,16 +22,6 @@ const Country = () => (
 export default Country
 
 // --- server-side props ---
-
-import { and, eq, isNotNull } from "drizzle-orm"
-import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
-import { ApiError } from "next/dist/server/api-utils"
-
-import { LayoutProps } from "@/components/layout"
-import { db } from "@/lib/db"
-import { accounts, sessions } from "db/schema"
-import { authOptions } from "../api/auth/[...nextauth]"
 
 export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)

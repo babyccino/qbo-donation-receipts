@@ -184,22 +184,24 @@ const Companies = ({
   otherCompanies?: { companyName: string; id: string }[]
   router: NextRouter
 }) => (
-  <button
-    type="button"
-    className="flex flex-col items-center w-full text-base text-gray-900 group/companies"
-    aria-controls="dropdown-example"
-  >
-    <div className="flex flex-nowrap relative overflow-hidden items-center justify-between w-full flex-1 text-left rtl:text-right hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 p-2 transition duration-75 rounded-lg group/activecompany">
-      <div className="flex flex-row items-center whitespace-nowrap flex-shrink">
-        <div className="h-6 w-6 text-gray-500 transition duration-75 group-hover/activecompany:text-gray-900 dark:text-gray-400 dark:group-hover/activecompany:text-white">
-          <BuildingOfficeIcon />
+  <div className="relative group/companies">
+    <button
+      type="button"
+      className="flex flex-col items-center w-full text-base text-gray-900"
+      aria-controls="open-companies-dropdown"
+    >
+      <div className="flex flex-nowrap relative overflow-hidden items-center justify-between w-full flex-1 text-left rtl:text-right hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 p-2 transition duration-75 rounded-lg group/activecompany">
+        <div className="flex flex-row items-center whitespace-nowrap flex-shrink">
+          <div className="h-6 w-6 text-gray-500 transition duration-75 group-hover/activecompany:text-gray-900 dark:text-gray-400 dark:group-hover/activecompany:text-white">
+            <BuildingOfficeIcon />
+          </div>
+          <span className="ml-3 flex-1 whitespace-nowrap">{companyName}</span>
         </div>
-        <span className="ml-3 flex-1 whitespace-nowrap">{companyName}</span>
+        <div className="absolute right-0 inline-block pl-1 text-gray-500 transition duration-75 dark:text-white bg-gray-50 dark:bg-gray-800 group-hover/activecompany:bg-gray-100 dark:group-hover/activecompany:bg-gray-700">
+          <ChevronDownIcon className=" w-5 h-5" stroke="currentColor" strokeWidth={2} />
+        </div>
       </div>
-      <div className="absolute right-0 inline-block pl-1 text-gray-500 transition duration-75 dark:text-white bg-gray-50 dark:bg-gray-800 group-hover/activecompany:bg-gray-100 dark:group-hover/activecompany:bg-gray-700">
-        <ChevronDownIcon className=" w-5 h-5" stroke="currentColor" strokeWidth={2} />
-      </div>
-    </div>
+    </button>
     <ul
       id="dropdown-example"
       className="hidden group-focus-within/companies:block py-2 space-y-2 w-full"
@@ -229,7 +231,7 @@ const Companies = ({
         </button>
       </li>
     </ul>
-  </button>
+  </div>
 )
 
 type NavInnerProps = {

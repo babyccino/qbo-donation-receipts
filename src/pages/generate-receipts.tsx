@@ -35,7 +35,7 @@ import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { Donation } from "@/types/qbo-api"
 import { EmailProps } from "@/types/receipt"
-import { DoneeInfo, accounts, emailHistories, sessions } from "db/schema"
+import { DoneeInfo, accounts, campaigns, sessions } from "db/schema"
 
 const DownloadReceipt = dynamic(
   () => import("@/components/receipt/pdf").then(imp => imp.DownloadReceipt),
@@ -421,8 +421,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     downloadImageAndConvertToPng(storageBucket, doneeInfo.smallLogo),
     db
       .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(emailHistories)
-      .where(and(eq(emailHistories.accountId, session.user.id))),
+      .from(campaigns)
+      .where(and(eq(campaigns.accountId, session.user.id))),
   ])
   doneeInfo.signature = pngSignature
   doneeInfo.smallLogo = pngLogo

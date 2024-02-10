@@ -1,4 +1,12 @@
+import { and, eq, isNotNull } from "drizzle-orm"
+import { GetServerSideProps } from "next"
+import { getServerSession } from "next-auth"
+
+import { LayoutProps } from "@/components/layout"
 import { Link } from "@/components/link"
+import { db } from "@/lib/db"
+import { accounts, sessions } from "db/schema"
+import { authOptions } from "../api/auth/[...nextauth]"
 
 const EmailVerified = () => (
   <section className="flex min-h-screen flex-col p-4 sm:justify-center">
@@ -17,16 +25,6 @@ const EmailVerified = () => (
 export default EmailVerified
 
 // --- server-side props ---
-
-import { and, eq, isNotNull } from "drizzle-orm"
-import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
-import { ApiError } from "next/dist/server/api-utils"
-
-import { LayoutProps } from "@/components/layout"
-import { db } from "@/lib/db"
-import { accounts, sessions } from "db/schema"
-import { authOptions } from "../api/auth/[...nextauth]"
 
 export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)

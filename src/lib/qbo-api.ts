@@ -160,21 +160,23 @@ const getRowData = (row: SalesRow | SalesSectionRow): RowData =>
   isSalesSectionRow(row) ? getCustomerSalesSectionRowData(row) : getCustomerSalesRowData(row)
 
 const { nodeEnv, qboBaseApiRoute } = config
-const baseApiRoute = nodeEnv && nodeEnv === "test" ? "test" : `${qboBaseApiRoute}/company`
 
 export const makeQueryUrl = (realmId: string, query: string) =>
-  `${baseApiRoute}/${realmId}/query?query=${query}`
+  `${qboBaseApiRoute}/company/${realmId}/query?query=${query}`
+export function makeSalesReportUrl(realmId: string, dates: { startDate: Date; endDate: Date }) {
+  const startDate = formatDateHtmlReverse(dates.startDate)
+  const endDate = formatDateHtmlReverse(dates.endDate)
+
+  return `${qboBaseApiRoute}/company/${realmId}/reports/CustomerSales?\
+summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
+}
 
 export async function getCustomerSalesReport(
   accessToken: string,
   realmId: string,
   dates: { startDate: Date; endDate: Date },
 ) {
-  const startDate = formatDateHtmlReverse(dates.startDate)
-  const endDate = formatDateHtmlReverse(dates.endDate)
-
-  const url = `${baseApiRoute}/${realmId}/reports/CustomerSales?\
-summarize_column_by=ProductsAndServices&start_date=${startDate}&end_date=${endDate}`
+  const url = makeSalesReportUrl(realmId, dates)
 
   const salesReport = await fetchJsonData<CustomerSalesReport | CustomerSalesReportError>(
     url,

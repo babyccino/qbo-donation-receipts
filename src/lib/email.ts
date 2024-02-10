@@ -1,5 +1,5 @@
-import { DateRange, doDateRangesIntersect, getThisYear } from "@/lib/util/date"
-import { EmailHistory as DbEmailHistory, Donation as DbDonation } from "db/schema"
+import { getThisYear } from "@/lib/util/date"
+import { Receipt as DbReceipt, Campaign as DbCampaign } from "db/schema"
 
 export const templateDonorName = "FULL_NAME"
 export const formatEmailBody = (str: string, donorName: string) =>
@@ -23,19 +23,16 @@ Attached is your Income Tax Receipt for the ${getThisYear()} taxation year.
 
 With gratitude,`
 
-type EmailHistory = (Pick<DbEmailHistory, "createdAt" | "startDate" | "endDate"> & {
-  donations: Pick<DbDonation, "name" | "donorId">[]
+type Campaign = (Pick<DbCampaign, "createdAt" | "startDate" | "endDate"> & {
+  receipts: Pick<DbReceipt, "name" | "donorId">[]
 })[]
-export function trimHistoryById(
-  recipientIds: Set<string>,
-  emailHistory: EmailHistory,
-): EmailHistory | null {
-  const relevantEmailHistory: EmailHistory = []
-  for (const entry of emailHistory) {
-    const customerOverlap = entry.donations.filter(el => recipientIds.has(el.donorId))
+export function trimHistoryById(recipientIds: Set<string>, campaign: Campaign): Campaign | null {
+  const relevantCampaigns: Campaign = []
+  for (const entry of campaign) {
+    const customerOverlap = entry.receipts.filter(el => recipientIds.has(el.donorId))
     if (customerOverlap.length === 0) continue
-    relevantEmailHistory.push({ ...entry, donations: customerOverlap })
+    relevantCampaigns.push({ ...entry, receipts: customerOverlap })
   }
-  if (relevantEmailHistory.length === 0) return null
-  else return relevantEmailHistory
+  if (relevantCampaigns.length === 0) return null
+  else return relevantCampaigns
 }
