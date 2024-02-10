@@ -187,7 +187,7 @@ export const createEmailHandler =
 
     if (sendableReceipts.length === 0) throw new ApiError(500, "No receipts were sent")
 
-    const receiptsSentFailures: string[] = []
+    const receiptsSentFailures: DonationWithEmail[] = []
     const receiptsSentSuccesses: (DonationWithEmail & { send: ResendProps })[] = []
     const donationRange = getDonationRange(userData.startDate, userData.endDate)
     async function getResendProps(entry: DonationWithEmail): Promise<void> {
@@ -205,7 +205,8 @@ export const createEmailHandler =
 
         const body = formatEmailBody(emailBody, entry.name)
         const receiptBuffer = await renderToBuffer(ReceiptPdfDocument(props))
-        ;(entry as DonationWithEmail & { send: ResendProps }).send = {
+        const entryWithSend = entry as DonationWithEmail & { send: ResendProps }
+        entryWithSend.send = {
           from: `${companyName} <noreply@${config.domain}>`,
           to: entry.email,
           reply_to: email,
@@ -222,9 +223,9 @@ export const createEmailHandler =
             body,
           }),
         }
-        receiptsSentSuccesses.push(entry as DonationWithEmail & { send: ResendProps })
+        receiptsSentSuccesses.push(entryWithSend)
       } catch (e) {
-        receiptsSentFailures.push(entry.donorId)
+        receiptsSentFailures.push(entry)
       }
     }
     let timer = Promise.resolve()
@@ -263,13 +264,21 @@ export const createEmailHandler =
           total: entry.total,
         }),
       ),
+      ...receiptsSentFailures.map(entry =>
+        db.insert(receipts).values({
+          id: createId() as string,
+          emailStatus: "not_sent",
+          campaignId,
+          donorId: entry.donorId,
+          email: entry.email,
+          name: entry.name,
+          total: entry.total,
+        }),
+      ),
     ] as const
     const results = await db.batch(ops)
     return res.status(200).json({
-      sent: true,
-      failures: receiptsSentFailures,
-      successes: receiptsSentSuccesses,
-      notSent: receiptsNotSent,
+      campaignId,
     })
   }
 

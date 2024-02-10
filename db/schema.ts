@@ -3,6 +3,8 @@ import { customType, index, integer, sqliteTable, text, uniqueIndex } from "driz
 import { ProviderType } from "next-auth/providers"
 import type { Stripe } from "stripe"
 
+import { EmailStatus } from "@/types/resend"
+
 const timestamp = (name: string) =>
   integer(name, { mode: "timestamp_ms" })
     .default(sql`(cast(strftime('%s', 'now') as int) * 1000)`)
@@ -255,14 +257,6 @@ export const campaignsRelations = relations(campaigns, ({ many, one }) => ({
   receipts: many(receipts),
 }))
 
-type EmailStatus =
-  | "sent"
-  | "delivered"
-  | "delivery_delayed"
-  | "complained"
-  | "bounced"
-  | "opened"
-  | "clicked"
 export const receipts = sqliteTable(
   "receipts",
   {

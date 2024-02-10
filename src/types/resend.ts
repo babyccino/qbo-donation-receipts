@@ -33,3 +33,12 @@ export type ResendWebhookEvent =
         subject: string
       }
     }
+export type EmailStatus =
+  | "not_sent"
+  | "sent"
+  | "delivered"
+  | "delivery_delayed"
+  | "complained"
+  | "bounced"
+  | "opened"
+  | "clicked"
