@@ -6,6 +6,7 @@ import {
 import makeChecksum from "checksum"
 import { and, desc, eq, gt, inArray, isNotNull, lt } from "drizzle-orm"
 import { Alert, Button, Checkbox, Label, Modal, Toast } from "flowbite-react"
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai"
 import { GetServerSideProps } from "next"
 import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
@@ -43,7 +44,6 @@ import {
   sessions,
   users,
 } from "db/schema"
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai"
 
 const WithBody = dynamic(() => import("@/components/receipt/email").then(mod => mod.WithBody), {
   loading: () => null,
