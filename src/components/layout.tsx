@@ -110,7 +110,7 @@ export default function Layout(
                 <NavLink link="/items" logo={<ShoppingBagIcon />} label="Items" />
                 <NavLink link="/details" logo={<RectangleStackIcon />} label="Details" />
                 <NavLink link="/generate-receipts" logo={<TableCellsIcon />} label="Receipts" />
-                <NavLink link="/email" logo={<EnvelopeIcon />} label="Email" />
+                {/* <NavLink link="/email" logo={<EnvelopeIcon />} label="Email" /> */}
                 <NavLink link="/account" logo={<UserCircleIcon />} label="Account" />
                 <hr
                   style={{ margin: "1rem 0" }}
