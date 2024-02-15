@@ -553,6 +553,7 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
   const dateOverlap = and(
     lt(campaigns.startDate, userData.endDate),
     gt(campaigns.endDate, userData.startDate),
+    eq(campaigns.accountId, account.id),
   )
   const campaign = (
     await db.query.campaigns.findMany({
