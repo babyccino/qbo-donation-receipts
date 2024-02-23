@@ -82,7 +82,7 @@ export default function Layout(
         <nav
           id="separator-sidebar"
           className={
-            "fixed left-0 top-0 z-40 overflow-y-auto h-screen w-64 transition-transform sm:translate-x-0 flex flex-col justify-between bg-gray-50 dark:bg-gray-800 px-3 py-4 " +
+            "fixed left-0 top-0 z-40 flex h-screen w-64 flex-col justify-between overflow-y-auto bg-gray-50 px-3 py-4 transition-transform dark:bg-gray-800 sm:translate-x-0 " +
             (showSidebar ? "" : " -translate-x-full")
           }
           aria-label="Sidebar"
@@ -184,27 +184,27 @@ const Companies = ({
   otherCompanies?: { companyName: string; id: string }[]
   router: NextRouter
 }) => (
-  <div className="relative group/companies">
+  <div className="group/companies relative">
     <button
       type="button"
-      className="flex flex-col items-center w-full text-base text-gray-900"
+      className="flex w-full flex-col items-center text-base text-gray-900"
       aria-controls="open-companies-dropdown"
     >
-      <div className="flex flex-nowrap relative overflow-hidden items-center justify-between w-full flex-1 text-left rtl:text-right hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 p-2 transition duration-75 rounded-lg group/activecompany">
-        <div className="flex flex-row items-center whitespace-nowrap flex-shrink">
+      <div className="group/activecompany relative flex w-full flex-1 flex-nowrap items-center justify-between overflow-hidden rounded-lg p-2 text-left transition duration-75 hover:bg-gray-100 rtl:text-right dark:text-white dark:hover:bg-gray-700">
+        <div className="flex flex-shrink flex-row items-center whitespace-nowrap">
           <div className="h-6 w-6 text-gray-500 transition duration-75 group-hover/activecompany:text-gray-900 dark:text-gray-400 dark:group-hover/activecompany:text-white">
             <BuildingOfficeIcon />
           </div>
           <span className="ml-3 flex-1 whitespace-nowrap">{companyName}</span>
         </div>
-        <div className="absolute right-0 inline-block pl-1 text-gray-500 transition duration-75 dark:text-white bg-gray-50 dark:bg-gray-800 group-hover/activecompany:bg-gray-100 dark:group-hover/activecompany:bg-gray-700">
-          <ChevronDownIcon className=" w-5 h-5" stroke="currentColor" strokeWidth={2} />
+        <div className="absolute right-0 inline-block bg-gray-50 pl-1 text-gray-500 transition duration-75 group-hover/activecompany:bg-gray-100 dark:bg-gray-800 dark:text-white dark:group-hover/activecompany:bg-gray-700">
+          <ChevronDownIcon className=" h-5 w-5" stroke="currentColor" strokeWidth={2} />
         </div>
       </div>
     </button>
     <ul
       id="dropdown-example"
-      className="hidden group-focus-within/companies:block py-2 space-y-2 w-full"
+      className="hidden w-full space-y-2 py-2 group-focus-within/companies:block"
     >
       {otherCompanies?.map(({ companyName, id: accountId }) => (
         <li key={accountId}>
@@ -213,7 +213,7 @@ const Companies = ({
               await postJsonData("/api/switch-company", { accountId } satisfies DataType)
               router.replace(router.asPath)
             }}
-            className="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg pl-11 group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            className="group flex w-full items-center rounded-lg p-2 pl-11 text-gray-900 transition duration-75 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
           >
             {companyName}
           </button>
@@ -221,7 +221,7 @@ const Companies = ({
       ))}
       <li>
         <button
-          className="flex items-center w-full rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
+          className="group flex w-full items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
           onClick={() => signIn("QBO")}
         >
           <div className="h-6 w-6 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white">
@@ -250,7 +250,7 @@ const NavLink = ({
   <li>
     <Link
       href={link}
-      className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
+      className="group flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
     >
       <NavItemInner {...props} />
     </Link>
@@ -268,7 +268,7 @@ const NavAnchor = ({
     <a
       href={href}
       onClick={onClick}
-      className="flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 group"
+      className="group flex items-center rounded-lg p-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
     >
       <NavItemInner {...props} />
     </a>

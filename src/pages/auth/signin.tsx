@@ -36,7 +36,7 @@ export default function SignInPage() {
           </Label>
         </div>
         <button
-          className="mx-auto mt-4 inline-block bg-[#0077C5] rounded-md relative"
+          className="relative mx-auto mt-4 inline-block rounded-md bg-[#0077C5]"
           onClick={e => {
             e.preventDefault()
             setLoading(true)
@@ -44,7 +44,7 @@ export default function SignInPage() {
           }}
         >
           {loading && (
-            <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <Spinner />
             </div>
           )}

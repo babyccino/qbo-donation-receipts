@@ -50,7 +50,7 @@ export default function Campaign({ recipients, refresh }: Props) {
 
   return (
     <div className="sm:py-8">
-      <table className="rounded-lg border-collapse overflow-hidden">
+      <table className="border-collapse overflow-hidden rounded-lg">
         <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" className="cursor-pointer px-6 py-3">
@@ -76,7 +76,7 @@ export default function Campaign({ recipients, refresh }: Props) {
               <th
                 scope="row"
                 className={
-                  "whitespace-nowrap px-6 py-3 font-medium font-mono " +
+                  "whitespace-nowrap px-6 py-3 font-mono font-medium " +
                   getPillColor(recipient.emailStatus)
                 }
               >

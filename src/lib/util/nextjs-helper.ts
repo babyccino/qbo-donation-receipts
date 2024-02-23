@@ -1,3 +1,4 @@
+import { GetServerSideProps } from "next"
 import nextDynamic, { DynamicOptions, Loader } from "next/dynamic"
 import { ComponentType, Fragment, ReactNode } from "react"
 
@@ -6,10 +7,10 @@ export type SerialisedDate = { [serialisedDateKey]: number }
 export type SerialiseDates<T> = T extends Date
   ? SerialisedDate
   : T extends object
-  ? {
-      [K in keyof T]: SerialiseDates<T[K]>
-    }
-  : T
+    ? {
+        [K in keyof T]: SerialiseDates<T[K]>
+      }
+    : T
 const serialiseDate = (date: Date): SerialisedDate => ({ [serialisedDateKey]: date.getTime() })
 export function serialiseDates<T>(obj: T): SerialiseDates<T> {
   if (obj === null) return null as SerialiseDates<T>
@@ -30,10 +31,10 @@ export function serialiseDates<T>(obj: T): SerialiseDates<T> {
 export type DeSerialiseDates<T> = T extends SerialisedDate
   ? Date
   : T extends object
-  ? {
-      [K in keyof T]: DeSerialiseDates<T[K]>
-    }
-  : T
+    ? {
+        [K in keyof T]: DeSerialiseDates<T[K]>
+      }
+    : T
 const deSerialiseDate = (serialisedDate: SerialisedDate) =>
   new Date(serialisedDate[serialisedDateKey])
 export function deSerialiseDates<T>(obj: T): DeSerialiseDates<T> {
@@ -69,3 +70,20 @@ export function dynamic<P = {}>(
 }
 
 export const fragment = (children: ReactNode) => Fragment({ children })
+
+export function interceptGetServerSideProps<T extends GetServerSideProps<any>>(
+  getServerSideProps: T,
+) {
+  return async (ctx: any) => {
+    try {
+      return await getServerSideProps(ctx)
+    } catch (error: any) {
+      console.error("Error in getServerSideProps: ", error)
+      const serialisedError: any = {}
+      if (error.message) serialisedError.message = error.message
+      if (error.stack) serialisedError.stack = error.stack
+      if (error.statusCod) serialisedError.statusCod = error.statusCod
+      return { props: { error: serialisedError } }
+    }
+  }
+}

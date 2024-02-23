@@ -8,5 +8,6 @@
 
     // If the debugger should stop on the first line of the program.
     "stopOnEntry": false
-  }
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

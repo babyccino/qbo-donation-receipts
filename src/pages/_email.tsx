@@ -157,7 +157,7 @@ const CampaignOverlap = ({ campaign }: { campaign: Campaign[] }) => (
                 </p>
                 These donors will be sent receipts which overlap with the current campaign:
                 <br />
-                <ul className="list-inside list-disc mt-1">
+                <ul className="mt-1 list-inside list-disc">
                   {entry.receipts.map(receipt => (
                     <li key={receipt.name}>{receipt.name}</li>
                   ))}
