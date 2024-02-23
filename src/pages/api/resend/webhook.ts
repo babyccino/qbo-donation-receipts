@@ -23,6 +23,7 @@ function getEventType<T extends `email.${string}`>(eventType: T): ExtractEvent<T
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log(`${req.method} request made to ${req.url}`)
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"])
     res.status(405).end(`Method ${req.method} Not Allowed`)
