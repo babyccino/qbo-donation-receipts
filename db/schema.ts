@@ -261,7 +261,7 @@ export const receipts = sqliteTable(
   "receipts",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
-    // emailId: text("email_id", { length: 191 }).notNull(),
+    emailId: text("email_id", { length: 191 }),
     campaignId: text("campaign_id", { length: 191 }).notNull(),
     emailStatus: stringEnum<EmailStatus>("email_status").notNull(),
     donorId: text("donor_id", { length: 191 }).notNull(),
@@ -271,7 +271,7 @@ export const receipts = sqliteTable(
     createdAt: timestamp("created_at"),
   },
   receipt => ({
-    // emailIdIndex: uniqueIndex("receipts__email_id__idx").on(receipt.emailId),
+    emailIdIndex: uniqueIndex("receipts__email_id__idx").on(receipt.emailId),
     campaignIndex: index("receipts__campaign_id__idx").on(receipt.campaignId),
   }),
 )
