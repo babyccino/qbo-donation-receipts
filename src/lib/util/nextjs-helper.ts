@@ -71,7 +71,7 @@ export function dynamic<P = {}>(
 
 export const fragment = (children: ReactNode) => Fragment({ children })
 
-export function interceptGetServerSideProps<T extends GetServerSideProps<any>>(
+export function interceptGetServerSidePropsErrors<T extends GetServerSideProps<any>>(
   getServerSideProps: T,
 ) {
   return async (ctx: any) => {

@@ -28,7 +28,7 @@ import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDonationRange, getThisYear } from "@/lib/util/date"
 import { randInt } from "@/lib/util/etc"
-import { dynamic } from "@/lib/util/nextjs-helper"
+import { dynamic, interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
@@ -309,7 +309,7 @@ export default function IndexPage(props: Props) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+const _getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("generate-receipts")
 
@@ -445,3 +445,4 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     } satisfies Props,
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)
