@@ -228,7 +228,7 @@ export const createEmailHandler =
         receiptsSentFailures.push(entry)
       }
     }
-    let timer = Promise.resolve()
+    let timer = null
     // batch the receipts to send in groups of maximum 100 receipts
     while (sendableReceipts.length > 0) {
       const batch = sendableReceipts.splice(0, 100)
@@ -237,12 +237,12 @@ export const createEmailHandler =
       // wait 1 second between each batch to avoid rate limiting
       await timer
       const resendRes = await resend.batch.send(receiptsSentSuccesses.map(entry => entry.send))
+      timer = wait(1000)
       const data = resendRes.data?.data ?? []
       for (let i = 0; i < (data.length as number); i++) {
         const id = data[i].id
         receiptsSentSuccesses[i].send.emailId = id
       }
-      timer = wait(1000)
     }
 
     const campaignId = createId()
