@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",
+    "@types/aws-lambda": "^8.10.134",
     "@types/better-sqlite3": "^7.6.8",
     "@types/checksum": "^0.1.35",
     "@types/downloadjs": "^1.4.6",

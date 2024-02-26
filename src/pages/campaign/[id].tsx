@@ -171,7 +171,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         { email: "test@test.com", emailStatus: "complained" },
       ],
       refresh: recipients.some(
-        r => r.emailStatus === "delivery_delayed" || r.emailStatus === "sent",
+        r =>
+          r.emailStatus === "delivery_delayed" ||
+          r.emailStatus === "sent" ||
+          r.emailStatus === "not_sent",
       ),
     } satisfies Props,
   }

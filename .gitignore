@@ -28,3 +28,7 @@ rootkey.csv
 
 /drizzle
 /test.db*
+
+.dev.vars
+
+.aws-sam

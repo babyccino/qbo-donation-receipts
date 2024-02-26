@@ -261,8 +261,8 @@ export const receipts = sqliteTable(
   "receipts",
   {
     id: text("id", { length: 191 }).primaryKey().notNull(),
-    // emailId: text("email_id", { length: 191 }).notNull(),
-    campaignId: text("email_history_id", { length: 191 }).notNull(),
+    campaignId: text("campaign_id", { length: 191 }).notNull(),
+    emailId: text("email_id", { length: 191 }),
     emailStatus: stringEnum<EmailStatus>("email_status").notNull(),
     donorId: text("donor_id", { length: 191 }).notNull(),
     total: integer("total", { mode: "number" }).notNull(),
@@ -271,8 +271,9 @@ export const receipts = sqliteTable(
     createdAt: timestamp("created_at"),
   },
   receipt => ({
-    // emailIdIndex: uniqueIndex("receipts__email_id__idx").on(receipt.emailId),
-    campaignIndex: index("receipts__email_history_id__idx").on(receipt.campaignId),
+    emailIdIndex: uniqueIndex("receipts__email_id__idx").on(receipt.emailId),
+    campaignIndex: index("receipts__campaign_id__idx").on(receipt.campaignId),
+    campaignEmailIndex: uniqueIndex("receipts__campaign_id__email__idx").on(receipt.campaignId),
   }),
 )
 export type Receipt = typeof receipts.$inferSelect
