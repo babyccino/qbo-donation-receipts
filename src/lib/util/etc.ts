@@ -36,3 +36,31 @@ export const wait = (secs: number) => new Promise<void>(res => setTimeout(res, s
 export const rand = (min: number, max: number) => Math.random() * (max - min) + min
 const { floor } = Math
 export const randInt = (min: number, max: number) => floor(rand(min, max))
+
+export const names = [
+  "Jeff",
+  "Jeffina",
+  "Jefferly",
+  "Jefferson",
+  "Formerly",
+  "Jefferton",
+  "McJeff",
+  "Geoff",
+  "Breff",
+  "Jeffany",
+  "Jeffry",
+  "Jeffy",
+  "Jeffery",
+  "Jefferey",
+  "Jeffory",
+  "Geoffrey",
+  "Jeffeory",
+  "Geffrey",
+  "Chef",
+]
+export const getRandomName = () =>
+  `${names[randInt(0, names.length)]} ${names[randInt(0, names.length)]}`
+export const getRandomBalance = () => {
+  const mag = randInt(2, 5)
+  return `$${Math.floor(Math.random() * Math.pow(10, mag))}.00`
+}

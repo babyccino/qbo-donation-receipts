@@ -28,7 +28,7 @@ import { storageBucket } from "@/lib/db/firebase"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDonationRange, getThisYear } from "@/lib/util/date"
-import { randInt } from "@/lib/util/etc"
+import { getRandomBalance, getRandomName, randInt } from "@/lib/util/etc"
 import { dynamic } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { fetchJsonData, subscribe } from "@/lib/util/request"
@@ -91,33 +91,6 @@ const ReceiptLimitCard = () => (
     </div>
   </Card>
 )
-
-const names = [
-  "Jeff",
-  "Jeffina",
-  "Jefferly",
-  "Jefferson",
-  "Formerly",
-  "Jefferton",
-  "McJeff",
-  "Geoff",
-  "Breff",
-  "Jeffany",
-  "Jeffry",
-  "Jeffy",
-  "Jeffery",
-  "Jefferey",
-  "Jeffory",
-  "Geoffrey",
-  "Jeffeory",
-  "Geffrey",
-  "Chef",
-]
-const getRandomName = () => `${names[randInt(0, names.length)]} ${names[randInt(0, names.length)]}`
-const getRandomBalance = () => {
-  const mag = randInt(2, 5)
-  return `$${Math.floor(Math.random() * Math.pow(10, mag))}.00`
-}
 
 const Tr = ({ children, className }: { children?: ReactNode; className?: string }) => (
   <tr

@@ -3,15 +3,27 @@ import { eq } from "drizzle-orm"
 
 import { db } from "@/lib/db"
 import { oneHrFromNow } from "@/lib/util/date"
-import { ItemQueryResponse, ItemQueryResponseItem } from "@/types/qbo-api"
+import { getRandomName, randInt } from "@/lib/util/etc"
+import {
+  ColData,
+  Customer,
+  CustomerQueryResult,
+  CustomerSalesReport,
+  CustomerSalesReportRow,
+  Item,
+  ItemQueryResponse,
+  ItemQueryResponseItem,
+  SalesRow,
+  SalesTotalsRow,
+} from "@/types/qbo-api"
 import {
   accounts,
   billingAddresses,
-  receipts,
-  doneeInfos,
   campaigns,
+  doneeInfos,
   prices,
   products,
+  receipts,
   sessions,
   subscriptions,
   supportTickets,
@@ -48,6 +60,35 @@ export function getMockApiContext(
   }
   return { req, res }
 }
+
+// type ResMock = {
+//   getHeader: () => void
+//   setHeader: () => ResMock
+//   status: Mock<(statusCode: number) => ResMock>
+//   end: () => void
+//   json: Mock<(json: any) => void>
+// }
+// export function getMockApiContext(
+//   method: "GET" | "POST",
+//   sessionToken: string,
+//   body: any | undefined,
+// ) {
+//   const req = {
+//     method,
+//     cookies: {
+//       "next-auth.session-token": sessionToken,
+//     },
+//     body,
+//   }
+//   const res: ResMock = {
+//     getHeader: () => {},
+//     setHeader: () => res,
+//     status: mock((statusCode: number) => res),
+//     end: () => {},
+//     json: mock((json: any) => {}),
+//   }
+//   return { req, res }
+// }
 
 export async function createUser(connected: boolean) {
   const userId = createId()
@@ -110,54 +151,6 @@ export async function createUser(connected: boolean) {
 
 export const testRealmId = "123456789"
 const date = new Date("2022-01-01")
-const itemQueryResponseShared: Omit<
-  ItemQueryResponseItem,
-  "Id" | "Name" | "FullyQualifiedName" | "PurchaseCost" | "UnitPrice"
-> = {
-  Active: true,
-  Description: "This item does things",
-  domain: "domain",
-  IncomeAccountRef: { name: "income", value: "1" },
-  MetaData: { CreateTime: date.toISOString(), LastUpdatedTime: date.toISOString() },
-  sparse: true,
-  SyncToken: "123",
-  Taxable: true,
-  TrackQtyOnHand: false,
-  Type: "item",
-}
-export const mockItemQueryResponse: ItemQueryResponse = {
-  QueryResponse: {
-    maxResults: 3,
-    startPosition: 0,
-    Item: [
-      {
-        Id: "1",
-        Name: "General Donations",
-        FullyQualifiedName: "General Donations",
-        PurchaseCost: 100,
-        UnitPrice: 100,
-        ...itemQueryResponseShared,
-      },
-      {
-        Id: "2",
-        Name: "A Donations",
-        FullyQualifiedName: "A Donations",
-        PurchaseCost: 100,
-        UnitPrice: 100,
-        ...itemQueryResponseShared,
-      },
-      {
-        Id: "3",
-        Name: "B Donations",
-        FullyQualifiedName: "B Donations",
-        PurchaseCost: 100,
-        UnitPrice: 100,
-        ...itemQueryResponseShared,
-      },
-    ],
-  },
-  time: date.toISOString(),
-}
 
 export const deleteAll = () =>
   Promise.all([
@@ -188,3 +181,190 @@ export const mockDoneeInfo = (accountId: string) => ({
   signatoryName: "John Smith",
   signature: "https://images.com/signature.png",
 })
+
+const customerSalesReportHeader = {
+  Time: "2023-03-23T14:08:37.242Z",
+  ReportName: "Customer Sales Report",
+  ReportBasis: "Accrual",
+  StartPeriod: "2022-01-01",
+  EndPeriod: "2022-12-31",
+  SummarizeColumnsBy: "Name",
+  Currency: "USD",
+  Option: [],
+}
+
+const address = {
+  Id: "123",
+  Line1: "123 Main St",
+  City: "San Francisco",
+  PostalCode: "94105",
+  CountrySubDivisionCode: "CA",
+} as const
+const customerShared = {
+  Taxable: true,
+  Job: true,
+  BillWithParent: true,
+  Balance: 0,
+  BalanceWithJobs: 0,
+  CurrencyRef: {
+    value: "CAD",
+    name: "CAD",
+  },
+  PreferredDeliveryMethod: "shipped",
+  domain: "QBO",
+  sparse: true,
+  SyncToken: "123",
+  MetaData: {
+    CreateTime: "2022-02-13T09:35:48.590Z",
+    LastUpdatedTime: "2022-02-13T09:35:48.590Z",
+  },
+  Id: createId(),
+  Active: true,
+  PrimaryEmailAddr: {
+    Address: "delivered@resend.dev",
+  },
+  BillAddr: address,
+} as const
+
+const itemQueryResponseItemsShared = {
+  Active: true,
+  Taxable: true,
+  UnitPrice: 100,
+  Type: "service",
+  IncomeAccountRef: {
+    value: "123",
+    name: "donations",
+  },
+  PurchaseCost: 0,
+  TrackQtyOnHand: false,
+  domain: "QBO",
+  sparse: true,
+  SyncToken: "123",
+  MetaData: {
+    CreateTime: "2022-02-13T09:35:48.590Z",
+    LastUpdatedTime: "2022-02-13T09:35:48.590Z",
+  },
+} as const
+
+export function createMockResponses(itemCount: number, donorCount: number) {
+  const customerSalesReportColumns: CustomerSalesReport["Columns"]["Column"] = [
+    {
+      ColTitle: "Name",
+      ColType: "String",
+      MetaData: [
+        {
+          Name: "ID",
+          Value: "123",
+        },
+      ],
+    },
+  ]
+  const items: Item[] = []
+  const itemQueryResponseItems: ItemQueryResponseItem[] = []
+  for (let i = 0; i < itemCount; ++i) {
+    const name = i + " Donations"
+    const id = createId()
+    items.push({ name, id })
+    customerSalesReportColumns.push({
+      ColTitle: name,
+      ColType: "Amount",
+      MetaData: [
+        {
+          Name: "ID",
+          Value: id,
+        },
+      ],
+    })
+    itemQueryResponseItems.push({
+      ...itemQueryResponseItemsShared,
+      Id: id,
+      Description: "description",
+      Name: name,
+      FullyQualifiedName: name,
+    })
+  }
+  customerSalesReportColumns.push({
+    ColTitle: "Total",
+    ColType: "Amount",
+    MetaData: [],
+  })
+
+  const customers: { donorId: string; name: string; email: string }[] = []
+  const customerQueryCustomers: Customer[] = []
+  for (let i = 0; i < donorCount; ++i) {
+    const name = getRandomName()
+    const donorId = createId()
+    customers.push({ name, email: "delivered@resend.dev", donorId })
+    const [firstName, familyName] = name.split(" ")
+    const customer: Customer = {
+      ...customerShared,
+      Id: donorId,
+      GivenName: firstName,
+      MiddleName: firstName,
+      FamilyName: familyName,
+      DisplayName: name,
+      FullyQualifiedName: name,
+      PrintOnCheckName: name,
+      Active: true,
+      PrimaryEmailAddr: {
+        Address: "delivered@resend.dev",
+      },
+      BillAddr: address,
+    } as const
+    customerQueryCustomers.push(customer)
+  }
+  const customerQueryResult: CustomerQueryResult = {
+    QueryResponse: {
+      Customer: customerQueryCustomers,
+      maxResults: donorCount,
+      startPosition: 0,
+    },
+    time: "2024-02-13T09:35:48.590Z",
+  }
+
+  const itemTotals = new Array<number>(itemCount).fill(0)
+  const cutsomerSalesReportRows: CustomerSalesReportRow[] = []
+  for (let i = 0; i < donorCount; ++i) {
+    const customer = customers[i]
+    const colData: ColData[] = [{ value: customer.name, id: customer.donorId }]
+    let total = 0
+    for (let j = 0; j < itemCount; ++j) {
+      if (Math.random() > 0.7) {
+        colData.push({ value: "0.00", id: "" })
+        continue
+      }
+      const mag = randInt(1, 4)
+      const balance = Math.floor(Math.random() * Math.pow(10, mag))
+      total += balance
+      itemTotals[j] += balance
+      colData.push({ value: `${balance}.00`, id: "" })
+    }
+    colData.push({ value: `${total}.00`, id: "" })
+    cutsomerSalesReportRows.push({ ColData: colData } satisfies SalesRow)
+  }
+  const totalsColData = itemTotals.map(total => ({ value: `${total}.00` }))
+  totalsColData.unshift({ value: "TOTAL" })
+  const totalDonations = itemTotals.reduce((prev, curr) => prev + curr)
+  totalsColData.push({ value: `${totalDonations}.00` })
+  const totalRow: SalesTotalsRow = {
+    group: "GrandTotal",
+    Summary: { ColData: totalsColData },
+    type: "Section",
+  }
+  cutsomerSalesReportRows.push(totalRow)
+
+  const customerSalesReport: CustomerSalesReport = {
+    Header: customerSalesReportHeader,
+    Columns: { Column: customerSalesReportColumns },
+    Rows: { Row: cutsomerSalesReportRows },
+  }
+
+  const itemQueryResponse: ItemQueryResponse = {
+    QueryResponse: { Item: itemQueryResponseItems, maxResults: itemCount, startPosition: 0 },
+    time: "2024-02-13T09:35:48.590Z",
+  }
+
+  return { items, customers, itemQueryResponse, customerQueryResult, customerSalesReport }
+}
+
+export const mockResponses = createMockResponses(15, 200)

@@ -27,7 +27,7 @@ const Header = Object.freeze({
   StartPeriod: "2022-01-01",
   EndPeriod: "2022-12-31",
   SummarizeColumnsBy: "Name",
-  Currency: "USD",
+  Currency: "CAD",
   Option: [],
 })
 

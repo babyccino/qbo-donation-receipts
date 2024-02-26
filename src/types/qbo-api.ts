@@ -90,7 +90,7 @@ export type Address = {
   Line3?: string
 }
 
-type Customer = {
+export type Customer = {
   Taxable: boolean
   Job: boolean
   BillWithParent: boolean

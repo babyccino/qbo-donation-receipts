@@ -10,7 +10,7 @@ import { serialiseDates } from "@/lib/util/nextjs-helper"
 import { getServerSideProps } from "@/pages/items"
 import { Item } from "@/types/qbo-api"
 import { doneeInfos, userDatas } from "db/schema"
-import { createUser, getMockApiContext, mockDoneeInfo, mockItemQueryResponse } from "../mocks"
+import { createUser, getMockApiContext, mockDoneeInfo, mockResponses } from "../mocks"
 
 describe("items page getServerSideProps", () => {
   test("getServerSideProps returns sign in redirect when user is not signed in", async () => {
@@ -48,10 +48,7 @@ describe("items page getServerSideProps", () => {
           name: user.name as string,
         },
       } satisfies Session,
-      items: mockItemQueryResponse.QueryResponse.Item.map(({ Id, Name }) => ({
-        id: Id,
-        name: Name,
-      })) satisfies Item[],
+      items: mockResponses.items,
       detailsFilledIn: false,
       companies: [
         { companyName: account.companyName as string, id: account.id },
@@ -100,11 +97,7 @@ describe("items page getServerSideProps", () => {
           name: user.name as string,
         },
       } satisfies Session,
-      items: [
-        { id: "1", name: "General Donations" },
-        { id: "2", name: "A Donations" },
-        { id: "3", name: "B Donations" },
-      ] satisfies Item[],
+      items: mockResponses.items,
       detailsFilledIn: false,
       companies: [
         { companyName: account.companyName as string, id: account.id },
