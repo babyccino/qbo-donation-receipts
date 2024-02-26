@@ -298,14 +298,14 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
 
   if (!account.userData) {
     return {
-      props: serialiseDates({
+      props: {
         itemsFilledIn: false,
         session,
         items,
         detailsFilledIn,
         companies: accountList,
         selectedAccountId: session.accountId,
-      } satisfies Props),
+      } satisfies Props,
     }
   }
 
