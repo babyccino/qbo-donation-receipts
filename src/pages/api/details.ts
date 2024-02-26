@@ -1,19 +1,11 @@
 import { createId } from "@paralleldrive/cuid2"
 import { eq } from "drizzle-orm"
 import { ApiError } from "next/dist/server/api-utils"
-import sharp from "sharp"
 import { z } from "zod"
 
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
-import { storageBucket } from "@/lib/db/firebase"
-import {
-  base64FileSize,
-  dataUrlToBase64,
-  isJpegOrPngDataURL,
-  maxFileSizeBytes,
-  supportedExtensions,
-} from "@/lib/util/image-helper"
+import { isJpegOrPngDataURL, resizeAndUploadImage } from "@/lib/util/image-helper"
 import { charityRegistrationNumberRegexString, regularCharacterRegex } from "@/lib/util/regex"
 import {
   AuthorisedHandler,
@@ -21,37 +13,6 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { accounts, doneeInfos } from "db/schema"
-
-// TODO move file storage to another service
-async function resizeAndUploadImage(
-  dataUrl: string,
-  dimensions: { width?: number; height?: number },
-  path: string,
-  pub: boolean,
-): Promise<string> {
-  const base64 = dataUrlToBase64(dataUrl)
-  const buffer = Buffer.from(base64, "base64")
-  const extension = dataUrl.substring("data:image/".length, dataUrl.indexOf(";base64"))
-  if (!supportedExtensions.includes(extension))
-    throw new ApiError(400, "File uploaded is not of type: " + supportedExtensions.join(", "))
-
-  if (base64FileSize(base64) >= maxFileSizeBytes)
-    throw new ApiError(500, "File uploaded is too large")
-
-  const background =
-    extension === "png" || extension === "webp"
-      ? { r: 0, g: 0, b: 0, alpha: 0 }
-      : { r: 0, g: 0, b: 0 }
-  const resizedBuffer = await sharp(buffer)
-    .resize({ ...dimensions, fit: "contain", background })
-    .toFormat("webp")
-    .toBuffer()
-  const fullPath = `${path}.webp`
-  const file = storageBucket.file(fullPath)
-  await file.save(resizedBuffer, { contentType: "image/webp" })
-  if (pub) await file.makePublic()
-  return fullPath
-}
 
 const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
 
