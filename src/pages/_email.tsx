@@ -29,7 +29,13 @@ import { defaultEmailBody, formatEmailBody, templateDonorName, trimHistoryById }
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { formatDateHtml } from "@/lib/util/date"
-import { SerialiseDates, deSerialiseDates, dynamic, serialiseDates } from "@/lib/util/nextjs-helper"
+import {
+  SerialiseDates,
+  deSerialiseDates,
+  dynamic,
+  interceptGetServerSidePropsErrors,
+  serialiseDates,
+} from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
@@ -308,7 +314,7 @@ const RecipientsMissingEmails = ({
       emails to these users on QuickBooks if you wish to send receipts to all your donor.
     </p>
     <p className="text-gray-500 dark:text-gray-400">Users missing emails:</p>
-    <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 dark:text-gray-400 sm:columns-2">
+    <ul className="mx-4 max-w-md list-inside list-none space-y-1 text-left text-xs text-gray-500 sm:columns-2 dark:text-gray-400">
       {possibleRecipients
         .filter(recipient => recipient.status === RecipientStatus.NoEmail)
         .map(recipient => (
@@ -382,7 +388,7 @@ function CompleteAccountEmail({
           )}
         </Fieldset>
       </form>
-      <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow dark:border dark:border-gray-700 dark:bg-gray-800 sm:max-w-md">
+      <div className="mx-auto flex flex-col rounded-lg bg-white p-6 pt-5 text-center shadow sm:max-w-md dark:border dark:border-gray-700 dark:bg-gray-800">
         <div className="flex justify-center gap-4">
           <Button color="blue" onClick={() => setShowEmailPreview(true)}>
             Show Preview Email
@@ -443,7 +449,7 @@ export default function Email(serialisedProps: SerialisedProps) {
 
 // --- server side props --- //
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
+const _getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("email")
 
@@ -585,3 +591,4 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
     } satisfies Props),
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)

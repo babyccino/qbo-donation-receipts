@@ -10,9 +10,10 @@ import {
   signInRedirect,
 } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { EmailStatus } from "@/types/resend"
 import { accounts, receipts, sessions } from "db/schema"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { useRouter } from "next/router"
 
 type RecipientStatus = { email: string; emailStatus: EmailStatus }
@@ -90,7 +91,7 @@ export default function Campaign({ recipients, refresh }: Props) {
   )
 }
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, params }) => {
+const _getServerSideProps: GetServerSideProps<Props> = async ({ req, res, params }) => {
   if (!params) return { notFound: true }
   const id = params.id
   if (typeof id !== "string") return { notFound: true }
@@ -176,3 +177,4 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     } satisfies Props,
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)

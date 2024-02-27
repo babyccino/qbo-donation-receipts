@@ -28,3 +28,6 @@ rootkey.csv
 
 /drizzle
 /test.db*
+
+# Sentry Config File
+.sentryclirc

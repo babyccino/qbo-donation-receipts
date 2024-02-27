@@ -1,7 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm"
 import { Accordion } from "flowbite-react"
-import { GetServerSideProps } from "next"
-import { getServerSession } from "next-auth"
 
 import {
   H1,
@@ -13,10 +10,6 @@ import {
   companyName,
   url,
 } from "@/components/agreements"
-import { LayoutProps } from "@/components/layout"
-import { db } from "@/lib/db"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { accounts, sessions } from "db/schema"
 
 const { Panel, Title, Content } = Accordion
 
@@ -582,35 +575,4 @@ export default Terms
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<LayoutProps> = async ({ req, res }) => {
-  const session = await getServerSession(req, res, authOptions)
-  if (!session) return { props: { session: null } satisfies LayoutProps }
-
-  const accountList = (await db.query.accounts.findMany({
-    columns: { companyName: true, id: true },
-    where: and(isNotNull(accounts.companyName), eq(accounts.userId, session.user.id)),
-  })) as { companyName: string; id: string }[]
-
-  if (session.accountId === null && accountList.length > 0) {
-    await db
-      .update(sessions)
-      .set({ accountId: accountList[0].id })
-      .where(eq(sessions.userId, session.user.id))
-    session.accountId = accountList[0].id
-  }
-
-  if (accountList.length > 0)
-    return {
-      props: {
-        session,
-        companies: accountList,
-        selectedAccountId: session.accountId as string,
-      } satisfies LayoutProps,
-    }
-  else
-    return {
-      props: {
-        session,
-      } satisfies LayoutProps,
-    }
-}
+export { defaultGetServerSideProps as getServerSideProps } from "@/lib/util/nextjs-helper"
