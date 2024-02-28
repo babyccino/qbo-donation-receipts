@@ -5,7 +5,7 @@ import { z } from "zod"
 
 import { refreshTokenIfNeeded } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
-import { isJpegOrPngDataURL, resizeAndUploadImage } from "@/lib/util/image-helper"
+import { isJpegOrPngDataURL } from "@/lib/util/image-helper"
 import { charityRegistrationNumberRegexString, regularCharacterRegex } from "@/lib/util/regex"
 import {
   AuthorisedHandler,
@@ -13,6 +13,7 @@ import {
   parseRequestBody,
 } from "@/lib/util/request-server"
 import { accounts, doneeInfos } from "db/schema"
+import { resizeAndUploadImage } from "@/lib/util/image-helper-server"
 
 const dataUrlRefiner = (str: string | undefined) => (str ? isJpegOrPngDataURL(str) : true)
 

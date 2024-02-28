@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm"
-import { NextApiHandler, NextApiRequest } from "next"
-import { Session, getServerSession } from "next-auth"
+import { NextApiHandler } from "next"
+import { getServerSession } from "next-auth"
 import { ApiError } from "next/dist/server/api-utils"
 import { z } from "zod"
 

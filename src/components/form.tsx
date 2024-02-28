@@ -4,7 +4,6 @@ import {
   FieldsetHTMLAttributes,
   ForwardedRef,
   HTMLAttributes,
-  HTMLInputTypeAttribute,
   ReactNode,
   forwardRef,
   useState,
