@@ -27,7 +27,12 @@ import {
   startOfThisYear,
   utcEpoch,
 } from "@/lib/util/date"
-import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
+import {
+  SerialiseDates,
+  deSerialiseDates,
+  interceptGetServerSidePropsErrors,
+  serialiseDates,
+} from "@/lib/util/nextjs-helper"
 import { postJsonData } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as ItemsApiDataType } from "@/pages/api/items"
@@ -236,7 +241,7 @@ export default function Items(serialisedProps: SerialisedProps) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
+const _getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("items")
 
@@ -324,3 +329,4 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
     } satisfies Props),
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)

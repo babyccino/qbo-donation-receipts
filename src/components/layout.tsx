@@ -67,7 +67,7 @@ export default function Layout(
         <button
           aria-controls="separator-sidebar"
           type="button"
-          className="ml-3 mt-2 inline-flex items-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 sm:hidden dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+          className="ml-3 mt-2 inline-flex items-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 sm:hidden"
           onClick={() => setShowSidebar(true)}
         >
           <span className="sr-only">Open sidebar</span>
@@ -75,14 +75,15 @@ export default function Layout(
         </button>
         <Show when={showSidebar}>
           <div
-            className="animate-fadeIn fixed inset-0 z-20 bg-black/40"
+            className="fixed inset-0 z-20 animate-fadeIn bg-black/40"
             onClick={() => setShowSidebar(false)}
           />
         </Show>
         <nav
           id="separator-sidebar"
           className={
-            "fixed left-0 top-0 z-40 flex h-screen w-64 flex-col justify-between overflow-y-auto bg-gray-50 px-3 py-4 transition-transform sm:translate-x-0 dark:bg-gray-800 " +
+            "fixed left-0 top-0 z-40 flex h-screen w-64 flex-col justify-between overflow-y-auto bg-gray-50 px-3 py-4 transition-transform dark:bg-gray-800 sm:translate-x-0 " +
+            "fixed left-0 top-0 z-40 flex h-screen w-64 flex-col justify-between overflow-y-auto bg-gray-50 px-3 py-4 transition-transform dark:bg-gray-800 sm:translate-x-0 " +
             (showSidebar ? "" : " -translate-x-full")
           }
           aria-label="Sidebar"
@@ -110,7 +111,7 @@ export default function Layout(
                 <NavLink link="/items" logo={<ShoppingBagIcon />} label="Items" />
                 <NavLink link="/details" logo={<RectangleStackIcon />} label="Details" />
                 <NavLink link="/generate-receipts" logo={<TableCellsIcon />} label="Receipts" />
-                <NavLink link="/email" logo={<EnvelopeIcon />} label="Email" />
+                {/* <NavLink link="/email" logo={<EnvelopeIcon />} label="Email" /> */}
                 <NavLink link="/account" logo={<UserCircleIcon />} label="Account" />
                 <hr
                   style={{ margin: "1rem 0" }}

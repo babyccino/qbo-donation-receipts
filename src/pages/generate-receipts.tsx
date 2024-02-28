@@ -9,7 +9,6 @@ import { ReactNode, useState } from "react"
 import { twMerge } from "tailwind-merge"
 
 import { LayoutProps } from "@/components/layout"
-import { Link } from "@/components/link"
 import {
   DownloadReceiptLoading,
   DummyDownloadReceipt,
@@ -28,8 +27,8 @@ import { storageBucket } from "@/lib/db/firebase"
 import { getDonations } from "@/lib/qbo-api"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDonationRange, getThisYear } from "@/lib/util/date"
-import { getRandomBalance, getRandomName, randInt } from "@/lib/util/etc"
-import { dynamic } from "@/lib/util/nextjs-helper"
+import { getRandomBalance, getRandomName } from "@/lib/util/etc"
+import { dynamic, interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { fetchJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
@@ -232,10 +231,10 @@ export default function IndexPage(props: Props) {
       <Show when={subscribed}>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
           <DownloadAllFiles />
-          <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
+          {/* <div className="mb-4 flex flex-row items-baseline gap-6 rounded-lg border border-gray-200 bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
             <p className="inline font-normal text-gray-700 dark:text-gray-400">Email your donors</p>
             <Link href="/email">Email</Link>
-          </div>
+          </div> */}
         </div>
       </Show>
       <Alert
@@ -283,7 +282,7 @@ export default function IndexPage(props: Props) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+const _getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("generate-receipts")
 
@@ -419,3 +418,4 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     } satisfies Props,
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)

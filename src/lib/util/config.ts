@@ -70,6 +70,7 @@ const vitalKeys = [
   "LIB_SQL_AUTH_TOKEN",
   "EMAIL_WORKER_URL",
   "EMAIL_WORKER_API_KEY",
+  "SENTRY_AUTH_TOKEN",
 ] as const
 const nonVitalKeys = [
   "FIREBASE_API_KEY",

@@ -217,13 +217,13 @@ export function ShowReceipt({ receiptProps }: { receiptProps: EmailProps }) {
         {showReceiptInner}
       </Button>
       <div className={containerClass} onClick={() => setShow(false)}>
-        <div className="relative w-full h-full max-w-[800px] pt-6 bg-[#323639] rounded-md">
+        <div className="relative h-full w-full max-w-[800px] rounded-md bg-[#323639] pt-6">
           <PDFViewer style={{ width: "100%", height: "100%", maxWidth: "800px" }}>
             <ReceiptPdfDocument {...receiptProps} />
           </PDFViewer>
           <button
             type="button"
-            className="text-gray-400 absolute bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white top-1 right-1"
+            className="absolute right-1 top-1 ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
             onClick={() => setShow(false)}
           >
             <XMarkIcon className="w-6" />

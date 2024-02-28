@@ -1,9 +1,10 @@
+import { captureException } from "@sentry/nextjs"
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next"
-import { ApiError } from "next/dist/server/api-utils"
 import { Session, getServerSession } from "next-auth"
+import { ApiError } from "next/dist/server/api-utils"
+import { TypeOf, ZodObject, ZodRawShape } from "zod"
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
-import { TypeOf, ZodObject, ZodRawShape } from "zod"
 
 export function parseRequestBody<T extends ZodRawShape>(
   shape: ZodObject<T>,
@@ -50,6 +51,7 @@ export function createAuthorisedHandler<T>(
     try {
       await handler(req, res, session)
     } catch (error) {
+      captureException(error)
       console.error(error)
       if (!(error instanceof ApiError)) return res.status(404).send("unknown server error" as any)
       res.status(error.statusCode).send(error.message as any)

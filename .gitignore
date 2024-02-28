@@ -32,3 +32,6 @@ rootkey.csv
 .dev.vars
 
 .aws-sam
+
+# Sentry Config File
+.sentryclirc

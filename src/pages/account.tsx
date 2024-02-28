@@ -17,7 +17,12 @@ import { db } from "@/lib/db"
 import { getImageUrl } from "@/lib/db/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
-import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
+import {
+  SerialiseDates,
+  deSerialiseDates,
+  interceptGetServerSidePropsErrors,
+  serialiseDates,
+} from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
@@ -196,7 +201,7 @@ export default function AccountPage(serialisedProps: SerialisedProps) {
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
+const _getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("account")
 
@@ -288,3 +293,4 @@ export const getServerSideProps: GetServerSideProps<SerialisedProps> = async ({ 
     } satisfies SerialisedProps,
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)

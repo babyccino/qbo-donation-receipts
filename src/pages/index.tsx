@@ -11,6 +11,7 @@ import { twMerge } from "tailwind-merge"
 import { LayoutProps } from "@/components/layout"
 import { Link as StyledLink } from "@/components/link"
 import { db } from "@/lib/db"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 
@@ -58,10 +59,10 @@ type Props = {
 const IndexPage = ({ filledIn, session }: Props) => (
   <section className="mx-auto max-w-screen-xl space-y-12 p-4 px-4 text-center sm:py-8 lg:py-16">
     <div>
-      <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tight text-gray-900 dark:text-white md:text-3xl lg:text-4xl">
+      <h1 className="mb-4 text-2xl font-extrabold leading-none tracking-tight text-gray-900 md:text-3xl lg:text-4xl dark:text-white">
         Speed up your organisation{"'"}s year-end
       </h1>
-      <p className="mb-8 text-lg font-normal text-gray-500 dark:text-gray-400 sm:px-16 lg:px-48 lg:text-xl">
+      <p className="mb-8 text-lg font-normal text-gray-500 sm:px-16 lg:px-48 lg:text-xl dark:text-gray-400">
         In just a few easy steps we can create and send your client{"'"}s donation receipts
       </p>
       <Show when={!filledIn || (!filledIn.items && !filledIn.doneeDetails)}>
@@ -118,7 +119,7 @@ export default IndexPage
 
 // --- server-side props ---
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
+const _getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
   const session = await getServerSession(req, res, authOptions)
 
   if (!session) {
@@ -174,3 +175,4 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     } satisfies Props,
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)

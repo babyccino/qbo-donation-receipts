@@ -7,7 +7,7 @@ import { NextSeo } from "next-seo"
 import { AppProps } from "next/app"
 import Head from "next/head"
 
-import ErrorBoundary from "@/components/error"
+import { ErrorBoundary, ErrorDisplay } from "@/components/error"
 import Layout, { LayoutProps } from "@/components/layout"
 import { config } from "@/lib/util/config"
 
@@ -16,6 +16,38 @@ export default function App({ Component, pageProps }: AppProps<LayoutProps & Rec
     config.nodeEnv === "development" || config.nodeEnv === "test"
       ? "[dev] DonationReceipt.Online"
       : "DonationReceipt.Online"
+
+  if (pageProps.error) {
+    return (
+      <>
+        <Head>
+          <title>An unexpected error has occured | DonationReceipt.Online</title>
+          <meta name="description" content="Expedite your organisation's year-end!" />
+        </Head>
+        <NextSeo
+          title={pageTitle}
+          description="Expedite your organisation's year-end!"
+          openGraph={{
+            url: "https://www.donationreceipt.online",
+            images: [
+              {
+                url: "/open-graph.webp",
+                width: 800,
+                height: 600,
+                alt: "DonationReceipt.Online homepage",
+                type: "image/webp",
+              },
+            ],
+          }}
+          twitter={{
+            cardType: "summary_large_image",
+          }}
+        />
+        <ErrorDisplay error={pageProps.error} />
+      </>
+    )
+  }
+
   return (
     <>
       <NextSeo

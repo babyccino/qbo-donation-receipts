@@ -10,9 +10,10 @@ import {
   signInRedirect,
 } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
+import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { EmailStatus } from "@/types/resend"
 import { accounts, receipts, sessions } from "db/schema"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { useRouter } from "next/router"
 
 type RecipientStatus = { email: string; emailStatus: EmailStatus }
@@ -50,7 +51,7 @@ export default function Campaign({ recipients, refresh }: Props) {
 
   return (
     <div className="sm:py-8">
-      <table className="rounded-lg border-collapse overflow-hidden">
+      <table className="border-collapse overflow-hidden rounded-lg">
         <thead className="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
           <tr>
             <th scope="col" className="cursor-pointer px-6 py-3">
@@ -76,7 +77,7 @@ export default function Campaign({ recipients, refresh }: Props) {
               <th
                 scope="row"
                 className={
-                  "whitespace-nowrap px-6 py-3 font-medium font-mono " +
+                  "whitespace-nowrap px-6 py-3 font-mono font-medium " +
                   getPillColor(recipient.emailStatus)
                 }
               >
@@ -90,7 +91,7 @@ export default function Campaign({ recipients, refresh }: Props) {
   )
 }
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, params }) => {
+const _getServerSideProps: GetServerSideProps<Props> = async ({ req, res, params }) => {
   if (!params) return { notFound: true }
   const id = params.id
   if (typeof id !== "string") return { notFound: true }
@@ -179,3 +180,4 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     } satisfies Props,
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)

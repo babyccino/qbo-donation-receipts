@@ -26,6 +26,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo, accounts, sessions } from "db/schema"
 import { LoadingButton, LoadingSubmitButton } from "@/components/ui"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
 
 const imageHelper = "PNG, JPG, WebP or GIF (max 100kb)."
 const imageNotRequiredHelper = (
@@ -180,7 +181,7 @@ export default function Details({ doneeInfo, itemsFilledIn }: Props) {
 
 // --- server-side props --- //
 
-export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
+const _getServerSideProps: GetServerSideProps<Props> = async ({ req, res, query }) => {
   const session = await getServerSession(req, res, authOptions)
   if (!session) return signInRedirect("details")
 
@@ -261,3 +262,4 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     } satisfies Props,
   }
 }
+export const getServerSideProps = interceptGetServerSidePropsErrors(_getServerSideProps)
