@@ -26,7 +26,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { DataType as DetailsApiDataType } from "@/pages/api/details"
 import { DoneeInfo, accounts, sessions } from "db/schema"
 import { LoadingButton, LoadingSubmitButton } from "@/components/ui"
-import { interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/get-server-side-props"
 
 const imageHelper = "PNG, JPG, WebP or GIF (max 100kb)."
 const imageNotRequiredHelper = (

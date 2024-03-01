@@ -11,7 +11,7 @@ import { twMerge } from "tailwind-merge"
 import { LayoutProps } from "@/components/layout"
 import { Link as StyledLink } from "@/components/link"
 import { db } from "@/lib/db"
-import { interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/get-server-side-props"
 import { Show } from "@/lib/util/react"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 

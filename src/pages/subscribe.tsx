@@ -30,4 +30,4 @@ export default function Subscribe() {
 
 // --- server-side props ---
 
-export { defaultGetServerSideProps as getServerSideProps } from "@/lib/util/nextjs-helper"
+export { defaultGetServerSideProps as getServerSideProps } from "@/lib/util/get-server-side-props"

@@ -1,7 +1,7 @@
 import { snakeToCamel, SnakeToCamelCase } from "@/lib/util/etc"
 
 const getNonVitalEnvVariable = (environmentVariable: string) => process.env[environmentVariable]
-function getVitalEnvVariable(environmentVariable: string): string {
+export function getVitalEnvVariable(environmentVariable: string): string {
   // NextJs code splitting is hot garb
   if (typeof window !== "undefined") return ""
 

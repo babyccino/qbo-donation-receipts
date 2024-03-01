@@ -17,12 +17,8 @@ import { db } from "@/lib/db"
 import { getImageUrl } from "@/lib/db/db-helper"
 import { isUserSubscribed } from "@/lib/stripe"
 import { getDaysBetweenDates } from "@/lib/util/date"
-import {
-  SerialiseDates,
-  deSerialiseDates,
-  interceptGetServerSidePropsErrors,
-  serialiseDates,
-} from "@/lib/util/nextjs-helper"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/get-server-side-props"
+import { SerialiseDates, deSerialiseDates, serialiseDates } from "@/lib/util/nextjs-helper"
 import { Show } from "@/lib/util/react"
 import { postJsonData, putJsonData, subscribe } from "@/lib/util/request"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"

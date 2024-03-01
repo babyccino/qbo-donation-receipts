@@ -10,7 +10,7 @@ import {
   signInRedirect,
 } from "@/lib/auth/next-auth-helper-server"
 import { db } from "@/lib/db"
-import { interceptGetServerSidePropsErrors } from "@/lib/util/nextjs-helper"
+import { interceptGetServerSidePropsErrors } from "@/lib/util/get-server-side-props"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { EmailStatus } from "@/types/resend"
 import { accounts, receipts, sessions } from "db/schema"
